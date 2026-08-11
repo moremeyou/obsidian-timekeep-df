@@ -20,14 +20,14 @@ describe("TimesheetTimer", () => {
 
 		const timerEl = container.children[0] as HTMLElement;
 		expect(timerEl).toBeDefined();
-		expect(timerEl.className).toBe("timekeep-timer");
+		expect(timerEl.className).toBe("timekeep-df-timer");
 
 		const primary = timerEl.children[0] as HTMLElement;
 		const secondary = timerEl.children[1] as HTMLElement;
 		const label = timerEl.children[2] as HTMLElement;
 
-		expect(primary.className).toBe("timekeep-timer-value");
-		expect(secondary.className).toBe("timekeep-timer-value-small");
+		expect(primary.className).toBe("timekeep-df-timer-value");
+		expect(secondary.className).toBe("timekeep-df-timer-value-small");
 		expect(label.textContent).toBe("Test Label");
 
 		expect(primary.textContent).toBe("");

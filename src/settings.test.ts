@@ -9,6 +9,10 @@ import {
 } from "./settings";
 
 describe("legacy settings compatibility conversion", () => {
+	test("Fresh mobile PDF exports use a fork-specific folder", () => {
+		expect(defaultSettings.pdfMobileExportsFolder).toBe("TimekeepDFExports");
+	});
+
 	test("Empty setting", () => {
 		// Checking the legacySettingsCompatibility does not add any settings without existing legacy settings
 		const setting = {};

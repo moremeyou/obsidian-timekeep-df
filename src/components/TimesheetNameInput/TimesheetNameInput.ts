@@ -7,6 +7,8 @@ import { DomComponent } from "@/components/DomComponent";
 
 import { TimekeepAutocomplete } from "@/service/autocomplete";
 
+let nextNameInputInstanceId = 1;
+
 export class TimesheetNameInput extends DomComponent {
 	/** Access to autocomplete */
 	autocomplete: TimekeepAutocomplete;
@@ -15,6 +17,10 @@ export class TimesheetNameInput extends DomComponent {
 	#inputEl: HTMLInputElement | undefined;
 	/** Suggestions container element */
 	#suggestionsEl: HTMLDivElement | undefined;
+	/** Fork-scoped, per-instance DOM identifiers */
+	readonly inputId: string;
+	readonly #suggestionsId: string;
+	readonly #suggestionIdPrefix: string;
 
 	/** Current list of suggestions */
 	#suggestions: FuseResult<string>[] = [];
@@ -27,28 +33,32 @@ export class TimesheetNameInput extends DomComponent {
 		super(containerEl);
 
 		this.autocomplete = autocomplete;
+		const instanceId = nextNameInputInstanceId++;
+		this.inputId = `timekeep-df-name-${instanceId}`;
+		this.#suggestionsId = `timekeep-df-suggestions-${instanceId}`;
+		this.#suggestionIdPrefix = `timekeep-df-suggestion-${instanceId}-`;
 	}
 
 	onload(): void {
 		super.onload();
 
-		const wrapperEl = this.containerEl.createDiv({ cls: "timekeep-name-container" });
+		const wrapperEl = this.containerEl.createDiv({ cls: "timekeep-df-name-container" });
 		this.wrapperEl = wrapperEl;
 
 		const inputEl = wrapperEl.createEl("input", {
-			cls: "timekeep-name",
+			cls: "timekeep-df-name",
 			placeholder: "Example Block",
 			type: "text",
 		});
-		inputEl.id = "timekeepBlockName";
+		inputEl.id = this.inputId;
 		inputEl.role = "combobox";
 		inputEl.setAttribute("aria-expanded", "false");
-		inputEl.setAttribute("aria-controls", "timekeepSuggestions");
+		inputEl.setAttribute("aria-controls", this.#suggestionsId);
 		inputEl.setAttribute("aria-autocomplete", "list");
 		this.#inputEl = inputEl;
 
-		const suggestionsEl = wrapperEl.createDiv({ cls: "timekeep-suggestions" });
-		suggestionsEl.id = "timekeepSuggestions";
+		const suggestionsEl = wrapperEl.createDiv({ cls: "timekeep-df-suggestions" });
+		suggestionsEl.id = this.#suggestionsId;
 		suggestionsEl.role = "listbox";
 		suggestionsEl.hidden = true;
 		this.#suggestionsEl = suggestionsEl;
@@ -102,9 +112,9 @@ export class TimesheetNameInput extends DomComponent {
 			const result = suggestions[i];
 			const suggestion = result.item;
 
-			const suggestionEl = suggestionsEl.createDiv({ cls: "timekeep-suggestion" });
+			const suggestionEl = suggestionsEl.createDiv({ cls: "timekeep-df-suggestion" });
 			suggestionEl.role = "option";
-			suggestionEl.id = `timekeepSuggestion-${i}`;
+			suggestionEl.id = `${this.#suggestionIdPrefix}${i}`;
 			suggestionEl.setAttribute("aria-selected", "false");
 			suggestionEl.setAttribute("value", suggestion);
 
@@ -142,7 +152,7 @@ export class TimesheetNameInput extends DomComponent {
 		if (!(target instanceof HTMLElement)) return;
 		/* v8 ignore stop -- @preserve */
 
-		if (!target.id.startsWith("timekeepSuggestion-")) return;
+		if (!target.id.startsWith(this.#suggestionIdPrefix)) return;
 
 		const suggestion = target;
 		const value = suggestion.getAttribute("value");
@@ -287,7 +297,7 @@ export class TimesheetNameInput extends DomComponent {
 
 		assert(inputEl && suggestionsEl, "Expected elements should be defined");
 
-		const children = suggestionsEl.querySelectorAll(".timekeep-suggestion");
+		const children = suggestionsEl.querySelectorAll(".timekeep-df-suggestion");
 		for (let i = 0; i < children.length; i++) {
 			const child = children.item(i);
 
@@ -309,7 +319,7 @@ export class TimesheetNameInput extends DomComponent {
 		} else {
 			inputEl.setAttribute(
 				"aria-activedescendant",
-				`timekeepSuggestion-${this.#suggestionFocusIndex}`
+				`${this.#suggestionIdPrefix}${this.#suggestionFocusIndex}`
 			);
 		}
 	}

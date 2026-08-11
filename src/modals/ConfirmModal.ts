@@ -25,14 +25,14 @@ export class ConfirmModal extends Modal {
 		new Setting(this.contentEl)
 			.addButton((btn) => {
 				btn.buttonEl.setAttribute("data-action", "ok");
-				btn.setClass("timekeep-confirm-modal-button")
+				btn.setClass("timekeep-df-confirm-modal-button")
 					.setButtonText("Ok")
 					.setCta()
 					.onClick(this.onOk.bind(this));
 			})
 			.addButton((btn) => {
 				btn.buttonEl.setAttribute("data-action", "cancel");
-				btn.setClass("timekeep-confirm-modal-button")
+				btn.setClass("timekeep-df-confirm-modal-button")
 					.setButtonText("Cancel")
 					.onClick(this.onCancel.bind(this));
 			});

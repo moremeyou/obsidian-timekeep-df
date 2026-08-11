@@ -3,6 +3,7 @@
 import { spawn } from "node:child_process";
 import { createHash } from "node:crypto";
 import { copyFile, lstat, mkdir, readFile, readdir, realpath, stat } from "node:fs/promises";
+import { createRequire } from "node:module";
 import os from "node:os";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
@@ -13,9 +14,12 @@ const projectRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "
 const pluginId = "obsidian-timekeep-df";
 const pluginName = "Timekeep DF";
 const viewType = "timekeep-df";
+const markdownLanguage = "df-timekeep";
+const standaloneExtension = "timekeep-df";
 const artifacts = ["manifest.json", "main.js", "styles.css"];
 const buildIdentifierPattern =
 	/\/\*! Timekeep DF build: (\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}\.\d{3}Z); inputs: ([a-f0-9]{64}) \*\//g;
+const localRequire = createRequire(import.meta.url);
 
 function usage() {
 	console.log(`Usage: node scripts/deploy-df.mjs [options]
@@ -161,6 +165,34 @@ function requirePattern(contents, pattern, label) {
 	}
 }
 
+function verifyPdfmakeModuleIsolation() {
+	const globalKeys = ["pdfMake", "saveAs"];
+	const before = new Map(
+		globalKeys.map((key) => [
+			key,
+			{
+				hasOwn: Object.prototype.hasOwnProperty.call(globalThis, key),
+				value: globalThis[key],
+			},
+		])
+	);
+	const pdfmake = localRequire("pdfmake/build/pdfmake");
+
+	if (typeof pdfmake.createPdf !== "function") {
+		throw new Error("Dependency isolation check failed: pdfmake local export is unavailable.");
+	}
+
+	for (const key of globalKeys) {
+		const previous = before.get(key);
+		const hasOwn = Object.prototype.hasOwnProperty.call(globalThis, key);
+		if (hasOwn !== previous.hasOwn || globalThis[key] !== previous.value) {
+			throw new Error(
+				`Dependency isolation check failed: pdfmake changed globalThis.${key}.`
+			);
+		}
+	}
+}
+
 async function verifySourceIdentity() {
 	const manifest = JSON.parse(await readFile(path.join(projectRoot, "manifest.json"), "utf8"));
 	const packageMetadata = JSON.parse(
@@ -173,19 +205,32 @@ async function verifySourceIdentity() {
 		throw new Error(`Fork identity check failed: package name must be ${pluginId}.`);
 	}
 
-	const [mainSource, fileViewSource, registrySource, parserSource, codeblockSource] =
-		await Promise.all([
-			readFile(path.join(projectRoot, "src", "main.ts"), "utf8"),
-			readFile(path.join(projectRoot, "src", "views", "TimekeepFileView.ts"), "utf8"),
-			readFile(path.join(projectRoot, "src", "service", "registry.ts"), "utf8"),
-			readFile(path.join(projectRoot, "src", "timekeep", "parser.ts"), "utf8"),
-			readFile(path.join(projectRoot, "src", "utils", "codeblock.ts"), "utf8"),
-		]);
+	const [
+		mainSource,
+		fileViewSource,
+		registrySource,
+		parserSource,
+		codeblockSource,
+		createFileSource,
+		stylesSource,
+		fileSaveSource,
+		stopFileSource,
+	] = await Promise.all([
+		readFile(path.join(projectRoot, "src", "main.ts"), "utf8"),
+		readFile(path.join(projectRoot, "src", "views", "TimekeepFileView.ts"), "utf8"),
+		readFile(path.join(projectRoot, "src", "service", "registry.ts"), "utf8"),
+		readFile(path.join(projectRoot, "src", "timekeep", "parser.ts"), "utf8"),
+		readFile(path.join(projectRoot, "src", "utils", "codeblock.ts"), "utf8"),
+		readFile(path.join(projectRoot, "src", "timekeep", "createNewTimekeepFile.ts"), "utf8"),
+		readFile(path.join(projectRoot, "src", "styles.css"), "utf8"),
+		readFile(path.join(projectRoot, "src", "save", "TimesheetFileSaveAdapter.ts"), "utf8"),
+		readFile(path.join(projectRoot, "src", "timekeep", "stopFileTimekeeps.ts"), "utf8"),
+	]);
 
 	requirePattern(
 		mainSource,
-		/registerMarkdownCodeBlockProcessor\(\s*["']timekeep["']/,
-		"the Markdown language must remain timekeep"
+		/registerMarkdownCodeBlockProcessor\(\s*["']df-timekeep["']/,
+		`the Markdown language must be ${markdownLanguage}`
 	);
 	requirePattern(
 		mainSource,
@@ -194,8 +239,8 @@ async function verifySourceIdentity() {
 	);
 	requirePattern(
 		mainSource,
-		/registerExtensions\(\s*\[\s*["']timekeep["']\s*\]\s*,\s*["']timekeep-df["']\s*\)/,
-		`the .timekeep extension must map to ${viewType}`
+		/registerExtensions\(\s*\[\s*["']timekeep-df["']\s*\]\s*,\s*["']timekeep-df["']\s*\)/,
+		`the .${standaloneExtension} extension must map to ${viewType}`
 	);
 	requirePattern(
 		fileViewSource,
@@ -208,12 +253,86 @@ async function verifySourceIdentity() {
 		`registry file leaf lookup must use ${viewType}`
 	);
 
-	if (!parserSource.includes('startsWith("```timekeep")')) {
-		throw new Error("Compatibility check failed: parser must recognize ```timekeep blocks.");
+	if (/registerMarkdownCodeBlockProcessor\(\s*["']timekeep[^"']*["']/.test(mainSource)) {
+		throw new Error(
+			"Ownership check failed: the DF Markdown language must not begin with timekeep."
+		);
 	}
-	if (!codeblockSource.includes('output += "```timekeep\\n"')) {
-		throw new Error("Compatibility check failed: generated blocks must use ```timekeep.");
+	if (!parserSource.includes('startLine.trim() !== "```df-timekeep"')) {
+		throw new Error("Ownership check failed: parser must require the exact DF fence.");
 	}
+	if (/startsWith\(\s*["']```timekeep/.test(parserSource)) {
+		throw new Error("Ownership check failed: parser must not recognize official fences.");
+	}
+	if (!codeblockSource.includes('output += "```df-timekeep\\n"')) {
+		throw new Error("Ownership check failed: generated blocks must use ```df-timekeep.");
+	}
+	if (!registrySource.includes('file.extension === "timekeep-df"')) {
+		throw new Error("Ownership check failed: registry must recognize .timekeep-df files.");
+	}
+	if (!registrySource.includes('file.extension !== "timekeep-df"')) {
+		throw new Error("Ownership check failed: registry stop operations must refuse .timekeep.");
+	}
+	if (/file\.extension\s*===\s*["']timekeep["']/.test(registrySource)) {
+		throw new Error(
+			"Ownership check failed: registry must not recognize official .timekeep files."
+		);
+	}
+	if (!createFileSource.includes('"Untitled.timekeep-df"')) {
+		throw new Error("Ownership check failed: new standalone files must use .timekeep-df.");
+	}
+	if (!fileViewSource.includes('file.extension !== "timekeep-df"')) {
+		throw new Error("Ownership check failed: the DF file view must refuse .timekeep files.");
+	}
+	if (!fileSaveSource.includes('this.file.extension !== "timekeep-df"')) {
+		throw new Error("Ownership check failed: standalone saves must refuse .timekeep files.");
+	}
+	if (!stopFileSource.includes('file.extension !== "md"')) {
+		throw new Error("Ownership check failed: Markdown stop-all must ignore standalone files.");
+	}
+	const unscopedStyleClass = [...stylesSource.matchAll(/\.timekeep-[A-Za-z0-9_-]+/g)]
+		.map((match) => match[0])
+		.find((className) => !className.startsWith(".timekeep-df-"));
+	if (unscopedStyleClass) {
+		throw new Error(
+			`DOM isolation check failed: styles contain unscoped class ${unscopedStyleClass}.`
+		);
+	}
+	const unscopedStyleVariable = [...stylesSource.matchAll(/--timekeep-[A-Za-z0-9_-]+/g)]
+		.map((match) => match[0])
+		.find((variableName) => !variableName.startsWith("--timekeep-df-"));
+	if (unscopedStyleVariable) {
+		throw new Error(
+			`DOM isolation check failed: styles contain unscoped variable ${unscopedStyleVariable}.`
+		);
+	}
+
+	const productionSourcePaths = (await collectBuildInputFiles(projectRoot)).filter(
+		(inputPath) => {
+			const relativePath = path.relative(projectRoot, inputPath).split(path.sep).join("/");
+			return (
+				relativePath.startsWith("src/") &&
+				/\.(?:ts|css)$/.test(relativePath) &&
+				!relativePath.endsWith(".test.ts") &&
+				!relativePath.includes("/__fixtures__/") &&
+				!relativePath.includes("/__mocks__/")
+			);
+		}
+	);
+	const productionSources = (
+		await Promise.all(productionSourcePaths.map((inputPath) => readFile(inputPath, "utf8")))
+	).join("\n");
+	if (/["'`]timekeep-(?!df(?:-|["'`]))/.test(productionSources)) {
+		throw new Error(
+			"DOM isolation check failed: production source contains an unscoped identity."
+		);
+	}
+	for (const legacyDomId of ["timekeepBlockName", "timekeepSuggestions", "merge-select-all"]) {
+		if (productionSources.includes(legacyDomId)) {
+			throw new Error(`DOM isolation check failed: found legacy global ID ${legacyDomId}.`);
+		}
+	}
+	verifyPdfmakeModuleIsolation();
 
 	return manifest;
 }
@@ -302,6 +421,15 @@ async function verifyBuiltIdentity(sourceManifest) {
 	const builtMain = await readFile(builtMainPath, "utf8");
 	if (!builtMain.includes(viewType)) {
 		throw new Error(`Built main.js does not contain required view type ${viewType}.`);
+	}
+	const unsafePdfGlobalPatterns = [
+		/\[\s*["']pdfMake["']\s*\]\s*=/,
+		/\.saveAs\s*=\s*[A-Za-z_$][\w$]*\.saveAs\s*=/,
+		/\b(?:globalThis|window|self)\s*(?:\.\s*(?:pdfMake|saveAs)|\[\s*["'](?:pdfMake|saveAs)["']\s*\])\s*=/,
+		/EXPOSE_LOADER_GLOBAL_THIS/,
+	];
+	if (unsafePdfGlobalPatterns.some((pattern) => pattern.test(builtMain))) {
+		throw new Error("Built main.js exposes a pdfmake/FileSaver browser global.");
 	}
 
 	const buildMetadata = await readBuildIdentifier(builtMainPath);

@@ -79,8 +79,9 @@ export function extractTimekeepCodeblocksWithPosition(value: string): TimekeepWi
 	for (let i = 0; i < lines.length; i++) {
 		const startLine = lines[i];
 
-		// Skip lines till a timekeep block is found
-		if (!startLine.trim().startsWith("```timekeep")) {
+		// Only match the fork-specific fence. The official plugin intentionally owns
+		// `timekeep` blocks when both plugins are enabled.
+		if (startLine.trim() !== "```df-timekeep") {
 			continue;
 		}
 
@@ -144,7 +145,7 @@ export function replaceTimekeepCodeblock(
 	const lines = content.split("\n");
 
 	// Sanity checks to prevent overriding content
-	if (!lines[lineStart].trim().startsWith("```")) {
+	if (lines[lineStart].trim() !== "```df-timekeep") {
 		throw new Error(
 			"Content timekeep out of sync, line number for codeblock start doesn't match: " +
 				content[lineStart]

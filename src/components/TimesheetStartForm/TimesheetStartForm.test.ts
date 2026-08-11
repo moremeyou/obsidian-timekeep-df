@@ -57,7 +57,10 @@ describe("TimesheetStart", () => {
 		component.load();
 
 		const formEl = component.wrapperEl as HTMLFormElement;
-		const nameInputEl = formEl.querySelector("#timekeepBlockName");
+		const nameInputEl = formEl.querySelector<HTMLInputElement>(".timekeep-df-name");
+		const nameLabelEl = formEl.querySelector<HTMLLabelElement>("label");
+		expect(nameInputEl?.id).toMatch(/^timekeep-df-name-\d+$/);
+		expect(nameLabelEl?.htmlFor).toBe(nameInputEl?.id);
 		(nameInputEl as HTMLInputElement).value = "Test";
 
 		formEl.dispatchEvent(new SubmitEvent("submit", { bubbles: true, cancelable: true }));

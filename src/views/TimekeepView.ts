@@ -129,14 +129,14 @@ export default class TimekeepView extends ContentComponent<
 				this.saveError.setState(false);
 			}
 		} catch (e) {
-			console.error("Failed to save timekeep", e);
+			console.error("Timekeep DF failed to save", e);
 
 			try {
 				const fileName = await this.saveFallback(timekeep);
-				new Notice(`Failed to save timekeep, backup saved to: ${fileName}`);
+				new Notice(`Timekeep DF: save failed; backup saved to ${fileName}`);
 			} catch (e) {
-				console.error("Couldn't save timekeep fallback", e);
-				new Notice("Failed to save timekeep and unable to save fallback file");
+				console.error("Timekeep DF couldn't save a fallback", e);
+				new Notice("Timekeep DF: save failed and no backup file could be created");
 			}
 
 			this.saveError.setState(true);
@@ -156,7 +156,7 @@ export default class TimekeepView extends ContentComponent<
 	 */
 	async saveFallback(timekeep: Timekeep) {
 		// Fallback in case of write failure, attempt to write to another file
-		const backupFileName = `timekeep-write-backup-${moment().format("YYYY-MM-DD HH-mm-ss")}.json`;
+		const backupFileName = `timekeep-df-write-backup-${moment().format("YYYY-MM-DD HH-mm-ss")}.json`;
 
 		// Write to the backup file
 		await this.app.vault.create(

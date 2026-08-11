@@ -21,10 +21,20 @@ describe("ConfirmModal", () => {
 		expect(() => component.open()).not.toThrow();
 	});
 
+	it("uses a fork-specific default file name", () => {
+		component.open();
+		expect(component.titleEl.textContent).toBe("Export Timekeep DF PDF");
+		const input = component.contentEl.querySelector<HTMLInputElement>(
+			".timekeep-df-pick-file-name-input"
+		);
+		expect(input?.value).toBe("Timesheet DF.pdf");
+		expect(input?.placeholder).toBe("Timesheet DF.pdf");
+	});
+
 	it("clicking Ok should call onChoice with the current name value", () => {
 		component.open();
 
-		const input = component.contentEl.querySelector(".timekeep-pick-file-name-input");
+		const input = component.contentEl.querySelector(".timekeep-df-pick-file-name-input");
 		(input as HTMLInputElement).value = "Test";
 
 		const button = component.contentEl.querySelectorAll("button").item(0);
@@ -58,7 +68,7 @@ describe("ConfirmModal", () => {
 		const contentEl: HTMLElement = document!.querySelector(".mock-modal-content")!;
 		expect(contentEl).toBeInstanceOf(HTMLElement);
 
-		const input = contentEl!.querySelector(".timekeep-pick-file-name-input");
+		const input = contentEl!.querySelector(".timekeep-df-pick-file-name-input");
 		(input as HTMLInputElement).value = "Test";
 
 		const button = contentEl!.querySelectorAll("button").item(0);

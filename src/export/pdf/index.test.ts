@@ -104,7 +104,7 @@ describe("exportPdf", () => {
 		expect(createFolder).toHaveBeenCalled();
 		expect(createBinary).toHaveBeenCalled();
 
-		expect(MockNotice).toHaveBeenCalledWith("PDF export successful", 1500);
+		expect(MockNotice).toHaveBeenCalledWith("Timekeep DF: PDF export successful", 1500);
 	});
 
 	it("exporting on mobile should do nothing if a path is not picked", async () => {
@@ -155,7 +155,7 @@ describe("exportPdf", () => {
 		await exportPdf(app, timekeep, settings);
 
 		expect(createFolder).toHaveBeenCalled();
-		expect(MockNotice).toHaveBeenCalledWith("PDF export successful", 1500);
+		expect(MockNotice).toHaveBeenCalledWith("Timekeep DF: PDF export successful", 1500);
 	});
 
 	it("exporting on mobile should use an existing folder if present", async () => {
@@ -182,7 +182,7 @@ describe("exportPdf", () => {
 		await exportPdf(app, timekeep, settings);
 
 		expect(createFolder).not.toHaveBeenCalled();
-		expect(MockNotice).toHaveBeenCalledWith("PDF export successful", 1500);
+		expect(MockNotice).toHaveBeenCalledWith("Timekeep DF: PDF export successful", 1500);
 	});
 
 	it("exporting on desktop should export to readable stream", async () => {
@@ -204,10 +204,15 @@ describe("exportPdf", () => {
 		await exportPdf(app, timekeep, settings);
 
 		expect(createPdf).toHaveBeenCalled();
-		expect(showSaveDialog).toHaveBeenCalled();
+		expect(showSaveDialog).toHaveBeenCalledWith(
+			expect.objectContaining({
+				title: "Save Timekeep DF timesheet",
+				defaultPath: "Timesheet DF.pdf",
+			})
+		);
 		expect(writeFile).toHaveBeenCalled();
 		expect(showItemInFolder).toHaveBeenCalled();
-		expect(MockNotice).toHaveBeenCalledWith("PDF export successful", 1500);
+		expect(MockNotice).toHaveBeenCalledWith("Timekeep DF: PDF export successful", 1500);
 	});
 
 	it("exporting on desktop should create the parent folder if it doesn't exist", async () => {
@@ -238,7 +243,7 @@ describe("exportPdf", () => {
 
 		expect(showItemInFolder).toHaveBeenCalled();
 
-		expect(MockNotice).toHaveBeenCalledWith("PDF export successful", 1500);
+		expect(MockNotice).toHaveBeenCalledWith("Timekeep DF: PDF export successful", 1500);
 	});
 
 	it("exporting on desktop not should create the parent folder if it already exists", async () => {
@@ -269,7 +274,7 @@ describe("exportPdf", () => {
 
 		expect(showItemInFolder).toHaveBeenCalled();
 
-		expect(MockNotice).toHaveBeenCalledWith("PDF export successful", 1500);
+		expect(MockNotice).toHaveBeenCalledWith("Timekeep DF: PDF export successful", 1500);
 	});
 
 	it("exporting on desktop should use showItemInFolder for OPEN_PATH setting", async () => {
@@ -383,6 +388,6 @@ describe("exportPdf", () => {
 		await exportPdf(app, timekeep, settings);
 
 		expect(consoleError).toHaveBeenCalled();
-		expect(MockNotice).toHaveBeenCalledWith("Failed to export PDF file");
+		expect(MockNotice).toHaveBeenCalledWith("Timekeep DF: failed to export PDF file");
 	});
 });

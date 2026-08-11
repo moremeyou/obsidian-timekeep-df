@@ -38,7 +38,7 @@ describe("TimesheetCounters", () => {
 		component.load();
 
 		expect(component.wrapperEl).toBeInstanceOf(HTMLDivElement);
-		expect(component.wrapperEl?.className).toBe("timekeep-timers");
+		expect(component.wrapperEl?.className).toBe("timekeep-df-timers");
 
 		expect(component.currentTimer).toBeInstanceOf(TimesheetTimer);
 		expect(component.totalTimer).toBeInstanceOf(TimesheetTimer);

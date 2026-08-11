@@ -113,10 +113,7 @@ export class TimekeepRegistry extends Component {
 		const settings = this.settings.getState();
 		this.enabled = settings.registryEnabled;
 
-		// Unsubscribe from existing events
-		for (const eventRef of this.events) {
-			this.#vault.offref(eventRef);
-		}
+		this.detachVaultEvents();
 
 		if (!this.enabled) return;
 
@@ -131,6 +128,19 @@ export class TimekeepRegistry extends Component {
 
 		// Load the registry from the vault
 		this.registerTask("loadFromVault", this.loadFromVault());
+	}
+
+	onunload(): void {
+		this.enabled = false;
+		this.detachVaultEvents();
+		super.onunload();
+	}
+
+	private detachVaultEvents(): void {
+		for (const eventRef of this.events) {
+			this.#vault.offref(eventRef);
+		}
+		this.events = [];
 	}
 
 	registerTask(name: string, task: Promise<void>) {
@@ -211,6 +221,7 @@ export class TimekeepRegistry extends Component {
 			true,
 			settings.registryConcurrencyLimit
 		);
+		if (!this.enabled) return;
 		this.entries.setState(entries);
 	}
 
@@ -222,6 +233,7 @@ export class TimekeepRegistry extends Component {
 	 */
 	async updateFromFile(file: TFile) {
 		const entry = await TimekeepRegistry.getFileRegistryEntry(this.#vault, file, true);
+		if (!this.enabled) return;
 
 		this.entries.setState((entries) => {
 			const filteredEntries: TimekeepRegistryEntry[] = entries.filter(
@@ -239,6 +251,12 @@ export class TimekeepRegistry extends Component {
 		// Ensure the file still exists
 		const file = ref.file;
 		if (file === null) throw new Error("File no longer exists");
+		if (ref.type === TimekeepEntryItemType.FILE && file.extension !== "timekeep-df") {
+			throw new Error(`Refusing to modify a non-DF standalone file: ${file.path}`);
+		}
+		if (ref.type === TimekeepEntryItemType.MARKDOWN && file.extension !== "md") {
+			throw new Error(`Refusing to modify a non-Markdown DF block: ${file.path}`);
+		}
 
 		// Replace the stored timekeep block with the new one
 		await this.#vault.process(file, (data) => {
@@ -314,7 +332,7 @@ export class TimekeepRegistry extends Component {
 	): Promise<TimekeepRegistryEntry[]> {
 		const timekeepFiles = vault
 			.getFiles()
-			.filter((file) => file.extension === "timekeep" || file.extension === "md");
+			.filter((file) => file.extension === "timekeep-df" || file.extension === "md");
 
 		// Concurrency limited parallel file processing
 		const processFile = limitFunction(
@@ -345,6 +363,10 @@ export class TimekeepRegistry extends Component {
 		file: TFile,
 		cached: boolean = true
 	): Promise<TimekeepRegistryEntry | null> {
+		if (file.extension !== "md" && file.extension !== "timekeep-df") {
+			return null;
+		}
+
 		let content: string;
 		if (cached) {
 			content = await vault.cachedRead(file);
@@ -365,7 +387,7 @@ export class TimekeepRegistry extends Component {
 			};
 		}
 
-		if (file.extension === "timekeep") {
+		if (file.extension === "timekeep-df") {
 			const loadResult = load(content);
 			if (!loadResult.success) {
 				return null;

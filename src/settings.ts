@@ -88,7 +88,7 @@ export const defaultSettings: TimekeepSettings = {
 	pdfDateFormat: "DD/MM/YYYY",
 	pdfRowDateFormat: "DD/MM/YYYY HH:mm",
 	pdfFontFamily: FontFamily.ROBOTO,
-	pdfMobileExportsFolder: "TimekeepExports",
+	pdfMobileExportsFolder: "TimekeepDFExports",
 	timestampFormat: "YY-MM-DD HH:mm:ss",
 	editableTimestampFormat: "YYYY-MM-DD HH:mm:ss",
 	csvTitle: true,

@@ -71,7 +71,7 @@ describe("TimesheetRowContent", () => {
 		);
 		component.load();
 
-		const icon = component.wrapperEl?.querySelector(".timekeep-folder-icon");
+		const icon = component.wrapperEl?.querySelector(".timekeep-df-folder-icon");
 		expect(icon).not.toBeNull();
 		expect(icon).toBeInstanceOf(SVGElement);
 	});
@@ -111,7 +111,7 @@ describe("TimesheetRowContent", () => {
 
 		component.load();
 
-		const icon = component.wrapperEl?.querySelector(".timekeep-collapse-icon");
+		const icon = component.wrapperEl?.querySelector(".timekeep-df-collapse-icon");
 		expect(icon).not.toBeNull();
 		expect(icon).toBeInstanceOf(SVGElement);
 
@@ -163,7 +163,7 @@ describe("TimesheetRowContent", () => {
 
 		component.load();
 
-		const icon = component.wrapperEl?.querySelector(".timekeep-collapse-icon");
+		const icon = component.wrapperEl?.querySelector(".timekeep-df-collapse-icon");
 		expect(icon).not.toBeNull();
 		expect(icon).toBeInstanceOf(SVGElement);
 
@@ -205,7 +205,7 @@ describe("TimesheetRowContent", () => {
 
 		component.load();
 
-		const icon = component.wrapperEl?.querySelector('.timekeep-action[data-action="start"]');
+		const icon = component.wrapperEl?.querySelector('.timekeep-df-action[data-action="start"]');
 		expect(icon).not.toBeNull();
 		expect(icon).toBeInstanceOf(HTMLButtonElement);
 

@@ -42,7 +42,7 @@ describe("TimesheetEntryDuration", () => {
 		component.load();
 
 		expect(component.wrapperEl).toBeInstanceOf(HTMLSpanElement);
-		expect(component.wrapperEl?.className).toBe("timekeep-time");
+		expect(component.wrapperEl?.className).toBe("timekeep-df-time");
 	});
 
 	it("should call updateTime on load", () => {

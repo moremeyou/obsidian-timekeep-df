@@ -22,11 +22,11 @@ describe("TimesheetLoadError", () => {
 		expect(container.children.length).toBe(1);
 
 		const wrapper = container.children[0] as HTMLElement;
-		expect(wrapper.className).toBe("timekeep-container");
+		expect(wrapper.className).toBe("timekeep-df-container");
 
 		const p = wrapper.querySelector("p");
 		expect(p).not.toBeNull();
-		expect(p!.textContent).toBe(`Failed to load timekeep: ${errorMsg}`);
+		expect(p!.textContent).toBe(`Failed to load Timekeep DF: ${errorMsg}`);
 	});
 
 	it("should remove wrapper on unload", () => {

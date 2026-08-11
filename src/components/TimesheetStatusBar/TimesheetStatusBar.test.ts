@@ -39,12 +39,22 @@ describe("TimesheetStatusBar", () => {
 
 	it("should load without error", () => {
 		expect(() => component.load()).not.toThrow();
+		expect(component.wrapperEl?.getAttribute("aria-label")).toBe(
+			"Timekeep DF running trackers"
+		);
+		expect(component.wrapperEl?.title).toBe("Timekeep DF running trackers");
 	});
 
 	it("on unload it should remove itself from the container", () => {
 		component.load();
+		const nestedItem = new DomComponent(component.wrapperEl!);
+		nestedItem.load();
+		component.items.push(nestedItem as TimesheetStatusBarItem);
+		const unload = vi.spyOn(nestedItem, "unload");
 		component.unload();
 		expect(dom.contains(containerEl)).toBe(false);
+		expect(component.items).toHaveLength(0);
+		expect(unload).toHaveBeenCalled();
 	});
 
 	it("should unload children items when re-rendering", () => {
@@ -53,6 +63,7 @@ describe("TimesheetStatusBar", () => {
 		component.items.push(nestedItem as TimesheetStatusBarItem);
 		component.load();
 		expect(unload).toHaveBeenCalled();
+		expect(component.items).toHaveLength(0);
 	});
 
 	it("should be able to render a file based status item", () => {
@@ -65,7 +76,7 @@ describe("TimesheetStatusBar", () => {
 			subEntries: null,
 		};
 
-		const file = vault.addFile("test.timekeep", "");
+		const file = vault.addFile("test.timekeep-df", "");
 		registry.entries.setState([
 			{ file, timekeep: { entries: [entry] }, type: TimekeepEntryItemType.FILE },
 		]);

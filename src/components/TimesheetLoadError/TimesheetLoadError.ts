@@ -15,13 +15,13 @@ export class TimesheetLoadError extends ReplaceableComponent {
 
 	createContainer(): HTMLElement {
 		return createDiv({
-			cls: "timekeep-container",
+			cls: "timekeep-df-container",
 		});
 	}
 
 	render(wrapperEl: HTMLElement): void {
 		wrapperEl.createEl("p", {
-			text: `Failed to load timekeep: ${this.error}`,
+			text: `Failed to load Timekeep DF: ${this.error}`,
 		});
 	}
 }

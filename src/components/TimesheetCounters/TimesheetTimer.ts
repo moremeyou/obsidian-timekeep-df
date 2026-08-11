@@ -21,11 +21,11 @@ export class TimesheetTimer extends DomComponent {
 	onload(): void {
 		super.onload();
 
-		const wrapperEl = this.containerEl.createDiv({ cls: "timekeep-timer" });
+		const wrapperEl = this.containerEl.createDiv({ cls: "timekeep-df-timer" });
 		this.wrapperEl = wrapperEl;
 
-		const primaryValueEl = wrapperEl.createDiv({ cls: "timekeep-timer-value" });
-		const secondaryValueEl = wrapperEl.createDiv({ cls: "timekeep-timer-value-small" });
+		const primaryValueEl = wrapperEl.createDiv({ cls: "timekeep-df-timer-value" });
+		const secondaryValueEl = wrapperEl.createDiv({ cls: "timekeep-df-timer-value-small" });
 		wrapperEl.createSpan({ text: this.#label });
 
 		this.#primaryValueEl = primaryValueEl;

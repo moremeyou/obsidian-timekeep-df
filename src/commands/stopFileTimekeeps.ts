@@ -12,7 +12,7 @@ async function asyncCallback(app: App) {
 	const currentFile = app.workspace.activeEditor?.file ?? null;
 
 	if (currentFile === null) {
-		new Notice("No active file detected", 1500);
+		new Notice("Timekeep DF: no active file detected", 1500);
 		return;
 	}
 
@@ -20,14 +20,17 @@ async function asyncCallback(app: App) {
 		const totalStopped = await stopFileTimekeeps(app.vault, currentFile, currentTime);
 
 		if (totalStopped < 1) {
-			new Notice("Nothing to stop.", 1500);
+			new Notice("Timekeep DF: nothing to stop.", 1500);
 			return;
 		}
 
-		new Notice(`Stopped ${totalStopped} tracker${totalStopped !== 1 ? "s" : ""}`, 1500);
+		new Notice(
+			`Timekeep DF: stopped ${totalStopped} tracker${totalStopped !== 1 ? "s" : ""}`,
+			1500
+		);
 	} catch (error) {
 		const errorMessage = getErrorMessage(error);
-		new Notice("Failed to stop timekeeps: " + errorMessage, 1500);
+		new Notice("Timekeep DF failed to stop trackers: " + errorMessage, 1500);
 	}
 }
 

@@ -55,7 +55,7 @@ export class TimesheetRunningEntryViewing extends ReplaceableComponent {
 
 	createContainer(): HTMLElement {
 		return createEl("form", {
-			cls: "timekeep-start-area",
+			cls: "timekeep-df-start-area",
 			attr: {
 				"data-area": "running",
 			},
@@ -66,44 +66,44 @@ export class TimesheetRunningEntryViewing extends ReplaceableComponent {
 		this.registerDomEvent(formEl, "submit", this.onStop.bind(this));
 
 		const nameWrapperEl = formEl.createDiv({
-			cls: ["timekeep-active-entry", "timekeep-name-wrapper"],
+			cls: ["timekeep-df-active-entry", "timekeep-df-name-wrapper"],
 		});
 
 		const runningSpanEl = nameWrapperEl.createSpan();
 		runningSpanEl.createEl("b", { text: "Currently Running: " });
 
-		const detailsEl = nameWrapperEl.createDiv({ cls: "timekeep-active-entry__details" });
+		const detailsEl = nameWrapperEl.createDiv({ cls: "timekeep-df-active-entry__details" });
 		const detailsNameEl = detailsEl.createSpan({
-			cls: "timekeep-active-entry__name",
+			cls: "timekeep-df-active-entry__name",
 		});
 		detailsNameEl.createEl("b", { text: "Name: " });
 		detailsNameEl.appendText(" ");
 
 		const pathEl = detailsNameEl.createSpan({
-			cls: "timekeep-path-to-entry",
+			cls: "timekeep-df-path-to-entry",
 		});
 		this.#pathEl = pathEl;
 
-		const timeEl = detailsEl.createSpan({ cls: "timekeep-active-entry__name" });
+		const timeEl = detailsEl.createSpan({ cls: "timekeep-df-active-entry__name" });
 		timeEl.createEl("b", { text: "Started at: " });
 
 		const timeValueEl = timeEl.createSpan();
 		this.#timeValueEl = timeValueEl;
 
 		const editButton = formEl.createEl("button", {
-			cls: ["timekeep-start", "timekeep-start--edit"],
+			cls: ["timekeep-df-start", "timekeep-df-start--edit"],
 			title: "Edit",
 		});
 		editButton.type = "button";
-		createObsidianIcon(editButton, "edit", "timekeep-button-icon");
+		createObsidianIcon(editButton, "edit", "timekeep-df-button-icon");
 		this.registerDomEvent(editButton, "click", this.onStartEditing);
 
 		const stopButton = formEl.createEl("button", {
-			cls: ["timekeep-start", "timekeep-start--stop"],
+			cls: ["timekeep-df-start", "timekeep-df-start--stop"],
 			title: "Stop",
 		});
 		stopButton.type = "submit";
-		createObsidianIcon(stopButton, "stop-circle", "timekeep-button-icon");
+		createObsidianIcon(stopButton, "stop-circle", "timekeep-df-button-icon");
 
 		const onUpdate = this.onUpdate.bind(this);
 
@@ -140,7 +140,7 @@ export class TimesheetRunningEntryViewing extends ReplaceableComponent {
 		for (let i = 0; i < pathToEntry.length; i++) {
 			const path = pathToEntry[i];
 			const text = `${path.name}${i < pathToEntry.length - 1 ? " >" : ""}`;
-			pathEl.createSpan({ cls: "timekeep-path-to-entry__segment", text });
+			pathEl.createSpan({ cls: "timekeep-df-path-to-entry__segment", text });
 		}
 	}
 
