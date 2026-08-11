@@ -15,6 +15,8 @@ export const buildInputs = [
 	"vite.config.js",
 ];
 
+const ignoredFilesystemMetadata = new Set([".DS_Store", "Thumbs.db"]);
+
 async function collectFiles(entryPath) {
 	const entryStat = await lstat(entryPath);
 	if (entryStat.isSymbolicLink()) {
@@ -32,6 +34,7 @@ async function collectFiles(entryPath) {
 	const entries = await readdir(entryPath, { withFileTypes: true });
 	const nestedFiles = await Promise.all(
 		entries
+			.filter((entry) => !ignoredFilesystemMetadata.has(entry.name))
 			.sort((left, right) => left.name.localeCompare(right.name))
 			.map((entry) => collectFiles(path.join(entryPath, entry.name)))
 	);
