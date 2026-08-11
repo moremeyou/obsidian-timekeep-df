@@ -64,16 +64,18 @@ export class TimesheetRowContent extends ReplaceableComponent {
 	}
 
 	createContainer(): HTMLElement {
-		return createEl("tr", { cls: "timekeep-row" });
+		return createEl("tr", { cls: "timekeep-df-row" });
 	}
 
 	render(wrapperEl: HTMLElement): void {
 		const entry = this.entry;
-		const nameColEl = wrapperEl.createEl("td", { cls: ["timekeep-col", "timekeep-col--name"] });
+		const nameColEl = wrapperEl.createEl("td", {
+			cls: ["timekeep-df-col", "timekeep-df-col--name"],
+		});
 		nameColEl.style.paddingLeft = `${(this.indent + 1) * 15}px`;
 
 		const nameEl = nameColEl.createSpan({
-			cls: "timekeep-entry-name",
+			cls: "timekeep-df-entry-name",
 			title: entry.name,
 		});
 
@@ -82,7 +84,7 @@ export class TimesheetRowContent extends ReplaceableComponent {
 		}
 
 		if (entry.subEntries !== null && entry.folder) {
-			createObsidianIcon(nameEl, "folder", "timekeep-folder-icon");
+			createObsidianIcon(nameEl, "folder", "timekeep-df-folder-icon");
 		}
 
 		const name = new TimesheetEntryName(nameEl, this.app, entry.name);
@@ -92,24 +94,24 @@ export class TimesheetRowContent extends ReplaceableComponent {
 			createObsidianIcon(
 				nameEl,
 				entry.collapsed ? "chevron-down" : "chevron-up",
-				"timekeep-collapse-icon"
+				"timekeep-df-collapse-icon"
 			);
 		}
 
 		const startTimeColEl = wrapperEl.createEl("td", {
-			cls: ["timekeep-col", "timekeep-col--time"],
+			cls: ["timekeep-df-col", "timekeep-df-col--time"],
 		});
-		const startTimeEl = startTimeColEl.createSpan({ cls: "timekeep-time" });
+		const startTimeEl = startTimeColEl.createSpan({ cls: "timekeep-df-time" });
 		this.#startTimeEl = startTimeEl;
 
 		const endTimeColEl = wrapperEl.createEl("td", {
-			cls: ["timekeep-col", "timekeep-col--time"],
+			cls: ["timekeep-df-col", "timekeep-df-col--time"],
 		});
-		const endTimeEl = endTimeColEl.createSpan({ cls: "timekeep-time" });
+		const endTimeEl = endTimeColEl.createSpan({ cls: "timekeep-df-time" });
 		this.#endTimeEl = endTimeEl;
 
 		const durationColEl = wrapperEl.createEl("td", {
-			cls: ["timekeep-col", "timekeep-col--duration"],
+			cls: ["timekeep-df-col", "timekeep-df-col--duration"],
 		});
 
 		const duration = new TimesheetEntryDuration(durationColEl, entry);
@@ -117,27 +119,27 @@ export class TimesheetRowContent extends ReplaceableComponent {
 		this.addChild(duration);
 
 		const actionsColEl = wrapperEl.createEl("td", {
-			cls: ["timekeep-col", "timekeep-col--actions"],
+			cls: ["timekeep-df-col", "timekeep-df-col--actions"],
 		});
 
-		const actionsWrapper = actionsColEl.createDiv({ cls: "timekeep-actions-wrapper" });
+		const actionsWrapper = actionsColEl.createDiv({ cls: "timekeep-df-actions-wrapper" });
 
 		const startButton = actionsWrapper.createEl("button", {
-			cls: "timekeep-action",
+			cls: "timekeep-df-action",
 			attr: {
 				"data-action": "start",
 			},
 		});
-		createObsidianIcon(startButton, "play", "timekeep-button-icon");
+		createObsidianIcon(startButton, "play", "timekeep-df-button-icon");
 		this.registerDomEvent(startButton, "click", this.onClickStart.bind(this));
 
 		const editButton = actionsWrapper.createEl("button", {
-			cls: "timekeep-action",
+			cls: "timekeep-df-action",
 			attr: {
 				"data-action": "edit",
 			},
 		});
-		createObsidianIcon(editButton, "edit", "timekeep-button-icon");
+		createObsidianIcon(editButton, "edit", "timekeep-df-button-icon");
 		this.registerDomEvent(editButton, "click", this.onBeginEditing);
 
 		this.updateTimes();

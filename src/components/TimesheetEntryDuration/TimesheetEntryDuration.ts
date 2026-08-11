@@ -27,7 +27,7 @@ export class TimesheetEntryDuration extends DomComponent {
 	onload(): void {
 		super.onload();
 
-		const timeEl = this.containerEl.createSpan({ cls: "timekeep-time" });
+		const timeEl = this.containerEl.createSpan({ cls: "timekeep-df-time" });
 		this.wrapperEl = timeEl;
 
 		// Initial update

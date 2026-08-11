@@ -78,7 +78,7 @@ describe("TimesheetRowContentEditing", () => {
 		);
 		component.load();
 
-		const cancelButton = containerEl.querySelector('.timekeep-action[data-action="cancel"]');
+		const cancelButton = containerEl.querySelector('.timekeep-df-action[data-action="cancel"]');
 		expect(cancelButton).not.toBeNull();
 		(cancelButton as HTMLButtonElement).click();
 		expect(onFinishEditing).toHaveBeenCalledOnce();
@@ -108,7 +108,7 @@ describe("TimesheetRowContentEditing", () => {
 		const onSubmit = vi.spyOn(component, "onSubmit");
 		component.load();
 
-		const form = containerEl.querySelector("form.timekeep-editing");
+		const form = containerEl.querySelector("form.timekeep-df-editing");
 		expect(form).not.toBeNull();
 		(form as HTMLFormElement).dispatchEvent(
 			new SubmitEvent("submit", { bubbles: true, cancelable: true })
@@ -141,7 +141,7 @@ describe("TimesheetRowContentEditing", () => {
 		const onSubmit = vi.spyOn(component, "onSubmit");
 		component.load();
 
-		const form = containerEl.querySelector("form.timekeep-editing");
+		const form = containerEl.querySelector("form.timekeep-df-editing");
 		expect(form).not.toBeNull();
 		(form as HTMLFormElement).dispatchEvent(
 			new SubmitEvent("submit", { bubbles: true, cancelable: true })
@@ -174,7 +174,7 @@ describe("TimesheetRowContentEditing", () => {
 		const onSubmit = vi.spyOn(component, "onSubmit");
 		component.load();
 
-		const form = containerEl.querySelector("form.timekeep-editing");
+		const form = containerEl.querySelector("form.timekeep-df-editing");
 		expect(form).not.toBeNull();
 		(form as HTMLFormElement).dispatchEvent(
 			new SubmitEvent("submit", { bubbles: true, cancelable: true })
@@ -205,9 +205,10 @@ describe("TimesheetRowContentEditing", () => {
 		component.load();
 
 		const startTime =
-			containerEl.querySelector('.timekeep-input[name="start-time"]')?.parentElement ?? null;
+			containerEl.querySelector('.timekeep-df-input[name="start-time"]')?.parentElement ??
+			null;
 		const endTime =
-			containerEl.querySelector('.timekeep-input[name="end-time"]')?.parentElement ?? null;
+			containerEl.querySelector('.timekeep-df-input[name="end-time"]')?.parentElement ?? null;
 
 		expect(startTime).not.toBeNull();
 		expect(endTime).not.toBeNull();
@@ -235,7 +236,7 @@ describe("TimesheetRowContentEditing", () => {
 		const onConfirmDelete = vi.spyOn(component, "onConfirmDelete");
 		component.load();
 
-		const deleteButton = containerEl.querySelector('.timekeep-action[data-action="delete"]');
+		const deleteButton = containerEl.querySelector('.timekeep-df-action[data-action="delete"]');
 		expect(deleteButton).not.toBeNull();
 		(deleteButton as HTMLButtonElement).click();
 
@@ -268,7 +269,7 @@ describe("TimesheetRowContentEditing", () => {
 		const onConfirmedDelete = vi.spyOn(component, "onConfirmedDelete");
 		component.load();
 
-		const deleteButton = containerEl.querySelector('.timekeep-action[data-action="delete"]');
+		const deleteButton = containerEl.querySelector('.timekeep-df-action[data-action="delete"]');
 		expect(deleteButton).not.toBeNull();
 		(deleteButton as HTMLButtonElement).click();
 
@@ -278,7 +279,7 @@ describe("TimesheetRowContentEditing", () => {
 		expect(contentEl).toBeInstanceOf(HTMLElement);
 
 		const cancelButton = contentEl.querySelector(
-			'.timekeep-confirm-modal-button[data-action="cancel"]'
+			'.timekeep-df-confirm-modal-button[data-action="cancel"]'
 		);
 		expect(cancelButton).not.toBeNull();
 		(cancelButton as HTMLButtonElement).click();
@@ -312,7 +313,7 @@ describe("TimesheetRowContentEditing", () => {
 		const onConfirmedDelete = vi.spyOn(component, "onConfirmedDelete");
 		component.load();
 
-		const deleteButton = containerEl.querySelector('.timekeep-action[data-action="delete"]');
+		const deleteButton = containerEl.querySelector('.timekeep-df-action[data-action="delete"]');
 		expect(deleteButton).not.toBeNull();
 		(deleteButton as HTMLButtonElement).click();
 
@@ -322,7 +323,7 @@ describe("TimesheetRowContentEditing", () => {
 		expect(contentEl).toBeInstanceOf(HTMLElement);
 
 		const okButton = contentEl.querySelector(
-			'.timekeep-confirm-modal-button[data-action="ok"]'
+			'.timekeep-df-confirm-modal-button[data-action="ok"]'
 		);
 		expect(okButton).not.toBeNull();
 		(okButton as HTMLButtonElement).click();
@@ -358,8 +359,8 @@ describe("TimesheetRowContentEditing", () => {
 		const onSubmit = vi.spyOn(component, "onSubmit");
 		component.load();
 
-		const startTime = containerEl.querySelector('.timekeep-input[name="start-time"]');
-		const endTime = containerEl.querySelector('.timekeep-input[name="end-time"]');
+		const startTime = containerEl.querySelector('.timekeep-df-input[name="start-time"]');
+		const endTime = containerEl.querySelector('.timekeep-df-input[name="end-time"]');
 
 		expect(startTime).not.toBeNull();
 		expect(endTime).not.toBeNull();
@@ -367,7 +368,7 @@ describe("TimesheetRowContentEditing", () => {
 		(startTime as HTMLInputElement).value = "Test";
 		(endTime as HTMLInputElement).value = "Test";
 
-		const form = containerEl.querySelector("form.timekeep-editing");
+		const form = containerEl.querySelector("form.timekeep-df-editing");
 		expect(form).not.toBeNull();
 		(form as HTMLFormElement).dispatchEvent(
 			new SubmitEvent("submit", { bubbles: true, cancelable: true })

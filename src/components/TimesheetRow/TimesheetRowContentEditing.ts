@@ -65,22 +65,22 @@ export class TimesheetRowContentEditing extends ReplaceableComponent {
 	}
 
 	createContainer(): HTMLElement {
-		return createEl("tr", { cls: "timekeep-row" });
+		return createEl("tr", { cls: "timekeep-df-row" });
 	}
 
 	render(wrapperEl: HTMLElement): void {
 		const colEl = wrapperEl.createEl("td");
 		colEl.colSpan = 5;
 
-		const formEl = colEl.createEl("form", { cls: "timekeep-editing" });
+		const formEl = colEl.createEl("form", { cls: "timekeep-df-editing" });
 		this.registerDomEvent(formEl, "submit", this.onSubmit.bind(this));
 
 		const nameLabelEl = formEl.createEl("label", {
-			cls: "timekeep-input-label",
+			cls: "timekeep-df-input-label",
 			text: "Name",
 		});
 		const nameInputEl = nameLabelEl.createEl("input", {
-			cls: "timekeep-input",
+			cls: "timekeep-df-input",
 			type: "text",
 		});
 		nameInputEl.name = "name";
@@ -91,57 +91,57 @@ export class TimesheetRowContentEditing extends ReplaceableComponent {
 		});
 		this.#startTimeLabelEl = startTimeLabelEl;
 		const startTimeInputEl = startTimeLabelEl.createEl("input", {
-			cls: "timekeep-input",
+			cls: "timekeep-df-input",
 			type: "text",
 		});
 		startTimeInputEl.name = "start-time";
 		this.#startTimeInputEl = startTimeInputEl;
 
 		const endTimeLabelEl = formEl.createEl("label", {
-			cls: "timekeep-input-label",
+			cls: "timekeep-df-input-label",
 			text: "End Time",
 		});
 		this.#endTimeLabelEl = endTimeLabelEl;
 		const endTimeInputEl = endTimeLabelEl.createEl("input", {
-			cls: "timekeep-input",
+			cls: "timekeep-df-input",
 			type: "text",
 		});
 		endTimeInputEl.name = "end-time";
 		this.#endTimeInputEl = endTimeInputEl;
 
 		const actionsEl = formEl.createDiv({
-			cls: "timekeep-editing-actions",
+			cls: "timekeep-df-editing-actions",
 		});
 
 		const saveButton = actionsEl.createEl("button", {
-			cls: "timekeep-action",
+			cls: "timekeep-df-action",
 			attr: {
 				"data-action": "save",
 			},
 		});
 		saveButton.type = "submit";
-		createObsidianIcon(saveButton, "edit", "timekeep-text-button-icon");
+		createObsidianIcon(saveButton, "edit", "timekeep-df-text-button-icon");
 		saveButton.appendText("Save");
 
 		const cancelButton = actionsEl.createEl("button", {
-			cls: "timekeep-action",
+			cls: "timekeep-df-action",
 			attr: {
 				"data-action": "cancel",
 			},
 		});
 		cancelButton.type = "button";
-		createObsidianIcon(cancelButton, "x", "timekeep-text-button-icon");
+		createObsidianIcon(cancelButton, "x", "timekeep-df-text-button-icon");
 		this.registerDomEvent(cancelButton, "click", this.onFinishEditing);
 		cancelButton.appendText("Cancel");
 
 		const deleteButton = actionsEl.createEl("button", {
-			cls: "timekeep-action",
+			cls: "timekeep-df-action",
 			attr: {
 				"data-action": "delete",
 			},
 		});
 		deleteButton.type = "button";
-		createObsidianIcon(deleteButton, "trash", "timekeep-text-button-icon");
+		createObsidianIcon(deleteButton, "trash", "timekeep-df-text-button-icon");
 		deleteButton.appendText("Delete");
 
 		this.registerDomEvent(deleteButton, "click", this.onConfirmDelete.bind(this));

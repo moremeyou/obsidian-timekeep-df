@@ -50,7 +50,7 @@ export class Timesheet extends ReplaceableComponent {
 
 	createContainer(): HTMLElement {
 		return createDiv({
-			cls: "timekeep-container",
+			cls: "timekeep-df-container",
 		});
 	}
 

@@ -1,7 +1,7 @@
 import { Component } from "obsidian";
 
 import { TimekeepSettings } from "@/settings";
-import { createStore, Store } from "@/store";
+import { createStore, Store, Unsubscribe } from "@/store";
 import { isNumberText } from "@/utils/number";
 
 import { TimekeepEntryItemType, TimekeepRegistry } from "./registry";
@@ -19,6 +19,8 @@ export class TimekeepAutocomplete extends Component {
 	settings: Store<TimekeepSettings>;
 	/** The collection of timekeep names */
 	names: Store<string[]>;
+	/** Active registry subscription while autocomplete is enabled */
+	#unsubscribeEntries: Unsubscribe | undefined;
 
 	constructor(registry: TimekeepRegistry, settings: Store<TimekeepSettings>) {
 		super();
@@ -36,9 +38,12 @@ export class TimekeepAutocomplete extends Component {
 		const unsubscribe = this.settings.subscribe(onUpdateRegistry);
 		onUpdateRegistry();
 		this.register(unsubscribe);
+		this.register(() => this.detachRegistrySubscription());
 	}
 
 	private onUpdateRegistry() {
+		this.detachRegistrySubscription();
+
 		const settings = this.settings.getState();
 		if (!settings.autocompleteEnabled) {
 			this.names.setState([]);
@@ -46,9 +51,13 @@ export class TimekeepAutocomplete extends Component {
 		}
 
 		const onChangeEntries = this.onChangeEntries.bind(this);
-		const unsubscribe = this.registry.entries.subscribe(onChangeEntries);
+		this.#unsubscribeEntries = this.registry.entries.subscribe(onChangeEntries);
 		onChangeEntries();
-		this.register(unsubscribe);
+	}
+
+	private detachRegistrySubscription() {
+		this.#unsubscribeEntries?.();
+		this.#unsubscribeEntries = undefined;
 	}
 
 	private onChangeEntries() {

@@ -42,10 +42,10 @@ export async function exportPdf(app: App, timekeep: Timekeep, settings: Timekeep
 		} else {
 			await exportPdfDesktop(timekeep, settings, currentTime);
 		}
-		new Notice("PDF export successful", 1500);
+		new Notice("Timekeep DF: PDF export successful", 1500);
 	} catch (error) {
 		console.error("Failed to write pdf file", error);
-		new Notice("Failed to export PDF file");
+		new Notice("Timekeep DF: failed to export PDF file");
 	}
 }
 
@@ -104,8 +104,8 @@ async function exportPdfDesktop(
 
 	// Prompt user for save location
 	const result = await showSaveDialog({
-		title: "Save timesheet",
-		defaultPath: "Timesheet.pdf",
+		title: "Save Timekeep DF timesheet",
+		defaultPath: "Timesheet DF.pdf",
 		filters: [{ extensions: ["pdf"], name: "PDF" }],
 		properties: ["showOverwriteConfirmation", "createDirectory"],
 	});

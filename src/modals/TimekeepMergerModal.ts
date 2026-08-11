@@ -11,6 +11,8 @@ import { Timekeep, stripTimekeepRuntimeData } from "@/timekeep/schema";
 
 import { TimekeepEntryItemType, TimekeepRegistry, TimekeepRegistryEntry } from "@/service/registry";
 
+let nextMergerModalId = 1;
+
 interface TimekeepResult {
 	timekeep: Timekeep;
 	file: TFile;
@@ -37,6 +39,8 @@ export class TimekeepMergerModal extends Modal {
 
 	/** Whether the dialog is exporting a merged PDF instead of creating a merged timekeep */
 	exportPdf: boolean;
+	/** Fork-scoped, per-instance DOM identifier prefix */
+	readonly #domIdPrefix: string;
 
 	unsubscribeSettings: Unsubscribe | undefined;
 	unsubscribeEntries: Unsubscribe | undefined;
@@ -52,27 +56,28 @@ export class TimekeepMergerModal extends Modal {
 		this.exportPdf = exportPdf;
 		this.registry = registry;
 		this.settings = settings;
+		this.#domIdPrefix = `timekeep-df-merger-${nextMergerModalId++}`;
 
-		this.setTitle("Create merged timekeep" + (exportPdf ? " pdf" : ""));
+		this.setTitle("Create merged Timekeep DF" + (exportPdf ? " PDF" : ""));
 	}
 
 	async onOpen(): Promise<void> {
 		this.contentEl.empty();
-		this.contentEl.createEl("p", { text: "Select Timekeep Entries to Merge" });
+		this.contentEl.createEl("p", { text: "Select Timekeep DF entries to merge" });
 
 		this.loadingEl = this.contentEl.createDiv({
-			cls: "timekeep-merger-loading",
-			text: "Loading timekeep entries...",
+			cls: "timekeep-df-merger-loading",
+			text: "Loading Timekeep DF entries...",
 		});
 
 		this.searchInput = new TextComponent(this.contentEl);
 		this.searchInput.setPlaceholder("Search by file path...");
-		this.searchInput.inputEl.addClass("timekeep-merge-search-input");
+		this.searchInput.inputEl.addClass("timekeep-df-merge-search-input");
 		this.searchInput.setDisabled(true);
 		this.searchInput.onChange(this.onUpdate.bind(this));
 
 		const selectContainer = this.contentEl.createDiv({
-			cls: "timekeep-merge-select-container",
+			cls: "timekeep-df-merge-select-container",
 		});
 
 		this.selectContainer = selectContainer;
@@ -81,20 +86,21 @@ export class TimekeepMergerModal extends Modal {
 			type: "checkbox",
 		});
 		selectAll.checked = this.isAllSelected();
-		selectAll.id = `merge-select-all`;
+		const selectAllId = `${this.#domIdPrefix}-select-all`;
+		selectAll.id = selectAllId;
 		selectAll.onchange = () => this.toggleSelectAll(selectAll.checked);
 		this.selectAll = selectAll;
 
 		const selectAllLabel = selectContainer.createEl("label");
-		selectAllLabel.htmlFor = "merge-select-all";
+		selectAllLabel.htmlFor = selectAllId;
 		selectAllLabel.textContent = "Select All";
 
 		this.listContainer = this.contentEl.createDiv({
-			cls: "timekeep-merge-list-container",
+			cls: "timekeep-df-merge-list-container",
 		});
 
 		const footer = this.contentEl.createDiv({
-			cls: "timekeep-merge-footer",
+			cls: "timekeep-df-merge-footer",
 		});
 
 		this.mergeButton = new ButtonComponent(footer)
@@ -117,7 +123,7 @@ export class TimekeepMergerModal extends Modal {
 			this.loadingEl && this.mergeButton && this.searchInput,
 			"Required elements should be defined"
 		);
-		this.loadingEl.removeClass("timekeep-merger-loading--loaded");
+		this.loadingEl.removeClass("timekeep-df-merger-loading--loaded");
 		this.loadingEl.hidden = false;
 
 		this.mergeButton.setDisabled(true);
@@ -149,8 +155,8 @@ export class TimekeepMergerModal extends Modal {
 			this.loadingEl.hidden = true;
 		} catch (err) {
 			console.error(err);
-			this.loadingEl.setText("Failed to load timekeep entries.");
-			this.loadingEl.addClass("timekeep-merger-loading--loaded");
+			this.loadingEl.setText("Failed to load Timekeep DF entries.");
+			this.loadingEl.addClass("timekeep-df-merger-loading--loaded");
 		} finally {
 			this.mergeButton.setDisabled(false);
 			this.searchInput.setDisabled(false);
@@ -192,7 +198,7 @@ export class TimekeepMergerModal extends Modal {
 	updateSelectAll() {
 		if (this.selectContainer) {
 			this.selectContainer.toggleClass(
-				"timekeep-merge-select-container--visible",
+				"timekeep-df-merge-select-container--visible",
 				this.filteredResults.length > 0
 			);
 		}
@@ -281,17 +287,18 @@ export class TimekeepMergerModal extends Modal {
 		this.listContainer.empty();
 		for (const result of this.filteredResults) {
 			const itemEl = this.listContainer.createEl("label", {
-				cls: "timekeep-merge-item",
+				cls: "timekeep-df-merge-item",
 			});
-			itemEl.htmlFor = `timekeep-${result.id}`;
+			const checkboxId = `${this.#domIdPrefix}-item-${result.id}`;
+			itemEl.htmlFor = checkboxId;
 
 			const checkbox = itemEl.createEl("input", {
-				cls: "timekeep-merge-item-checkbox",
+				cls: "timekeep-df-merge-item-checkbox",
 				type: "checkbox",
 			});
 			checkbox.checked =
 				this.selectedResults.find((other) => other.id === result.id) !== undefined;
-			checkbox.id = `timekeep-${result.id}`;
+			checkbox.id = checkboxId;
 
 			checkbox.onchange = () => {
 				if (checkbox.checked) {
@@ -304,18 +311,18 @@ export class TimekeepMergerModal extends Modal {
 			};
 
 			const label = itemEl.createDiv({
-				cls: "timekeep-merge-item-label",
+				cls: "timekeep-df-merge-item-label",
 			});
 
 			const title = label.createSpan({
-				cls: "timekeep-merge-item-title",
+				cls: "timekeep-df-merge-item-title",
 			});
 			title.textContent = result.index
-				? `${result.file.basename}: Timekeep ${result.index + 1}`
+				? `${result.file.basename}: Timekeep DF ${result.index + 1}`
 				: `${result.file.basename}`;
 
 			const path = label.createSpan({
-				cls: "timekeep-merge-item-path",
+				cls: "timekeep-df-merge-item-path",
 			});
 			path.textContent = `${result.file.path}`;
 		}

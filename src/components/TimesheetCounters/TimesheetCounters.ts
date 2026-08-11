@@ -51,7 +51,7 @@ export class TimesheetCounters extends DomComponent {
 		super.onload();
 
 		const wrapperEl = this.containerEl.createDiv({
-			cls: "timekeep-timers",
+			cls: "timekeep-df-timers",
 		});
 		this.wrapperEl = wrapperEl;
 

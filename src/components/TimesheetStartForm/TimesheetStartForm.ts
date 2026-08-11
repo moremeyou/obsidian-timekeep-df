@@ -49,35 +49,35 @@ export class TimesheetStartForm extends DomComponent {
 	onload(): void {
 		super.onload();
 
-		const formEl = this.containerEl.createEl("form", { cls: "timekeep-start-area" });
+		const formEl = this.containerEl.createEl("form", { cls: "timekeep-df-start-area" });
 		formEl.setAttribute("data-area", "start");
 		this.wrapperEl = formEl;
 
 		this.registerDomEvent(formEl, "submit", this.onStart.bind(this));
 
-		const nameWrapperEl = formEl.createDiv({ cls: "timekeep-name-wrapper" });
+		const nameWrapperEl = formEl.createDiv({ cls: "timekeep-df-name-wrapper" });
+		const nameInput = new TimesheetNameInput(nameWrapperEl, this.autocomplete);
 
 		const blockNameEl = nameWrapperEl.createEl("label", { text: "Block Name: " });
-		blockNameEl.htmlFor = "timekeepBlockName";
+		blockNameEl.htmlFor = nameInput.inputId;
 
 		const blockPauseWarningEl = blockNameEl.createSpan({
-			cls: "timekeep-start-note",
+			cls: "timekeep-df-start-note",
 			text: "Starting a new task will pause the previous one",
 		});
 
 		blockPauseWarningEl.hidden = true;
 		this.#blockPauseWarningEl = blockPauseWarningEl;
 
-		const nameInput = new TimesheetNameInput(nameWrapperEl, this.autocomplete);
 		this.#nameInput = nameInput;
 		this.addChild(nameInput);
 
 		const startButton = formEl.createEl("button", {
-			cls: "timekeep-start",
+			cls: "timekeep-df-start",
 			title: "Start",
 		});
 		startButton.type = "submit";
-		createObsidianIcon(startButton, "play", "timekeep-button-icon");
+		createObsidianIcon(startButton, "play", "timekeep-df-button-icon");
 		this.#startButtonEl = startButton;
 
 		const onUpdate = this.onUpdate.bind(this);

@@ -84,6 +84,41 @@ describe("stopFileTimekeeps", () => {
 		expect(output).toEqual(TEST_MARKDOWN_2_STOPPED);
 	});
 
+	it("stops only the DF block when official and DF blocks share a Markdown file", async () => {
+		const officialBlock = [
+			"```timekeep",
+			'{  "entries": [ { "name": "Official", "startTime": "2025-11-07T00:00:00.000Z", "endTime": null, "subEntries": null } ] }',
+			"```",
+		].join("\n");
+		const dfBlock = [
+			"```df-timekeep",
+			'{"entries":[{"name":"DF owned","startTime":"2025-11-07T00:00:00.000Z","endTime":null,"subEntries":null}]}',
+			"```",
+		].join("\n");
+		const content = ["Before", officialBlock, "Between", dfBlock, "After"].join("\n");
+		const vault = new MockVault();
+		const file = vault.addFile("mixed.md", content);
+
+		const amount = await stopFileTimekeeps(
+			vault.asVault(),
+			file,
+			moment("2025-11-07T00:31:03.714Z")
+		);
+
+		const expectedDfBlock = [
+			"```df-timekeep",
+			'{"entries":[{"name":"DF owned","startTime":"2025-11-07T00:00:00.000Z","endTime":"2025-11-07T00:31:03.714Z","subEntries":null}]}',
+			"```",
+		].join("\n");
+		const output = await vault.read(file);
+
+		expect(amount).toBe(1);
+		expect(output).toContain(officialBlock);
+		expect(output).toBe(
+			["Before", officialBlock, "Between", expectedDfBlock, "After"].join("\n")
+		);
+	});
+
 	it("operation should fail if timekeep data changes before processing occurs", async () => {
 		const vault = new MockVault();
 

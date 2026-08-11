@@ -49,7 +49,7 @@ export default class TimekeepFileView extends EditableFileView {
 	onload(): void {
 		super.onload();
 
-		const wrapperEl = this.contentEl.createDiv({ cls: "timekeep-file" });
+		const wrapperEl = this.contentEl.createDiv({ cls: "timekeep-df-file" });
 		this.wrapperEl = wrapperEl;
 
 		this.timesheet = new TimekeepView(
@@ -73,10 +73,13 @@ export default class TimekeepFileView extends EditableFileView {
 			return this.file.basename;
 		}
 
-		return "Timekeep";
+		return "Timekeep DF";
 	}
 
 	async onLoadFile(file: TFile): Promise<void> {
+		if (file.extension !== "timekeep-df") {
+			throw new Error(`Refusing to open a non-DF standalone file: ${file.path}`);
+		}
 		await super.onLoadFile(file);
 
 		this.saveAdapter.file = file;

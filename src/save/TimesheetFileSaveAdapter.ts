@@ -23,6 +23,9 @@ export class TimesheetFileSaveAdapter implements TimesheetSaveAdapter {
 		if (this.file === null) {
 			return;
 		}
+		if (this.file.extension !== "timekeep-df") {
+			throw new Error(`Refusing to save a non-DF standalone file: ${this.file.path}`);
+		}
 
 		try {
 			const stripped = stripTimekeepRuntimeData(timekeep);

@@ -46,7 +46,9 @@ export class TimesheetStatusBar extends Component {
 	onload(): void {
 		super.onload();
 
-		const wrapperEl = this.#containerEl.createDiv({ cls: "timekeep-status-bar" });
+		const wrapperEl = this.#containerEl.createDiv({ cls: "timekeep-df-status-bar" });
+		wrapperEl.setAttribute("aria-label", "Timekeep DF running trackers");
+		wrapperEl.title = "Timekeep DF running trackers";
 		this.wrapperEl = wrapperEl;
 
 		const render = this.render.bind(this);
@@ -56,6 +58,7 @@ export class TimesheetStatusBar extends Component {
 	}
 
 	onunload(): void {
+		this.unloadItems();
 		super.onunload();
 		this.#containerEl?.remove();
 	}
@@ -68,14 +71,19 @@ export class TimesheetStatusBar extends Component {
 		const runningEntries = TimekeepRegistry.getRunningEntries(entries);
 
 		// Unload the current children
-		for (const item of this.items) {
-			item.unload();
-		}
+		this.unloadItems();
 
 		// Load the new children
 		for (const runningEntry of runningEntries) {
 			this.renderEntry(runningEntry.running, runningEntry.ref, settings);
 		}
+	}
+
+	private unloadItems(): void {
+		for (const item of this.items) {
+			item.unload();
+		}
+		this.items = [];
 	}
 
 	renderEntry(entry: TimeEntry, ref: TimekeepRegistryItemRef, settings: TimekeepSettings) {

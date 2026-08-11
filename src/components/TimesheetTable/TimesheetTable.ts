@@ -47,9 +47,9 @@ export class TimesheetTable extends DomComponent {
 		const wrapperEl = this.containerEl.createDiv();
 		this.wrapperEl = wrapperEl;
 
-		const tableEl = wrapperEl.createEl("table", { cls: "timekeep-table" });
+		const tableEl = wrapperEl.createEl("table", { cls: "timekeep-df-table" });
 		const tableHeadEl = tableEl.createEl("thead", {
-			cls: "timekeep-table-head",
+			cls: "timekeep-df-table-head",
 		});
 
 		const tableHeadRowEl = tableHeadEl.createEl("tr");
@@ -92,7 +92,7 @@ export class TimesheetTable extends DomComponent {
 		assert(wrapperEl, "Wrapper element should be defined");
 
 		const settings = this.settings.getState();
-		wrapperEl.toggleClass("timekeep-table--fixed-size", settings.limitTableSize);
+		wrapperEl.toggleClass("timekeep-df-table--fixed-size", settings.limitTableSize);
 	}
 
 	/**

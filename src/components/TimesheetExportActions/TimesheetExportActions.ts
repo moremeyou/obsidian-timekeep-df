@@ -48,13 +48,13 @@ export class TimesheetExportActions extends DomComponent {
 		super.onload();
 
 		const actionsEl = this.containerEl.createDiv({
-			cls: "timekeep-actions",
+			cls: "timekeep-df-actions",
 		});
 
 		this.wrapperEl = actionsEl;
 
 		const copyMarkdownButton = actionsEl.createEl("button", {
-			cls: "timekeep-export-button",
+			cls: "timekeep-df-export-button",
 			text: "Copy Markdown",
 			attr: {
 				"data-format": "markdown",
@@ -62,7 +62,7 @@ export class TimesheetExportActions extends DomComponent {
 		});
 
 		const copyCSVButton = actionsEl.createEl("button", {
-			cls: "timekeep-export-button",
+			cls: "timekeep-df-export-button",
 			text: "Copy CSV",
 			attr: {
 				"data-format": "csv",
@@ -70,7 +70,7 @@ export class TimesheetExportActions extends DomComponent {
 		});
 
 		const copyJSONButton = actionsEl.createEl("button", {
-			cls: "timekeep-export-button",
+			cls: "timekeep-df-export-button",
 			text: "Copy JSON",
 			attr: {
 				"data-format": "json",
@@ -78,7 +78,7 @@ export class TimesheetExportActions extends DomComponent {
 		});
 
 		const savePdfButton = actionsEl.createEl("button", {
-			cls: "timekeep-export-button",
+			cls: "timekeep-df-export-button",
 			text: "Save PDF",
 			attr: {
 				"data-format": "pdf",
@@ -111,7 +111,7 @@ export class TimesheetExportActions extends DomComponent {
 
 		for (const [key, outputFormat] of Object.entries(outputFormats)) {
 			const customFormatButton = this.wrapperEl.createEl("button", {
-				cls: ["timekeep-export-button", "timekeep-export-button__custom"],
+				cls: ["timekeep-df-export-button", "timekeep-df-export-button__custom"],
 				text: outputFormat.getButtonLabel(),
 				attr: {
 					"data-custom-format": key,
@@ -139,10 +139,10 @@ export class TimesheetExportActions extends DomComponent {
 
 		try {
 			await navigator.clipboard.writeText(output);
-			new Notice("Copied markdown to clipboard", 1500);
+			new Notice("Timekeep DF: copied markdown to clipboard", 1500);
 		} catch (error) {
 			console.error("Failed to copy export", error);
-			new Notice("Failed to copy to clipboard", 1500);
+			new Notice("Timekeep DF: failed to copy to clipboard", 1500);
 		}
 	}
 
@@ -155,10 +155,10 @@ export class TimesheetExportActions extends DomComponent {
 
 		try {
 			await navigator.clipboard.writeText(output);
-			new Notice("Copied CSV to clipboard", 1500);
+			new Notice("Timekeep DF: copied CSV to clipboard", 1500);
 		} catch (error) {
 			console.error("Failed to copy export", error);
-			new Notice("Failed to copy to clipboard", 1500);
+			new Notice("Timekeep DF: failed to copy to clipboard", 1500);
 		}
 	}
 
@@ -174,10 +174,10 @@ export class TimesheetExportActions extends DomComponent {
 
 		try {
 			await navigator.clipboard.writeText(output);
-			new Notice("Copied JSON to clipboard", 1500);
+			new Notice("Timekeep DF: copied JSON to clipboard", 1500);
 		} catch (error) {
 			console.error("Failed to copy export", error);
-			new Notice("Failed to copy to clipboard", 1500);
+			new Notice("Timekeep DF: failed to copy to clipboard", 1500);
 		}
 	}
 
@@ -189,7 +189,7 @@ export class TimesheetExportActions extends DomComponent {
 			await exportPdf(this.app, timekeep, settings);
 		} catch (error) {
 			console.error("Failed to export to PDF", error);
-			new Notice("Failed to export to PDF", 1500);
+			new Notice("Timekeep DF: failed to export to PDF", 1500);
 		}
 	}
 }

@@ -49,7 +49,7 @@ describe("TimesheetStatusBarItem", () => {
 	});
 
 	it("should load without error", () => {
-		const file = vault.addFile("test.timekeep", "");
+		const file = vault.addFile("test.timekeep-df", "");
 		const component = new TimesheetStatusBarItem(
 			containerEl,
 			app,
@@ -63,10 +63,16 @@ describe("TimesheetStatusBarItem", () => {
 		);
 
 		expect(() => component.load()).not.toThrow();
+		expect(containerEl.querySelector<HTMLElement>(".timekeep-df-icon-wrapper")?.title).toBe(
+			"Stop Timekeep DF entry"
+		);
+		expect(
+			containerEl.querySelector<HTMLElement>(".timekeep-df-status-item__content")?.title
+		).toBe("Open Timekeep DF file");
 	});
 
 	it("should call onStop when the stop icon is clicked", () => {
-		const file = vault.addFile("test.timekeep", "");
+		const file = vault.addFile("test.timekeep-df", "");
 		const component = new TimesheetStatusBarItem(
 			containerEl,
 			app,
@@ -84,7 +90,7 @@ describe("TimesheetStatusBarItem", () => {
 		component.load();
 
 		// Simulate click on the stop icon
-		const stopIcon = containerEl.querySelector(".timekeep-button-icon");
+		const stopIcon = containerEl.querySelector(".timekeep-df-button-icon");
 		const event = new MouseEvent("click", { bubbles: true, cancelable: true });
 		if (stopIcon) {
 			stopIcon.dispatchEvent(event);
@@ -94,7 +100,7 @@ describe("TimesheetStatusBarItem", () => {
 	});
 
 	it("if stopping fails due to an error it should be logged", async () => {
-		const file = vault.addFile("test.timekeep", "");
+		const file = vault.addFile("test.timekeep-df", "");
 		vi.spyOn(registry, "tryStopEntry")
 			//
 			.mockRejectedValue(new Error("failed to stop"));
@@ -122,7 +128,7 @@ describe("TimesheetStatusBarItem", () => {
 	});
 
 	it("should call onOpen when the content area is clicked", () => {
-		const file = vault.addFile("test.timekeep", "");
+		const file = vault.addFile("test.timekeep-df", "");
 		const component = new TimesheetStatusBarItem(
 			containerEl,
 			app,
@@ -140,7 +146,7 @@ describe("TimesheetStatusBarItem", () => {
 		component.load();
 
 		// Simulate click on the content element
-		const contentEl = containerEl.querySelector(".timekeep-status-item__content");
+		const contentEl = containerEl.querySelector(".timekeep-df-status-item__content");
 		const event = new MouseEvent("click", { bubbles: true, cancelable: true });
 		if (contentEl) {
 			contentEl.dispatchEvent(event);
@@ -150,7 +156,7 @@ describe("TimesheetStatusBarItem", () => {
 	});
 
 	it("nested file path should be included in name when showFolderPath is true", () => {
-		const file = vault.addFile("nested/path/test.timekeep", "");
+		const file = vault.addFile("nested/path/test.timekeep-df", "");
 		const component = new TimesheetStatusBarItem(
 			containerEl,
 			app,
@@ -166,14 +172,14 @@ describe("TimesheetStatusBarItem", () => {
 
 		component.load();
 
-		const nameEl = component.containerEl.querySelector(".timekeep-status-item__name");
+		const nameEl = component.containerEl.querySelector(".timekeep-df-status-item__name");
 		expect(nameEl).not.toBeNull();
 
 		expect(nameEl!.textContent.startsWith("nested/path: ")).toBeTruthy();
 	});
 
 	it("nested file path should not be included in name when showFolderPath is false", () => {
-		const file = vault.addFile("nested/path/test.timekeep", "");
+		const file = vault.addFile("nested/path/test.timekeep-df", "");
 		const component = new TimesheetStatusBarItem(
 			containerEl,
 			app,
@@ -188,7 +194,7 @@ describe("TimesheetStatusBarItem", () => {
 
 		component.load();
 
-		const nameEl = component.containerEl.querySelector(".timekeep-status-item__name");
+		const nameEl = component.containerEl.querySelector(".timekeep-df-status-item__name");
 		expect(nameEl).not.toBeNull();
 
 		expect(nameEl!.textContent.startsWith("nested/path: ")).not.toBeTruthy();

@@ -58,6 +58,9 @@ export class TimesheetMarkdownSaveAdapter implements TimesheetSaveAdapter {
 
 		// Ensure the file still exists
 		if (file === null) throw new Error("File no longer exists");
+		if (file.extension !== "md") {
+			throw new Error(`Refusing to save a DF block into a non-Markdown file: ${file.path}`);
+		}
 
 		// Replace the stored timekeep block with the new one
 		await this.vault.process(file, (data) => {

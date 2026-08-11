@@ -1,6 +1,6 @@
 /* Main container around the timekeep codeblock content */
-.timekeep-container {
-	--timekeep-running-row-color: var(--color-base-30);
+.timekeep-df-container {
+	--timekeep-df-running-row-color: var(--color-base-30);
 
 	width: 100%;
 	display: flex;
@@ -9,17 +9,17 @@
 }
 
 /* <table/> for the timekeep table */
-.timekeep-table {
+.timekeep-df-table {
 	width: 100%;
 }
 
-.timekeep-table--fixed-size {
+.timekeep-df-table--fixed-size {
 	max-height: 600px;
 	overflow-y: auto;
 }
 
 /* <thead/> for the timekeep table */
-.timekeep-table-head {
+.timekeep-df-table-head {
 	background-color: var(--color-base-30);
 	position: sticky;
 	top: -1px;
@@ -27,53 +27,53 @@
 }
 
 /* <tr/> row within the timekeep table */
-.timekeep-row {
+.timekeep-df-row {
 	width: 100%;
 }
 
 /* underling for timekeep group rows */
-.timekeep-row[data-sub-entries="true"] {
+.timekeep-df-row[data-sub-entries="true"] {
 	border-bottom: 2px solid var(--color-base-40);
 }
 
 /* left error indicator line for invalid entries */
-.timekeep-row[data-invalid="true"] {
+.timekeep-df-row[data-invalid="true"] {
 	border-left: 2px solid var(--color-red);
 }
 
 /* alternating row highlight color */
-.timekeep-row:nth-child(even) {
+.timekeep-df-row:nth-child(even) {
 	background-color: var(--color-base-20);
 }
 
 /* alternating row highlight hover color */
-.timekeep-row:nth-child(even):hover {
+.timekeep-df-row:nth-child(even):hover {
 	background-color: var(--color-base-20);
 }
 
 /* row running color */
-.timekeep-row[data-running="true"],
-.timekeep-row:nth-child(even)[data-running="true"],
-.timekeep-row:nth-child(odd)[data-running="true"] {
-	background-color: var(--timekeep-running-row-color);
+.timekeep-df-row[data-running="true"],
+.timekeep-df-row:nth-child(even)[data-running="true"],
+.timekeep-df-row:nth-child(odd)[data-running="true"] {
+	background-color: var(--timekeep-df-running-row-color);
 }
 
 /* collapse row icon */
-.timekeep-collapse-icon {
+.timekeep-df-collapse-icon {
 	margin-left: 0.5rem;
 	cursor: pointer;
 	vertical-align: middle;
 }
 
 /* row folder indicator icon */
-.timekeep-folder-icon {
+.timekeep-df-folder-icon {
 	margin-right: 0.5rem;
 	cursor: pointer;
 	vertical-align: middle;
 }
 
 /* <form/> for a timekeep row editing content */
-.timekeep-editing {
+.timekeep-df-editing {
 	display: flex;
 	flex-flow: column;
 	gap: 0.5rem;
@@ -83,7 +83,7 @@
 }
 
 /* container for the timekeep row editing actions */
-.timekeep-editing-actions {
+.timekeep-df-editing-actions {
 	display: flex;
 	flex-flow: row;
 	gap: 0.5rem;
@@ -92,46 +92,46 @@
 }
 
 /* input within the timekeep editing row */
-.timekeep-input {
+.timekeep-df-input {
 	width: 100%;
 	margin-top: 0.5rem;
 }
 
 /* <td/> column within a timekeep row */
-.timekeep-col {
+.timekeep-df-col {
 	--table-cell-vertical-alignment: middle;
 }
 
 /* column for the timekeep row name */
-.timekeep-col--name {
+.timekeep-df-col--name {
 	width: 30%;
 	overflow: hidden;
 	overflow-wrap: anywhere;
 }
 
 /* column for the timekeep row timestamp */
-.timekeep-col--time {
+.timekeep-df-col--time {
 	width: 20%;
 }
 
-/* text styling for the actual start / end timestamps within .timekeep-col--time  */
-.timekeep-time {
+/* text styling for the actual start / end timestamps within .timekeep-df-col--time  */
+.timekeep-df-time {
 	font-size: 0.8rem;
 }
 
 /* column for the timekeep row duration */
-.timekeep-col--duration {
+.timekeep-df-col--duration {
 	width: 10%;
 }
 
 /* column for the timekeep row actions */
-.timekeep-col--actions {
+.timekeep-df-col--actions {
 	width: 10%;
 	position: relative;
 }
 
 /* container for the timekeep row actions items */
-.timekeep-actions-wrapper {
+.timekeep-df-actions-wrapper {
 	display: flex;
 	flex-flow: row;
 	gap: 0.5rem;
@@ -143,13 +143,13 @@
 }
 
 /* action button on a timekeep row */
-.timekeep-action {
+.timekeep-df-action {
 	padding: 0.5rem;
 	font-size: 0.8rem;
 }
 
 /* container for the two timekeep timers at the top */
-.timekeep-timers {
+.timekeep-df-timers {
 	display: flex;
 	flex-flow: row;
 	align-items: center;
@@ -160,7 +160,7 @@
 }
 
 /* timer container */
-.timekeep-timer {
+.timekeep-df-timer {
 	display: flex;
 	flex-flow: column;
 	gap: 0rem;
@@ -173,22 +173,22 @@
 }
 
 /* timer container hidden styling (required otherwise it won't be hidden when not in use) */
-.timekeep-timer[hidden],
-.timekeep-merger-loading[hidden] {
+.timekeep-df-timer[hidden],
+.timekeep-df-merger-loading[hidden] {
 	display: none;
 }
 
-.timekeep-merger-loading {
+.timekeep-df-merger-loading {
 	margin-bottom: 1rem;
 	opacity: 0.7;
 }
 
-.timekeep-merger-loading--loaded {
+.timekeep-df-merger-loading--loaded {
 	opacity: 1;
 }
 
 /* timer primary value text */
-.timekeep-timer-value {
+.timekeep-df-timer-value {
 	font-size: 2.5rem;
 	font-weight: bolder;
 	line-height: 1;
@@ -196,13 +196,13 @@
 }
 
 /* timer secondary value text */
-.timekeep-timer-value-small {
+.timekeep-df-timer-value-small {
 	font-size: 0.9rem;
 	font-weight: bold;
 }
 
 /* start / edit button for the timekeep */
-.timekeep-start {
+.timekeep-df-start {
 	align-self: center;
 	font-size: 2rem;
 	max-height: none;
@@ -211,7 +211,7 @@
 }
 
 /* container for the start timekeep form */
-.timekeep-start-area {
+.timekeep-df-start-area {
 	align-items: center;
 	display: flex;
 	gap: 1rem;
@@ -220,32 +220,32 @@
 }
 
 /* note text warning about starting stopping the running entry */
-.timekeep-start-note {
+.timekeep-df-start-note {
 	font-size: 0.8rem;
 	color: #777777;
 	margin-left: 0.5rem;
 }
 
 /* label for the path to the running entry */
-.timekeep-path-to-entry {
+.timekeep-df-path-to-entry {
 	display: inline-flex;
 	gap: 0.5rem;
 }
 
 /* container for the timekeep name input */
-.timekeep-name-container {
+.timekeep-df-name-container {
 	display: flex;
 	position: relative;
 }
 
 /* timekeep name input */
-.timekeep-name {
+.timekeep-df-name {
 	padding: 0.5rem;
 	flex: auto;
 }
 
 /* suggestions box for name suggestions */
-.timekeep-suggestions {
+.timekeep-df-suggestions {
 	position: absolute;
 	top: 100%;
 	left: 0;
@@ -264,7 +264,7 @@
 }
 
 /* name suggestion option */
-.timekeep-suggestion {
+.timekeep-df-suggestion {
 	height: calc((var(--font-ui-small) * var(--line-height-normal)) + 0.5rem);
 	width: 100%;
 	overflow: hidden;
@@ -276,12 +276,12 @@
 }
 
 /* currently selected name suggestion option */
-.timekeep-suggestion[aria-selected="true"] {
+.timekeep-df-suggestion[aria-selected="true"] {
 	background-color: var(--color-base-40);
 }
 
 /* container for export actions*/
-.timekeep-actions {
+.timekeep-df-actions {
 	display: flex;
 	flex-flow: row;
 	flex-wrap: wrap;
@@ -291,14 +291,14 @@
 }
 
 /* active running entry container */
-.timekeep-active-entry {
+.timekeep-df-active-entry {
 	display: flex;
 	flex-flow: column;
 	gap: 0.25rem;
 }
 
 /* active running entry details container */
-.timekeep-active-entry__details {
+.timekeep-df-active-entry__details {
 	display: flex;
 	flex-wrap: wrap;
 	gap: 0.5rem;
@@ -306,7 +306,7 @@
 }
 
 /* wrapper container for the start timekeep name input and label */
-.timekeep-name-wrapper {
+.timekeep-df-name-wrapper {
 	display: flex;
 	flex-flow: column;
 	flex: auto;
@@ -316,12 +316,12 @@
 }
 
 /* styling for button icons */
-.timekeep-button-icon {
+.timekeep-df-button-icon {
 	--icon-size: 1em;
 }
 
 /* styling for button icons with text after */
-.timekeep-text-button-icon {
+.timekeep-df-text-button-icon {
 	--icon-size: 1em;
 
 	margin-right: 0.25rem;
@@ -329,12 +329,12 @@
 }
 
 /* container for the timekeep save error container */
-.timekeep-error {
+.timekeep-df-error {
 	padding: 2rem;
 }
 
 /* container for the merge modal selection */
-.timekeep-merge-select-container {
+.timekeep-df-merge-select-container {
 	display: none;
 	flex-direction: row;
 	align-items: center;
@@ -345,12 +345,12 @@
 }
 
 /* container for the merge modal selection when there is results  */
-.timekeep-merge-select-container--visible {
+.timekeep-df-merge-select-container--visible {
 	display: flex;
 }
 
 /* container for the list of mergeable timekeeps */
-.timekeep-merge-list-container {
+.timekeep-df-merge-list-container {
 	max-height: 400px;
 	overflow-y: auto;
 	margin-top: 0.25rem;
@@ -358,12 +358,12 @@
 }
 
 /* search input for the merger modal */
-.timekeep-merge-search-input {
+.timekeep-df-merge-search-input {
 	width: 100%;
 }
 
 /* footer container for the merge modal */
-.timekeep-merge-footer {
+.timekeep-df-merge-footer {
 	display: flex;
 	flex-flow: row;
 	gap: 1rem;
@@ -371,7 +371,7 @@
 }
 
 /* mergeable timekeep within the merge modal list */
-.timekeep-merge-item {
+.timekeep-df-merge-item {
 	display: flex;
 	align-items: center;
 	padding: 0.5rem;
@@ -379,12 +379,12 @@
 }
 
 /* checkbox for a merge item */
-.timekeep-merge-item-checkbox {
+.timekeep-df-merge-item-checkbox {
 	margin-right: 0.5rem;
 }
 
 /* label for a merge item (its name) */
-.timekeep-merge-item-label {
+.timekeep-df-merge-item-label {
 	flex-grow: 1;
 
 	display: flex;
@@ -392,32 +392,32 @@
 }
 
 /* file path for a timekeep merge item */
-.timekeep-merge-item-path {
+.timekeep-df-merge-item-path {
 	opacity: 0.7;
 }
 
 /* input for choosing a file name */
-.timekeep-pick-file-name-input {
+.timekeep-df-pick-file-name-input {
 	width: 100%;
 	margin-bottom: 1rem;
 }
 
 /* obsidian status bar container for timekeep items */
-.timekeep-status-bar {
+.timekeep-df-status-bar {
 	display: flex;
 	gap: 0.5rem;
 	align-items: center;
 }
 
 /* status bar item for a timekeep */
-.timekeep-status-item {
+.timekeep-df-status-item {
 	display: flex;
 	align-items: center;
 	gap: 0.5rem;
 }
 
 /* running timekeep status bar item name text  */
-.timekeep-status-item__content {
+.timekeep-df-status-item__content {
 	display: flex;
 	align-items: center;
 	gap: 0.25rem;
@@ -425,7 +425,7 @@
 }
 
 /* stop button for timekeep status bar item */
-.timekeep-button-icon.timekeep-status-item__button {
+.timekeep-df-button-icon.timekeep-df-status-item__button {
 	cursor: pointer;
 
 	/* Override the default button size for the smaller available space */
@@ -433,7 +433,7 @@
 }
 
 /* container for file based timekeeps */
-.timekeep-file {
+.timekeep-df-file {
 	display: flex;
 	gap: 1rem;
 	flex-flow: column;
@@ -444,7 +444,7 @@
 }
 
 /* wrapper container for obsidian icons */
-.timekeep-icon-wrapper {
+.timekeep-df-icon-wrapper {
 	display: inline-block;
 	line-height: 1;
 	padding: 0px;

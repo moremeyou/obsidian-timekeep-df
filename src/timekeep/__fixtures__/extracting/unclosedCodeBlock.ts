@@ -24,4 +24,4 @@ export const inputTimekeep1: Timekeep = {
 	],
 };
 
-export const text = "\n\n\n" + input1 + "\n\n\n\n```timekeep\n\n";
+export const text = "\n\n\n" + input1 + "\n\n\n\n```df-timekeep\n\n";

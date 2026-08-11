@@ -13,7 +13,7 @@ export function createObsidianIcon(
 	icon: string,
 	className?: string | string[]
 ): HTMLDivElement {
-	const wrapperEl = containerEl.createDiv({ cls: "timekeep-icon-wrapper" });
+	const wrapperEl = containerEl.createDiv({ cls: "timekeep-df-icon-wrapper" });
 	setIcon(wrapperEl, icon);
 
 	// Get the created icon child element

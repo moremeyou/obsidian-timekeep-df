@@ -42,6 +42,17 @@ describe("extracting code blocks", () => {
 });
 
 describe("extracting code blocks with position", () => {
+	it.each([
+		["```df-timekeep", 1],
+		["```timekeep", 0],
+		["```timekeep-df", 0],
+		["```df-timekeep-extra", 0],
+	])("matches the exact DF fence opener %s", (opener, expectedCount) => {
+		const content = [opener, '{"entries":[]}', "```"].join("\n");
+
+		expect(extractTimekeepCodeblocksWithPosition(content)).toHaveLength(expectedCount);
+	});
+
 	it("should extract codeblock contents", async () => {
 		const { text, inputTimekeep1, inputTimekeep2 } =
 			await import("./__fixtures__/extracting/codeblockContentsPosition");
@@ -196,10 +207,7 @@ describe("loading timekeep", () => {
 	});
 
 	it("should tolerate a timekeep with leading or trailing whitespaces", () => {
-		const input = `
-		      \`\`\`timekeep
-		 \`\`\`
-		`;
+		const input = ["", "      ```df-timekeep", " ```", ""].join("\n");
 		// Start not code fences
 		replaceTimekeepCodeblock({ entries: [] }, input, 1, 2);
 	});

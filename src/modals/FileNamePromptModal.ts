@@ -9,6 +9,7 @@ export class FileNamePromptModal extends Modal {
 
 	constructor(app: App, callback: (name: string | null) => void) {
 		super(app);
+		this.setTitle("Export Timekeep DF PDF");
 		this.callback = callback;
 	}
 
@@ -23,9 +24,9 @@ export class FileNamePromptModal extends Modal {
 		contentEl.createEl("p", { text: "Enter name to save the exported PDF file as:" });
 
 		const nameInputEl = contentEl.createEl("input", {
-			cls: "timekeep-pick-file-name-input",
-			placeholder: "Timesheet.pdf",
-			value: "Timesheet.pdf",
+			cls: "timekeep-df-pick-file-name-input",
+			placeholder: "Timesheet DF.pdf",
+			value: "Timesheet DF.pdf",
 		});
 
 		new Setting(contentEl)

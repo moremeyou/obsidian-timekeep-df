@@ -12,7 +12,7 @@ export function createCodeBlock(json: string, linesBefore: number, linesAfter: n
 	for (let i = 0; i < linesBefore; i++) {
 		output += "\n";
 	}
-	output += "```timekeep\n";
+	output += "```df-timekeep\n";
 	output += json;
 	output += "\n```";
 	for (let i = 0; i < linesAfter; i++) {

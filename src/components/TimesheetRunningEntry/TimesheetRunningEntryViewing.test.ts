@@ -152,7 +152,9 @@ describe("TimesheetRunningEntry", () => {
 
 		component.load();
 
-		const pathEls = component.wrapperEl!.querySelectorAll(".timekeep-path-to-entry__segment");
+		const pathEls = component.wrapperEl!.querySelectorAll(
+			".timekeep-df-path-to-entry__segment"
+		);
 		expect(pathEls.length).toBe(3);
 
 		expect(pathEls.item(0).textContent).toBe("Outer >");

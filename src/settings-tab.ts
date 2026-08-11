@@ -381,7 +381,7 @@ export class TimekeepSettingsTab extends PluginSettingTab {
 		new Setting(this.containerEl)
 			.setName("Registry")
 			.setDesc(
-				"Timekeep uses an internal registry to track timekeep instances within your vault for functionality like autocomplete"
+				"Timekeep DF uses an internal registry to track its own instances within your vault for functionality like autocomplete"
 			)
 			.setHeading();
 
@@ -403,7 +403,7 @@ export class TimekeepSettingsTab extends PluginSettingTab {
 		new Setting(this.containerEl)
 			.setName("Index concurrency")
 			.setDesc(
-				"Maximum files to read concurrently on initialization (decrease this if you find you are lagging when opening your vault because of timekeep)"
+				"Maximum files Timekeep DF reads concurrently on initialization (decrease this if opening your vault becomes slow)"
 			)
 
 			.addText((t) => {
@@ -425,7 +425,7 @@ export class TimekeepSettingsTab extends PluginSettingTab {
 		new Setting(this.containerEl)
 			.setName("Status Bar")
 			.setDesc(
-				"Timekeep can show status bar entries for running timers within your vault. This requires that the registry option above is enabled"
+				"Timekeep DF can show status bar entries for its running timers. This requires that the registry option above is enabled"
 			)
 			.setHeading();
 
@@ -474,7 +474,7 @@ export class TimekeepSettingsTab extends PluginSettingTab {
 		new Setting(this.containerEl)
 			.setName("Autocomplete")
 			.setDesc(
-				"Timekeep can autocomplete entry names from existing timekeeps. This requires that the registry option above is enabled"
+				"Timekeep DF can autocomplete entry names from existing DF trackers. This requires that the registry option above is enabled"
 			)
 			.setHeading();
 

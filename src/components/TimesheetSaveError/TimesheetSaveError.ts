@@ -18,26 +18,26 @@ export class TimesheetSaveError extends ReplaceableComponent {
 
 	createContainer(): HTMLElement {
 		return createDiv({
-			cls: "timekeep-container",
+			cls: "timekeep-df-container",
 		});
 	}
 
 	render(wrapperEl: HTMLElement): void {
-		const errorEl = wrapperEl.createDiv({ cls: "timekeep-error" });
+		const errorEl = wrapperEl.createDiv({ cls: "timekeep-df-error" });
 		errorEl.createEl("h1", { text: "Warning" });
-		errorEl.createEl("p", { text: "Failed to save current timekeep" });
+		errorEl.createEl("p", { text: "Failed to save current Timekeep DF tracker" });
 		errorEl.createEl("p", {
 			text:
-				`Press "Retry" to try again or "Copy Timekeep" to copy a\n ` +
+				`Press "Retry" to try again or "Copy Timekeep DF" to copy a\n ` +
 				`backup to clipboard, an automated backup JSON file will be\n ` +
 				`generated in the root of this vault`,
 		});
 
-		const actions = wrapperEl.createDiv({ cls: "timekeep-actions" });
+		const actions = wrapperEl.createDiv({ cls: "timekeep-df-actions" });
 
 		const retryButton = actions.createEl("button", { text: "Retry" });
 		const copyButton = actions.createEl("button", {
-			text: "Copy Timekeep",
+			text: "Copy Timekeep DF",
 		});
 
 		this.registerDomEvent(retryButton, "click", this.onRetrySave.bind(this));

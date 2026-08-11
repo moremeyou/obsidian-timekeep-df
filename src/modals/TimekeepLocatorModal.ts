@@ -14,6 +14,8 @@ export class TimekeepLocatorModal extends SuggestModal<TimekeepRunningEntry> {
 
 	constructor(app: App, registry: TimekeepRegistry, settings: Store<TimekeepSettings>) {
 		super(app);
+		this.setTitle("Timekeep DF running trackers");
+		this.setPlaceholder("Search Timekeep DF running trackers...");
 		this.registry = registry;
 		this.settings = settings;
 	}
