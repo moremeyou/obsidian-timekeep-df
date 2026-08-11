@@ -7,7 +7,7 @@ if(!activeFile || !activeFile.name) return;
 const text = await this.app.vault.read(activeFile);
 
 // Get the timekeep plugin API
-const timekeepPlugin = this.app.plugins.plugins.timekeep;
+const timekeepPlugin = this.app.plugins.plugins["obsidian-timekeep-df"];
 
 // Extract the timekeeps from the file text
 const timekeeps = timekeepPlugin.extractTimekeepCodeblocks(text);

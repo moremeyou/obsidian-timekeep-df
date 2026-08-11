@@ -3,11 +3,41 @@ import path from "path";
 import { fileURLToPath } from "url";
 import { defineConfig } from "vite";
 
+import { calculateBuildInputHash } from "./scripts/build-metadata.mjs";
+
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
-export default defineConfig((env) => {
+export default defineConfig(async (env) => {
+	const productionBuildMetadata =
+		env.mode === "production"
+			? {
+					identifier: new Date().toISOString(),
+					inputHash: await calculateBuildInputHash(__dirname),
+				}
+			: null;
+
 	return {
+		plugins: productionBuildMetadata
+			? [
+					{
+						name: "timekeep-df-build-banner",
+						generateBundle(_options, bundle) {
+							const mainChunk = bundle["main.js"];
+							if (!mainChunk || mainChunk.type !== "chunk") {
+								throw new Error(
+									"Unable to add the Timekeep DF build identifier to main.js"
+								);
+							}
+
+							mainChunk.code =
+								`/*! Timekeep DF build: ${productionBuildMetadata.identifier}; ` +
+								`inputs: ${productionBuildMetadata.inputHash} */\n` +
+								mainChunk.code;
+						},
+					},
+				]
+			: [],
 		build: {
 			outDir: "dist",
 			sourcemap: env.mode === "production" ? false : "inline",

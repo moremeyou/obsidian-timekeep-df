@@ -65,7 +65,7 @@ export default class TimekeepFileView extends EditableFileView {
 	}
 
 	getViewType(): string {
-		return "timekeep";
+		return "timekeep-df";
 	}
 
 	getDisplayText(): string {

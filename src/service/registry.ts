@@ -391,7 +391,7 @@ export class TimekeepRegistry extends Component {
 	 * @returns The existing leaf if found
 	 */
 	private static getExistingRefLeaf(workspace: Workspace, ref: TimekeepRegistryItemRef) {
-		const leavesType = ref.type === TimekeepEntryItemType.FILE ? "timekeep" : "markdown";
+		const leavesType = ref.type === TimekeepEntryItemType.FILE ? "timekeep-df" : "markdown";
 		const leaves = workspace.getLeavesOfType(leavesType);
 
 		for (const leaf of leaves) {

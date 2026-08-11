@@ -845,7 +845,7 @@ describe("TimekeepRegistry", () => {
 
 			await TimekeepRegistry.openItemRef(workspace, ref, true);
 
-			expect(getLeavesOfType).toHaveBeenCalledWith("timekeep");
+			expect(getLeavesOfType).toHaveBeenCalledWith("timekeep-df");
 			expect(getLeaf).not.toHaveBeenCalled();
 			expect(existingLeaf.openFile).not.toHaveBeenCalled();
 			expect(revealLeaf).toHaveBeenCalledWith(existingLeaf);

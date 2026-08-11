@@ -9,6 +9,13 @@
 ![Build](https://img.shields.io/github/actions/workflow/status/jacobtread/obsidian-timekeep/build.yml?style=for-the-badge)
 ![Tests](https://img.shields.io/github/actions/workflow/status/jacobtread/obsidian-timekeep/tests.yml?style=for-the-badge&label=Tests)
 
+> [!NOTE]
+> This repository is the **Timekeep DF** development derivative of
+> [Jacob Tread's Obsidian Timekeep](https://github.com/jacobtread/obsidian-timekeep).
+> It is installed with plugin id `obsidian-timekeep-df` and is currently at a clean
+> baseline setup checkpoint. Fork API consumers must use
+> `app.plugins.plugins["obsidian-timekeep-df"].api`.
+
 This plugin provides a simple and easy way to track time spent on various tasks. After tracking your time, you can export the tracked time as a **Markdown Table**, **CSV**, **JSON**, or **PDF**.
 
 ![Tracker](images/tracker.png)
@@ -119,7 +126,7 @@ You can access the plugin API through:
 
 ```js
 // Get the timekeep plugin API
-const timekeepPlugin = this.app.plugins.plugins.timekeep.api;
+const timekeepPlugin = this.app.plugins.plugins["obsidian-timekeep-df"].api;
 
 // Extract the timekeeps from the file text
 const timekeeps = timekeepPlugin.parser.extractTimekeepCodeblocks(text);
@@ -137,7 +144,7 @@ if(!activeFile || !activeFile.name) return;
 const text = await this.app.vault.read(activeFile);
 
 // Get the timekeep plugin API
-const timekeepPlugin = this.app.plugins.plugins.timekeep.api;
+const timekeepPlugin = this.app.plugins.plugins["obsidian-timekeep-df"].api;
 
 // Extract the timekeeps from the file text
 const timekeeps = timekeepPlugin.parser.extractTimekeepCodeblocks(text);

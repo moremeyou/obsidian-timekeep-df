@@ -148,7 +148,7 @@ export default class TimekeepPlugin extends Plugin {
 		this.addCommand(newTimekeepFile(this.app));
 
 		// Custom timekeep file format
-		this.registerView("timekeep", (leaf) => {
+		this.registerView("timekeep-df", (leaf) => {
 			return new TimekeepFileView(
 				leaf,
 				this.settingsStore,
@@ -157,7 +157,7 @@ export default class TimekeepPlugin extends Plugin {
 			);
 		});
 
-		this.registerExtensions(["timekeep"], "timekeep");
+		this.registerExtensions(["timekeep"], "timekeep-df");
 
 		this.app.workspace.on("file-menu", this.onFileMenu.bind(this));
 	}
