@@ -15,6 +15,7 @@ import TimekeepView from "./TimekeepView";
 import { type LoadResult, load } from "@/timekeep/parser";
 
 import { TimekeepAutocomplete } from "@/service/autocomplete";
+import { TimekeepRegistry } from "@/service/registry";
 
 export default class TimekeepMarkdownView extends MarkdownRenderChild {
 	/** Obsidian app instance */
@@ -25,6 +26,7 @@ export default class TimekeepMarkdownView extends MarkdownRenderChild {
 	customOutputFormats: Store<Record<string, CustomOutputFormat>>;
 	/** Autocomplete */
 	autocomplete: TimekeepAutocomplete;
+	registry: TimekeepRegistry;
 
 	/** Timekeep load result */
 	loadResult: Store<LoadResult | null>;
@@ -43,6 +45,7 @@ export default class TimekeepMarkdownView extends MarkdownRenderChild {
 		settings: Store<TimekeepSettings>,
 		customOutputFormats: Store<Record<string, CustomOutputFormat>>,
 		autocomplete: TimekeepAutocomplete,
+		registry: TimekeepRegistry,
 		context: MarkdownPostProcessorContext,
 		loadResult: LoadResult | null
 	) {
@@ -51,6 +54,7 @@ export default class TimekeepMarkdownView extends MarkdownRenderChild {
 		this.settings = settings;
 		this.customOutputFormats = customOutputFormats;
 		this.autocomplete = autocomplete;
+		this.registry = registry;
 
 		this.loadResult = createStore(loadResult);
 
@@ -71,7 +75,8 @@ export default class TimekeepMarkdownView extends MarkdownRenderChild {
 		app: App,
 		settingsStore: Store<TimekeepSettings>,
 		customOutputFormats: Store<Record<string, CustomOutputFormat>>,
-		autocomplete: TimekeepAutocomplete
+		autocomplete: TimekeepAutocomplete,
+		registry: TimekeepRegistry
 	): (source: string, el: HTMLElement, ctx: MarkdownPostProcessorContext) => void {
 		return (source: string, el: HTMLElement, context: MarkdownPostProcessorContext) => {
 			const loadResult = load(source);
@@ -82,6 +87,7 @@ export default class TimekeepMarkdownView extends MarkdownRenderChild {
 					settingsStore,
 					customOutputFormats,
 					autocomplete,
+					registry,
 					context,
 					loadResult
 				)
@@ -99,7 +105,12 @@ export default class TimekeepMarkdownView extends MarkdownRenderChild {
 			this.customOutputFormats,
 			this.autocomplete,
 			this.loadResult,
-			this.saveAdapter
+			this.saveAdapter,
+			this.registry,
+			() => {
+				const section = this.saveAdapter.context.getSectionInfo(this.containerEl);
+				return `markdown:${this.saveAdapter.fileSourcePath}:${section?.lineStart ?? "unknown"}`;
+			}
 		);
 
 		// Bind save event handlers to update scroll

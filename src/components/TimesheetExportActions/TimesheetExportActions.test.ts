@@ -14,6 +14,7 @@ import { createStore, Store } from "@/store";
 import { TimesheetExportActions } from "./TimesheetExportActions";
 
 import { defaultTimekeep, stripTimekeepRuntimeData, Timekeep } from "@/timekeep/schema";
+import { TimekeepViewMode } from "@/timekeep/view";
 
 describe("TimesheetExportActions", () => {
 	let container: HTMLElement;
@@ -52,6 +53,11 @@ describe("TimesheetExportActions", () => {
 		);
 
 		expect(() => component.load()).not.toThrow();
+		expect(
+			Array.from(container.querySelectorAll<HTMLButtonElement>("[data-format]")).map(
+				(button) => button.textContent
+			)
+		).toEqual(["MD", "CSV", "JSON", "PDF"]);
 	});
 
 	it("changing the custom output formats should create new buttons", () => {
@@ -476,6 +482,88 @@ describe("TimesheetExportActions", () => {
 		await component.onSavePDF();
 
 		expect(exportPdfSpy).toHaveBeenCalledOnce();
+	});
+
+	it("applies the selected view snapshot to Markdown, CSV, JSON, PDF, and custom exports", async () => {
+		vi.useFakeTimers();
+		const currentTime = moment("2026-08-12T12:00:00");
+		vi.setSystemTime(currentTime.toDate());
+		timekeep.setState({
+			entries: [
+				{
+					id: 1,
+					name: "Outside",
+					startTime: moment("2026-08-11T09:00:00"),
+					endTime: moment("2026-08-11T10:00:00"),
+					subEntries: null,
+				},
+				{
+					id: 2,
+					name: "Crosses midnight",
+					startTime: moment("2026-08-11T23:00:00"),
+					endTime: moment("2026-08-12T02:00:00"),
+					subEntries: null,
+				},
+			],
+		});
+		const viewState = createStore({
+			mode: TimekeepViewMode.DAY,
+			anchorDate: "2026-08-12",
+			followCurrent: true,
+		});
+		const onCustomExport = vi.fn();
+		customOutputFormats.setState({
+			custom: {
+				getButtonLabel: () => "Custom",
+				onExport: onCustomExport,
+			},
+		});
+		const component = new TimesheetExportActions(
+			container,
+			app,
+			timekeep,
+			settings,
+			customOutputFormats,
+			viewState
+		);
+		component.load();
+
+		await component.onCopyMarkdown();
+		const markdownOutput = writeText.mock.calls.at(-1)?.[0];
+		expect(markdownOutput).toContain("Outside");
+		expect(markdownOutput).toContain("Crosses midnight");
+		expect(markdownOutput).toContain("26-08-12 00:00");
+
+		await component.onCopyCSV();
+		const csvOutput = writeText.mock.calls.at(-1)?.[0];
+		expect(csvOutput).toContain("Outside,,,");
+		expect(csvOutput).toContain("Crosses midnight,26-08-12 00:00,26-08-12 02:00");
+
+		await component.onCopyJSON();
+		const jsonOutput = JSON.parse(writeText.mock.calls.at(-1)?.[0] ?? "{}");
+		expect(jsonOutput.entries).toHaveLength(2);
+		expect(jsonOutput.entries[0]).toMatchObject({ startTime: null, endTime: null });
+		expect(jsonOutput.entries[1].startTime).toBe(
+			component.getExportTimekeep(currentTime).entries[1].startTime?.toJSON()
+		);
+
+		const exportPdfSpy = vi.spyOn(exportPdf, "exportPdf").mockResolvedValue(undefined);
+		await component.onSavePDF();
+		const pdfTimekeep = exportPdfSpy.mock.calls.at(-1)?.[1];
+		expect(pdfTimekeep?.entries[0]).toMatchObject({ startTime: null, endTime: null });
+		expect(pdfTimekeep?.entries[1].startTime?.format("YYYY-MM-DD HH:mm")).toBe(
+			"2026-08-12 00:00"
+		);
+
+		container.querySelector<HTMLButtonElement>('[data-custom-format="custom"]')?.click();
+		const customTimekeep = onCustomExport.mock.calls.at(-1)?.[0];
+		expect(customTimekeep.entries[0]).toMatchObject({ startTime: null, endTime: null });
+		expect(customTimekeep.entries[1].startTime.format("YYYY-MM-DD HH:mm")).toBe(
+			"2026-08-12 00:00"
+		);
+
+		component.unload();
+		vi.useRealTimers();
 	});
 
 	it("onSavePDF should show a notice on error", async () => {

@@ -16,7 +16,7 @@ import { startNewEntry } from "@/timekeep/start";
 import { TimekeepAutocomplete } from "@/service/autocomplete";
 
 /**
- * The start section above the timesheet table
+ * The add Activity section below the timesheet table
  */
 export class TimesheetStartForm extends DomComponent {
 	/** Access to the timekeep */
@@ -29,8 +29,6 @@ export class TimesheetStartForm extends DomComponent {
 	/** Name input for starting entries */
 	#nameInput: TimesheetNameInput | undefined;
 
-	/** Warning message element  */
-	#blockPauseWarningEl: HTMLElement | undefined;
 	/** Start button element */
 	#startButtonEl: HTMLButtonElement | undefined;
 
@@ -58,26 +56,16 @@ export class TimesheetStartForm extends DomComponent {
 		const nameWrapperEl = formEl.createDiv({ cls: "timekeep-df-name-wrapper" });
 		const nameInput = new TimesheetNameInput(nameWrapperEl, this.autocomplete);
 
-		const blockNameEl = nameWrapperEl.createEl("label", { text: "Block Name: " });
-		blockNameEl.htmlFor = nameInput.inputId;
-
-		const blockPauseWarningEl = blockNameEl.createSpan({
-			cls: "timekeep-df-start-note",
-			text: "Starting a new task will pause the previous one",
-		});
-
-		blockPauseWarningEl.hidden = true;
-		this.#blockPauseWarningEl = blockPauseWarningEl;
-
 		this.#nameInput = nameInput;
 		this.addChild(nameInput);
 
 		const startButton = formEl.createEl("button", {
-			cls: "timekeep-df-start",
-			title: "Start",
+			cls: ["timekeep-df-start", "timekeep-df-icon-button"],
+			title: "Add Activity",
 		});
 		startButton.type = "submit";
-		createObsidianIcon(startButton, "play", "timekeep-df-button-icon");
+		startButton.setAttribute("aria-label", "Add Activity");
+		createObsidianIcon(startButton, "plus", "timekeep-df-button-icon");
 		this.#startButtonEl = startButton;
 
 		const onUpdate = this.onUpdate.bind(this);
@@ -89,13 +77,14 @@ export class TimesheetStartForm extends DomComponent {
 		const timekeep = this.timekeep.getState();
 		const currentEntry = getRunningEntry(timekeep.entries);
 
-		const blockPauseWarningEl = this.#blockPauseWarningEl;
 		const startButtonEl = this.#startButtonEl;
-		assert(blockPauseWarningEl && startButtonEl, "Elements should be defined");
+		assert(startButtonEl, "Start button should be defined");
 
 		const isTimekeepRunning = currentEntry !== null;
-		blockPauseWarningEl.hidden = currentEntry === null || currentEntry.startTime === null;
-		startButtonEl.title = isTimekeepRunning ? "Stop and start" : "Start";
+		startButtonEl.title = isTimekeepRunning
+			? "Stop current Block and add Activity"
+			: "Add Activity";
+		startButtonEl.setAttribute("aria-label", startButtonEl.title);
 	}
 
 	onStart(event: Event) {

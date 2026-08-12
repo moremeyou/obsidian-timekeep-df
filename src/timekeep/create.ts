@@ -39,7 +39,7 @@ export function withEntry(entries: TimeEntry[], name: string, startTime: Moment)
 /**
  * Get the name for a new entry
  *
- * If the name is empty "Block {N}" will be used where {N} is the number
+ * If the name is empty "Activity {N}" will be used where {N} is the number
  * of entries + 1
  *
  * @param name User provided name
@@ -49,7 +49,7 @@ export function withEntry(entries: TimeEntry[], name: string, startTime: Moment)
 function getEntryName(name: string, entries: TimeEntry[]) {
 	// Assign a name automatically if not provided
 	if (isEmptyString(name)) {
-		name = `Block ${entries.length + 1}`;
+		name = `Activity ${entries.length + 1}`;
 	}
 
 	return name;
@@ -78,7 +78,7 @@ export function withSubEntry(parent: TimeEntry, name: string, startTime: Moment)
 /**
  * Get the name for a new sub entry
  *
- * If the name is empty "Part {N}" will be used where {N} is the number
+ * If the name is empty "Block {N}" will be used where {N} is the number
  * of entries in the group + 1
  *
  * @param name The user provided name
@@ -88,7 +88,7 @@ export function withSubEntry(parent: TimeEntry, name: string, startTime: Moment)
 function getSubEntryName(name: string, groupEntry: TimeEntryGroup) {
 	// Assign a name automatically if not provided
 	if (isEmptyString(name)) {
-		return `Part ${groupEntry.subEntries.length + 1}`;
+		return `Block ${groupEntry.subEntries.length + 1}`;
 	}
 
 	return name;
@@ -100,7 +100,7 @@ function getSubEntryName(name: string, groupEntry: TimeEntryGroup) {
  *
  * If the entry is not a group, the entry will be converted to a
  * group, the start and end times from the entry will be moved into
- * the group as its first entry titled "Part 1".
+ * the group as its first entry titled "Block 1".
  *
  * @param entry The entry to create a group from
  * @returns The group entry
@@ -113,7 +113,7 @@ function makeGroupEntry(entry: TimeEntry): TimeEntryGroup {
 	return {
 		id: timekeepId.next(),
 		name: entry.name,
-		subEntries: [{ ...entry, name: "Part 1" }],
+		subEntries: [{ ...entry, name: "Block 1" }],
 		startTime: null,
 		endTime: null,
 	};

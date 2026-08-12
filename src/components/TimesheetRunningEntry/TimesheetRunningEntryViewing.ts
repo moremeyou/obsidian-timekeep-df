@@ -91,7 +91,7 @@ export class TimesheetRunningEntryViewing extends ReplaceableComponent {
 		this.#timeValueEl = timeValueEl;
 
 		const editButton = formEl.createEl("button", {
-			cls: ["timekeep-df-start", "timekeep-df-start--edit"],
+			cls: ["timekeep-df-start", "timekeep-df-start--edit", "timekeep-df-icon-button"],
 			title: "Edit",
 		});
 		editButton.type = "button";
@@ -99,7 +99,7 @@ export class TimesheetRunningEntryViewing extends ReplaceableComponent {
 		this.registerDomEvent(editButton, "click", this.onStartEditing);
 
 		const stopButton = formEl.createEl("button", {
-			cls: ["timekeep-df-start", "timekeep-df-start--stop"],
+			cls: ["timekeep-df-start", "timekeep-df-start--stop", "timekeep-df-icon-button"],
 			title: "Stop",
 		});
 		stopButton.type = "submit";

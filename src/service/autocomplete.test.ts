@@ -252,6 +252,13 @@ describe("TimekeepAutocomplete", () => {
 						},
 						{
 							id: 5,
+							name: "Activity 2",
+							startTime: moment("2020-01-01T00:00:00Z"),
+							endTime: null,
+							subEntries: null,
+						},
+						{
+							id: 6,
 							name: "",
 							startTime: moment("2020-01-01T00:00:00Z"),
 							endTime: null,
@@ -295,7 +302,7 @@ describe("TimekeepAutocomplete", () => {
 						},
 						{
 							id: 2,
-							name: "Block 2",
+							name: "Activity 2",
 							startTime: moment("2020-01-01T00:00:00Z"),
 							endTime: null,
 							subEntries: null,

@@ -107,8 +107,8 @@ export class TimekeepAutocomplete extends Component {
 			return true;
 		}
 
-		// Ignore "Part 1" "Part 2", "Block 1" ...etc
-		if (name.startsWith("Part") || name.startsWith("Block")) {
+		// Ignore current generated names and their legacy Part names.
+		if (name.startsWith("Activity") || name.startsWith("Block") || name.startsWith("Part")) {
 			const parts = name.split(" ");
 			if (parts.length !== 2) {
 				return false;

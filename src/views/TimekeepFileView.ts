@@ -10,6 +10,7 @@ import TimekeepView from "./TimekeepView";
 import { load, LoadResult } from "@/timekeep/parser";
 
 import { TimekeepAutocomplete } from "@/service/autocomplete";
+import { TimekeepRegistry } from "@/service/registry";
 
 export default class TimekeepFileView extends EditableFileView {
 	/** Access to the timekeep settings */
@@ -18,6 +19,7 @@ export default class TimekeepFileView extends EditableFileView {
 	customOutputFormats: Store<Record<string, CustomOutputFormat>>;
 	/** Autocomplete */
 	autocomplete: TimekeepAutocomplete;
+	registry: TimekeepRegistry;
 
 	/** Container wrapper element */
 	wrapperEl: HTMLElement | undefined;
@@ -34,7 +36,8 @@ export default class TimekeepFileView extends EditableFileView {
 		leaf: WorkspaceLeaf,
 		settings: Store<TimekeepSettings>,
 		customOutputFormats: Store<Record<string, CustomOutputFormat>>,
-		autocomplete: TimekeepAutocomplete
+		autocomplete: TimekeepAutocomplete,
+		registry: TimekeepRegistry
 	) {
 		super(leaf);
 
@@ -42,6 +45,7 @@ export default class TimekeepFileView extends EditableFileView {
 		this.settings = settings;
 		this.customOutputFormats = customOutputFormats;
 		this.autocomplete = autocomplete;
+		this.registry = registry;
 
 		this.saveAdapter = new TimesheetFileSaveAdapter(this.app.vault, this.file);
 	}
@@ -59,7 +63,9 @@ export default class TimekeepFileView extends EditableFileView {
 			this.customOutputFormats,
 			this.autocomplete,
 			this.loadResult,
-			this.saveAdapter
+			this.saveAdapter,
+			this.registry,
+			() => `file:${this.saveAdapter.file?.path ?? "unloaded"}`
 		);
 		this.addChild(this.timesheet);
 	}

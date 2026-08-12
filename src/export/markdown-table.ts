@@ -13,7 +13,7 @@ import { Timekeep, TimeEntry } from "@/timekeep/schema";
  * @returns The created row
  */
 function createHeader(): RawTableRow {
-	return ["Block", "Start Time", "End time", "Duration"];
+	return ["Activity", "Start", "End", "Duration"];
 }
 
 /**

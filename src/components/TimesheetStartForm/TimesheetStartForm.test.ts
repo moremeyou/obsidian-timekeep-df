@@ -44,6 +44,16 @@ describe("TimesheetStart", () => {
 	it("should load without error", () => {
 		component = new TimesheetStartForm(containerEl, timekeep, settings, autocomplete);
 		component.load();
+		const button = component.wrapperEl?.querySelector("button");
+		expect(button?.classList.contains("timekeep-df-icon-button")).toBe(true);
+		expect(button?.title).toBe("Add Activity");
+		expect(button?.getAttribute("aria-label")).toBe("Add Activity");
+		expect(button?.querySelector("svg")?.dataset.icon).toBe("plus");
+		const input = component.wrapperEl?.querySelector<HTMLInputElement>(".timekeep-df-name");
+		expect(input?.placeholder).toBe("");
+		expect(input?.getAttribute("aria-label")).toBe("Add Activity");
+		expect(component.wrapperEl?.querySelector("label")).toBeNull();
+		expect(component.wrapperEl?.querySelector(".timekeep-df-start-note")).toBeNull();
 	});
 
 	it("clicking start should start a new entry with the name", () => {
@@ -58,9 +68,8 @@ describe("TimesheetStart", () => {
 
 		const formEl = component.wrapperEl as HTMLFormElement;
 		const nameInputEl = formEl.querySelector<HTMLInputElement>(".timekeep-df-name");
-		const nameLabelEl = formEl.querySelector<HTMLLabelElement>("label");
 		expect(nameInputEl?.id).toMatch(/^timekeep-df-name-\d+$/);
-		expect(nameLabelEl?.htmlFor).toBe(nameInputEl?.id);
+		expect(nameInputEl?.getAttribute("aria-label")).toBe("Add Activity");
 		(nameInputEl as HTMLInputElement).value = "Test";
 
 		formEl.dispatchEvent(new SubmitEvent("submit", { bubbles: true, cancelable: true }));

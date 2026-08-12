@@ -7,11 +7,14 @@ import {
 	SortOrder,
 	FontFamily,
 	DurationFormat,
+	ClockFormat,
 	UnstartedOrder,
 	defaultSettings,
 	TimekeepSettings,
 	PdfExportBehavior,
 } from "@/settings";
+
+import { TimekeepViewMode } from "@/timekeep/view";
 
 export class TimekeepSettingsTab extends PluginSettingTab {
 	settingsStore: Store<TimekeepSettings>;
@@ -28,11 +31,11 @@ export class TimekeepSettingsTab extends PluginSettingTab {
 
 		// General settings section
 		new Setting(this.containerEl)
-			.setName("Timestamp display format")
+			.setName("Timestamp date display format")
 			.setDesc(
 				createFragment((f) => {
 					f.createSpan({
-						text: "The way that timestamps in time tracker tables should be displayed. Uses ",
+						text: "The date portion shown in timestamps. Uses ",
 					});
 					f.createEl("a", {
 						text: "moment.js",
@@ -50,6 +53,80 @@ export class TimekeepSettingsTab extends PluginSettingTab {
 					this.settingsStore.setState((currentValue) => ({
 						...currentValue,
 						timestampFormat: newFormat,
+					}));
+				});
+			});
+
+		new Setting(this.containerEl)
+			.setName("Clock format")
+			.setDesc("Use a 12-hour or 24-hour clock for timestamps. Timestamps omit seconds.")
+			.addDropdown((t) => {
+				t.addOptions({
+					[ClockFormat.TWELVE_HOUR]: "12-hour (1:30 PM)",
+					[ClockFormat.TWENTY_FOUR_HOUR]: "24-hour (13:30)",
+				});
+				t.setValue(settings.clockFormat);
+				t.onChange((v) => {
+					this.settingsStore.setState((currentValue) => ({
+						...currentValue,
+						clockFormat: v as ClockFormat,
+					}));
+				});
+			});
+
+		new Setting(this.containerEl)
+			.setName("Default timesheet view")
+			.setDesc(
+				"The initial calendar window for each tracker. Navigation is kept per tracker for the current Obsidian session and does not alter tracker data."
+			)
+			.addDropdown((t) => {
+				t.addOptions({
+					[TimekeepViewMode.DAY]: "Day",
+					[TimekeepViewMode.WEEK]: "Week",
+					[TimekeepViewMode.MONTH]: "Month",
+					[TimekeepViewMode.YEAR]: "Year",
+				});
+				t.setValue(settings.defaultViewMode);
+				t.onChange((v) => {
+					this.settingsStore.setState((currentValue) => ({
+						...currentValue,
+						defaultViewMode: v as TimekeepViewMode,
+					}));
+				});
+			});
+
+		new Setting(this.containerEl)
+			.setName("Total daily working hours")
+			.setDesc("Daily capacity used to calculate each row's percentage.")
+			.addText((t) => {
+				t.inputEl.type = "number";
+				t.inputEl.min = "0.1";
+				t.inputEl.step = "0.1";
+				t.setValue(String(settings.totalDailyWorkingHours));
+				t.onChange((v) => {
+					const parsed = Number.parseFloat(v);
+					if (!Number.isFinite(parsed) || parsed <= 0) return;
+					this.settingsStore.setState((currentValue) => ({
+						...currentValue,
+						totalDailyWorkingHours: parsed,
+					}));
+				});
+			});
+
+		new Setting(this.containerEl)
+			.setName("Total days per week")
+			.setDesc("Working weekdays used for Week, Month, and Year percentage capacity.")
+			.addText((t) => {
+				t.inputEl.type = "number";
+				t.inputEl.min = "1";
+				t.inputEl.step = "1";
+				t.setValue(String(settings.totalDaysPerWeek));
+				t.onChange((v) => {
+					const parsed = Number.parseInt(v, 10);
+					if (!Number.isFinite(parsed) || parsed <= 0) return;
+					this.settingsStore.setState((currentValue) => ({
+						...currentValue,
+						totalDaysPerWeek: parsed,
 					}));
 				});
 			});
@@ -445,7 +522,7 @@ export class TimekeepSettingsTab extends PluginSettingTab {
 		new Setting(this.containerEl)
 			.setName("Show folder path")
 			.setDesc(
-				'Whether to include the folder path of the file in the status item (i.e "Path/To/Entry: Block 1: 3h 5min 30s").'
+				'Whether to include the folder path of the file in the status item (i.e "Path/To/Entry: Activity 1: 3h 5min 30s").'
 			)
 			.addToggle((t) => {
 				t.setValue(settings.statusBarShowFolderPath);

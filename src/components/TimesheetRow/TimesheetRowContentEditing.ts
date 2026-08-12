@@ -1,10 +1,11 @@
 import type { App } from "obsidian";
 
-import type { TimekeepSettings } from "@/settings";
+import moment, { type Moment } from "moment";
+
 import type { Store } from "@/store";
 
+import { ClockFormat, type TimekeepSettings } from "@/settings";
 import { assert } from "@/utils/assert";
-import { formatEditableTimestamp, parseEditableTimestamp } from "@/utils/time";
 
 import { createObsidianIcon } from "@/components/obsidianIcon";
 import { ReplaceableComponent } from "@/components/ReplaceableComponent";
@@ -13,6 +14,16 @@ import { ConfirmModal } from "@/modals/ConfirmModal";
 
 import type { TimeEntry, Timekeep } from "@/timekeep/schema";
 import { removeEntry, updateEntry } from "@/timekeep/update";
+
+type TimestampInputName = "start" | "end";
+
+interface TimestampEditor {
+	containerEl: HTMLElement;
+	dateInputEl: HTMLInputElement;
+	nativeTimeInputEl: HTMLInputElement;
+	getValue: () => Moment;
+	setValue: (value: Moment) => void;
+}
 
 /**
  * Component for a timesheet row entry that is currently
@@ -31,17 +42,12 @@ export class TimesheetRowContentEditing extends ReplaceableComponent {
 	/** The entry for this row */
 	entry: TimeEntry;
 
-	/** Label container for the start time  */
-	#startTimeLabelEl: HTMLLabelElement | undefined;
-	/** Label container for the end time */
-	#endTimeLabelEl: HTMLLabelElement | undefined;
-
 	/** Input for the entry name */
 	#nameInputEl: HTMLInputElement | undefined;
-	/** Input for the start time */
-	#startTimeInputEl: HTMLInputElement | undefined;
-	/** Input for the end time */
-	#endTimeInputEl: HTMLInputElement | undefined;
+	/** Date and time editor for the entry start */
+	#startTimeEditor: TimestampEditor | undefined;
+	/** Date and time editor for the entry end */
+	#endTimeEditor: TimestampEditor | undefined;
 
 	/** Callback for editing finished / cancelled */
 	onFinishEditing: VoidFunction;
@@ -70,7 +76,7 @@ export class TimesheetRowContentEditing extends ReplaceableComponent {
 
 	render(wrapperEl: HTMLElement): void {
 		const colEl = wrapperEl.createEl("td");
-		colEl.colSpan = 5;
+		colEl.colSpan = 6;
 
 		const formEl = colEl.createEl("form", { cls: "timekeep-df-editing" });
 		this.registerDomEvent(formEl, "submit", this.onSubmit.bind(this));
@@ -86,28 +92,9 @@ export class TimesheetRowContentEditing extends ReplaceableComponent {
 		nameInputEl.name = "name";
 		this.#nameInputEl = nameInputEl;
 
-		const startTimeLabelEl = formEl.createEl("label", {
-			text: "Start Time",
-		});
-		this.#startTimeLabelEl = startTimeLabelEl;
-		const startTimeInputEl = startTimeLabelEl.createEl("input", {
-			cls: "timekeep-df-input",
-			type: "text",
-		});
-		startTimeInputEl.name = "start-time";
-		this.#startTimeInputEl = startTimeInputEl;
-
-		const endTimeLabelEl = formEl.createEl("label", {
-			cls: "timekeep-df-input-label",
-			text: "End Time",
-		});
-		this.#endTimeLabelEl = endTimeLabelEl;
-		const endTimeInputEl = endTimeLabelEl.createEl("input", {
-			cls: "timekeep-df-input",
-			type: "text",
-		});
-		endTimeInputEl.name = "end-time";
-		this.#endTimeInputEl = endTimeInputEl;
+		const clockFormat = this.settings.getState().clockFormat;
+		this.#startTimeEditor = this.createTimestampEditor(formEl, "start", clockFormat);
+		this.#endTimeEditor = this.createTimestampEditor(formEl, "end", clockFormat);
 
 		const actionsEl = formEl.createDiv({
 			cls: "timekeep-df-editing-actions",
@@ -152,30 +139,68 @@ export class TimesheetRowContentEditing extends ReplaceableComponent {
 		onUpdateState();
 	}
 
+	createTimestampEditor(
+		formEl: HTMLElement,
+		name: TimestampInputName,
+		clockFormat: ClockFormat
+	): TimestampEditor {
+		const title = name === "start" ? "Start" : "End";
+		const containerEl = formEl.createDiv({
+			cls: "timekeep-df-timestamp-editor",
+			attr: { "data-timestamp": name },
+		});
+		containerEl.createDiv({ cls: "timekeep-df-timestamp-title", text: title });
+
+		const fieldsEl = containerEl.createDiv({ cls: "timekeep-df-timestamp-fields" });
+		const dateFieldEl = fieldsEl.createEl("label", { cls: "timekeep-df-timestamp-field" });
+		dateFieldEl.createSpan({ text: "Date" });
+		const dateInputEl = dateFieldEl.createEl("input", {
+			cls: "timekeep-df-date-input",
+		});
+		dateInputEl.type = "date";
+		dateInputEl.name = `timekeep-df-${name}-date`;
+
+		const timeFieldEl = fieldsEl.createDiv({ cls: "timekeep-df-timestamp-field" });
+		timeFieldEl.createSpan({ text: "Time" });
+		const nativeTimeInputEl = timeFieldEl.createEl("input", {
+			cls: "timekeep-df-native-time-input",
+		});
+		nativeTimeInputEl.type = "time";
+		nativeTimeInputEl.name = `timekeep-df-${name}-native-time`;
+		nativeTimeInputEl.step = "60";
+		nativeTimeInputEl.lang = clockFormat === ClockFormat.TWELVE_HOUR ? "en-US" : "en-GB";
+
+		return {
+			containerEl,
+			dateInputEl,
+			nativeTimeInputEl,
+			getValue: () =>
+				moment(`${dateInputEl.value}T${nativeTimeInputEl.value}`, "YYYY-MM-DDTHH:mm", true)
+					.seconds(0)
+					.milliseconds(0),
+			setValue: (value: Moment) => {
+				const localValue = moment(value).local();
+				dateInputEl.value = localValue.format("YYYY-MM-DD");
+				nativeTimeInputEl.value = localValue.format("HH:mm");
+			},
+		};
+	}
+
 	onUpdateState() {
 		assert(
-			this.#nameInputEl &&
-				this.#startTimeInputEl &&
-				this.#startTimeLabelEl &&
-				this.#endTimeInputEl &&
-				this.#endTimeLabelEl,
+			this.#nameInputEl && this.#startTimeEditor && this.#endTimeEditor,
 			"Elements expected to be defined"
 		);
 
-		const settings = this.settings.getState();
 		const entry = this.entry;
 
 		this.#nameInputEl.value = entry.name;
 
-		this.#startTimeLabelEl.hidden = entry.startTime === null;
-		this.#startTimeInputEl.value = entry.startTime
-			? formatEditableTimestamp(entry.startTime, settings)
-			: "";
+		this.#startTimeEditor.containerEl.hidden = entry.startTime === null;
+		if (entry.startTime) this.#startTimeEditor.setValue(entry.startTime);
 
-		this.#endTimeLabelEl.hidden = entry.endTime === null;
-		this.#endTimeInputEl.value = entry.endTime
-			? formatEditableTimestamp(entry.endTime, settings)
-			: "";
+		this.#endTimeEditor.containerEl.hidden = entry.endTime === null;
+		if (entry.endTime) this.#endTimeEditor.setValue(entry.endTime);
 	}
 
 	onConfirmDelete() {
@@ -202,7 +227,7 @@ export class TimesheetRowContentEditing extends ReplaceableComponent {
 
 	onSubmit(event: Event) {
 		assert(
-			this.#nameInputEl && this.#startTimeInputEl && this.#endTimeInputEl,
+			this.#nameInputEl && this.#startTimeEditor && this.#endTimeEditor,
 			"Expected inputs to be defined"
 		);
 
@@ -210,10 +235,6 @@ export class TimesheetRowContentEditing extends ReplaceableComponent {
 		event.stopPropagation();
 
 		const name = this.#nameInputEl.value;
-		const startTime = this.#startTimeInputEl.value;
-		const endTime = this.#endTimeInputEl.value;
-
-		const settings = this.settings.getState();
 		const entry = this.entry;
 
 		const newEntry = { ...entry, name };
@@ -221,14 +242,14 @@ export class TimesheetRowContentEditing extends ReplaceableComponent {
 		// Update the start and end times for non groups
 		if (newEntry.subEntries === null) {
 			if (entry.startTime !== null) {
-				const startTimeValue = parseEditableTimestamp(startTime, settings);
+				const startTimeValue = this.#startTimeEditor.getValue();
 				if (startTimeValue.isValid()) {
 					newEntry.startTime = startTimeValue;
 				}
 			}
 
 			if (entry.endTime !== null) {
-				const endTimeValue = parseEditableTimestamp(endTime, settings);
+				const endTimeValue = this.#endTimeEditor.getValue();
 				if (endTimeValue.isValid()) {
 					newEntry.endTime = endTimeValue;
 				}

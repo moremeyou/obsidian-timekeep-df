@@ -51,4 +51,28 @@ describe("Timesheet", () => {
 	it("should load without error", () => {
 		expect(() => component.load()).not.toThrow();
 	});
+
+	it("places Add Activity and Export in a two-column utility grid below the table", () => {
+		component.load();
+
+		const children = Array.from(component.wrapperEl?.children ?? []);
+		const tableIndex = children.findIndex((child) =>
+			child.classList.contains("timekeep-df-table-wrapper")
+		);
+		const utilityGridIndex = children.findIndex((child) =>
+			child.classList.contains("timekeep-df-utility-grid")
+		);
+		const utilityGrid = component.wrapperEl?.querySelector(".timekeep-df-utility-grid");
+		const headings = Array.from(
+			utilityGrid?.querySelectorAll(".timekeep-df-utility-heading") ?? []
+		).map((heading) => heading.textContent);
+
+		expect(tableIndex).toBeGreaterThanOrEqual(0);
+		expect(utilityGridIndex).toBeGreaterThan(tableIndex);
+		expect(headings).toEqual(["Add Activity", "Export"]);
+		expect(utilityGrid?.querySelector(".timekeep-df-utility-cell--add form")).not.toBeNull();
+		expect(
+			utilityGrid?.querySelector(".timekeep-df-utility-cell--export .timekeep-df-actions")
+		).not.toBeNull();
+	});
 });

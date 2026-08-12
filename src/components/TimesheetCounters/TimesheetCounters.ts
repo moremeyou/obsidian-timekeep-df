@@ -3,6 +3,7 @@ import moment from "moment";
 import type { TimekeepSettings } from "@/settings";
 import type { Store } from "@/store";
 
+import { createStore } from "@/store";
 import { assert } from "@/utils/assert";
 import { formatDuration } from "@/utils/time";
 
@@ -17,6 +18,11 @@ import {
 	isKeepRunning,
 } from "@/timekeep/queries";
 import type { Timekeep } from "@/timekeep/schema";
+import {
+	createTimekeepViewState,
+	getTimekeepViewWindow,
+	type TimekeepViewState,
+} from "@/timekeep/view";
 
 /**
  * Component for rendering the two live updating timers at the top of the
@@ -27,6 +33,7 @@ export class TimesheetCounters extends DomComponent {
 	timekeep: Store<Timekeep>;
 	/** Access to the timekeep settings */
 	settings: Store<TimekeepSettings>;
+	viewState: Store<TimekeepViewState>;
 
 	/** Timer for the current entry */
 	currentTimer: TimesheetTimer | undefined;
@@ -39,12 +46,15 @@ export class TimesheetCounters extends DomComponent {
 	constructor(
 		containerEl: HTMLElement,
 		settings: Store<TimekeepSettings>,
-		timekeep: Store<Timekeep>
+		timekeep: Store<Timekeep>,
+		viewState?: Store<TimekeepViewState>
 	) {
 		super(containerEl);
 
 		this.settings = settings;
 		this.timekeep = timekeep;
+		this.viewState =
+			viewState ?? createStore(createTimekeepViewState(settings.getState().defaultViewMode));
 	}
 
 	onload(): void {
@@ -65,6 +75,7 @@ export class TimesheetCounters extends DomComponent {
 
 		this.register(this.timekeep.subscribe(onUpdate));
 		this.register(this.settings.subscribe(onUpdate));
+		this.register(this.viewState.subscribe(onUpdate));
 
 		onUpdate();
 	}
@@ -102,11 +113,12 @@ export class TimesheetCounters extends DomComponent {
 		const settings = this.settings.getState();
 
 		const currentTime = moment();
-		const total = getTotalDuration(timekeep.entries, currentTime);
+		const window = getTimekeepViewWindow(this.viewState.getState());
+		const total = getTotalDuration(timekeep.entries, currentTime, window);
 		const runningEntry = getRunningEntry(timekeep.entries);
-		const current = runningEntry ? getEntryDuration(runningEntry, currentTime) : 0;
+		const current = runningEntry ? getEntryDuration(runningEntry, currentTime, window) : 0;
 
-		this.currentTimer.setHidden(runningEntry === null);
+		this.currentTimer.setHidden(runningEntry === null || current === 0);
 		this.currentTimer.setValues(
 			formatDuration(settings.primaryDurationFormat, current),
 			formatDuration(settings.secondaryDurationFormat, current)

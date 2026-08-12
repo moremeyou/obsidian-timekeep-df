@@ -139,7 +139,8 @@ export default class TimekeepPlugin extends Plugin {
 			this.app,
 			this.settingsStore,
 			this.customOutputFormats,
-			this.autocomplete
+			this.autocomplete,
+			this.registry
 		);
 		const markdownPostProcessor = this.registerMarkdownCodeBlockProcessor(
 			"df-timekeep",
@@ -164,7 +165,8 @@ export default class TimekeepPlugin extends Plugin {
 				leaf,
 				this.settingsStore,
 				this.customOutputFormats,
-				this.autocomplete
+				this.autocomplete,
+				this.registry
 			);
 		});
 

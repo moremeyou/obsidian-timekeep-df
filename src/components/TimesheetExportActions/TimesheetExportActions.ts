@@ -12,6 +12,11 @@ import { assert } from "@/utils/assert";
 import { DomComponent } from "@/components/DomComponent";
 
 import { stripTimekeepRuntimeData, Timekeep } from "@/timekeep/schema";
+import {
+	createTimekeepViewSnapshot,
+	getTimekeepViewWindow,
+	type TimekeepViewState,
+} from "@/timekeep/view";
 
 /**
  * Export actions section component
@@ -25,6 +30,8 @@ export class TimesheetExportActions extends DomComponent {
 	settings: Store<TimekeepSettings>;
 	/** Additional custom output formats */
 	customOutputFormats: Store<Record<string, CustomOutputFormat>>;
+	/** Selected calendar window; omitted only for legacy/API component construction. */
+	viewState: Store<TimekeepViewState> | undefined;
 
 	/** Current loaded collection of custom output format buttons */
 	#customOutputFormatButtons: HTMLButtonElement[] = [];
@@ -34,7 +41,8 @@ export class TimesheetExportActions extends DomComponent {
 		app: App,
 		timekeep: Store<Timekeep>,
 		settings: Store<TimekeepSettings>,
-		customOutputFormats: Store<Record<string, CustomOutputFormat>>
+		customOutputFormats: Store<Record<string, CustomOutputFormat>>,
+		viewState?: Store<TimekeepViewState>
 	) {
 		super(containerEl);
 
@@ -42,6 +50,17 @@ export class TimesheetExportActions extends DomComponent {
 		this.timekeep = timekeep;
 		this.settings = settings;
 		this.customOutputFormats = customOutputFormats;
+		this.viewState = viewState;
+	}
+
+	getExportTimekeep(currentTime: moment.Moment): Timekeep {
+		const timekeep = this.timekeep.getState();
+		if (!this.viewState) return timekeep;
+		return createTimekeepViewSnapshot(
+			timekeep,
+			currentTime,
+			getTimekeepViewWindow(this.viewState.getState())
+		);
 	}
 
 	onload(): void {
@@ -55,7 +74,7 @@ export class TimesheetExportActions extends DomComponent {
 
 		const copyMarkdownButton = actionsEl.createEl("button", {
 			cls: "timekeep-df-export-button",
-			text: "Copy Markdown",
+			text: "MD",
 			attr: {
 				"data-format": "markdown",
 			},
@@ -63,7 +82,7 @@ export class TimesheetExportActions extends DomComponent {
 
 		const copyCSVButton = actionsEl.createEl("button", {
 			cls: "timekeep-df-export-button",
-			text: "Copy CSV",
+			text: "CSV",
 			attr: {
 				"data-format": "csv",
 			},
@@ -71,7 +90,7 @@ export class TimesheetExportActions extends DomComponent {
 
 		const copyJSONButton = actionsEl.createEl("button", {
 			cls: "timekeep-df-export-button",
-			text: "Copy JSON",
+			text: "JSON",
 			attr: {
 				"data-format": "json",
 			},
@@ -79,7 +98,7 @@ export class TimesheetExportActions extends DomComponent {
 
 		const savePdfButton = actionsEl.createEl("button", {
 			cls: "timekeep-df-export-button",
-			text: "Save PDF",
+			text: "PDF",
 			attr: {
 				"data-format": "pdf",
 			},
@@ -119,10 +138,10 @@ export class TimesheetExportActions extends DomComponent {
 			});
 
 			this.registerDomEvent(customFormatButton, "click", () => {
-				const timekeep = this.timekeep.getState();
 				const settings = this.settings.getState();
 
 				const currentTime = moment();
+				const timekeep = this.getExportTimekeep(currentTime);
 				outputFormat.onExport(timekeep, settings, currentTime);
 			});
 
@@ -131,10 +150,10 @@ export class TimesheetExportActions extends DomComponent {
 	}
 
 	async onCopyMarkdown() {
-		const timekeep = this.timekeep.getState();
 		const settings = this.settings.getState();
 
 		const currentTime = moment();
+		const timekeep = this.getExportTimekeep(currentTime);
 		const output = createMarkdownTable(timekeep, settings, currentTime);
 
 		try {
@@ -147,10 +166,10 @@ export class TimesheetExportActions extends DomComponent {
 	}
 
 	async onCopyCSV() {
-		const timekeep = this.timekeep.getState();
 		const settings = this.settings.getState();
 
 		const currentTime = moment();
+		const timekeep = this.getExportTimekeep(currentTime);
 		const output = createCSV(timekeep, settings, currentTime);
 
 		try {
@@ -163,8 +182,8 @@ export class TimesheetExportActions extends DomComponent {
 	}
 
 	async onCopyJSON() {
-		const timekeep = this.timekeep.getState();
 		const settings = this.settings.getState();
+		const timekeep = this.getExportTimekeep(moment());
 
 		const output = JSON.stringify(
 			stripTimekeepRuntimeData(timekeep),
@@ -182,8 +201,8 @@ export class TimesheetExportActions extends DomComponent {
 	}
 
 	async onSavePDF() {
-		const timekeep = this.timekeep.getState();
 		const settings = this.settings.getState();
+		const timekeep = this.getExportTimekeep(moment());
 
 		try {
 			await exportPdf(this.app, timekeep, settings);

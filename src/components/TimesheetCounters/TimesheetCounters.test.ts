@@ -12,6 +12,7 @@ import { TimesheetTimer } from "./TimesheetTimer";
 
 import * as queries from "@/timekeep/queries";
 import { defaultTimekeep, Timekeep } from "@/timekeep/schema";
+import { TimekeepViewMode } from "@/timekeep/view";
 
 describe("TimesheetCounters", () => {
 	let container: HTMLElement;
@@ -95,11 +96,21 @@ describe("TimesheetCounters", () => {
 	});
 
 	it("should show the current and total duration if theres a running entry", () => {
-		const start = moment();
+		const start = moment("2026-08-12T10:00:00");
 		const oneHourLater = moment(start).add(1, "hour");
 
 		vi.useFakeTimers();
 		vi.setSystemTime(oneHourLater.toDate());
+		component = new TimesheetCounters(
+			container,
+			settingsStore,
+			timekeepStore,
+			createStore({
+				mode: TimekeepViewMode.DAY,
+				anchorDate: "2026-08-12",
+				followCurrent: true,
+			})
+		);
 
 		component.load();
 
@@ -127,11 +138,21 @@ describe("TimesheetCounters", () => {
 	});
 
 	it("should show total duration as the sum of all entry durations", () => {
-		const start = moment();
+		const start = moment("2026-08-12T10:00:00");
 		const oneHourLater = moment(start).add(1, "hour");
 
 		vi.useFakeTimers();
 		vi.setSystemTime(oneHourLater.toDate());
+		component = new TimesheetCounters(
+			container,
+			settingsStore,
+			timekeepStore,
+			createStore({
+				mode: TimekeepViewMode.DAY,
+				anchorDate: "2026-08-12",
+				followCurrent: true,
+			})
+		);
 
 		component.load();
 

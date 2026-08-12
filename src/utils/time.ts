@@ -1,6 +1,6 @@
 import moment, { Moment } from "moment";
 
-import { DurationFormat, TimekeepSettings } from "@/settings";
+import { ClockFormat, DurationFormat, TimekeepSettings } from "@/settings";
 
 /**
  * Formats a timestamp for tables and generated output
@@ -10,7 +10,26 @@ import { DurationFormat, TimekeepSettings } from "@/settings";
  * @returns The formatted timestamp
  */
 export function formatTimestamp(timestamp: Moment, settings: TimekeepSettings): string {
-	return timestamp.format(settings.timestampFormat);
+	return timestamp.format(
+		`${settings.timestampFormat} ${
+			settings.clockFormat === ClockFormat.TWELVE_HOUR ? "h:mm A" : "HH:mm"
+		}`
+	);
+}
+
+/** Formats a table timestamp as local time without its stored date. */
+export function formatRowTime(timestamp: Moment, settings: TimekeepSettings): string {
+	return timestamp.format(settings.clockFormat === ClockFormat.TWELVE_HOUR ? "h:mm A" : "HH:mm");
+}
+
+/** Formats exact tracked duration as a percentage of configured daily capacity. */
+export function formatPercentOfDay(durationMS: number, dailyWorkingHours: number): string {
+	if (durationMS <= 0 || !Number.isFinite(dailyWorkingHours) || dailyWorkingHours <= 0) {
+		return "0.0%";
+	}
+
+	const percent = (durationMS / (dailyWorkingHours * 60 * 60 * 1000)) * 100;
+	return `${(Math.ceil(percent * 10) / 10).toFixed(1)}%`;
 }
 
 /**
@@ -76,6 +95,18 @@ export function formatDurationLong(durationMS: number): string {
 	ret += duration.seconds() + "s";
 
 	return ret.trim();
+}
+
+/**
+ * Formats a duration in hours and minutes for non-active displays.
+ * Seconds remain stored and continue contributing to the total.
+ */
+export function formatDurationLongWithoutSeconds(durationMS: number): string {
+	const duration = moment.duration(durationMS);
+	const hours = Math.floor(duration.asHours());
+	const minutes = duration.minutes();
+
+	return hours > 0 ? `${hours}h ${minutes}m` : `${minutes}m`;
 }
 
 /**

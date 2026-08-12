@@ -5,18 +5,25 @@ import moment from "moment";
 import type { TimekeepSettings } from "@/settings";
 import type { Store } from "@/store";
 
+import { createStore } from "@/store";
 import { assert } from "@/utils/assert";
-import { formatTimestamp } from "@/utils/time";
+import { formatRowTime } from "@/utils/time";
 
 import { createObsidianIcon } from "@/components/obsidianIcon";
 import { ReplaceableComponent } from "@/components/ReplaceableComponent";
 import { TimesheetEntryDuration } from "@/components/TimesheetEntryDuration";
 import { TimesheetEntryName } from "@/components/TimesheetEntryName";
+import { TimesheetEntryPercent } from "@/components/TimesheetEntryPercent";
 
-import { getRunningEntry, isEntryRunning } from "@/timekeep/queries";
+import { getEntryTimeBounds, getRunningEntry, isEntryRunning } from "@/timekeep/queries";
 import type { TimeEntry, Timekeep } from "@/timekeep/schema";
 import { startNewNestedEntry } from "@/timekeep/start";
-import { setEntryCollapsed, updateEntry } from "@/timekeep/update";
+import { setEntryCollapsed, stopTimekeep, updateEntry } from "@/timekeep/update";
+import {
+	createTimekeepViewState,
+	getTimekeepViewWindow,
+	type TimekeepViewState,
+} from "@/timekeep/view";
 
 /**
  * Component for the contents of a timesheet row
@@ -28,6 +35,7 @@ export class TimesheetRowContent extends ReplaceableComponent {
 	timekeep: Store<Timekeep>;
 	/** Access to the timekeep settings */
 	settings: Store<TimekeepSettings>;
+	viewState: Store<TimekeepViewState>;
 
 	/** The entry for this row */
 	entry: TimeEntry;
@@ -49,13 +57,16 @@ export class TimesheetRowContent extends ReplaceableComponent {
 		settings: Store<TimekeepSettings>,
 		entry: TimeEntry,
 		indent: number,
-		onBeginEditing: VoidFunction
+		onBeginEditing: VoidFunction,
+		viewState?: Store<TimekeepViewState>
 	) {
 		super(containerEl);
 
 		this.app = app;
 		this.timekeep = timekeep;
 		this.settings = settings;
+		this.viewState =
+			viewState ?? createStore(createTimekeepViewState(settings.getState().defaultViewMode));
 
 		this.entry = entry;
 		this.indent = indent;
@@ -114,9 +125,16 @@ export class TimesheetRowContent extends ReplaceableComponent {
 			cls: ["timekeep-df-col", "timekeep-df-col--duration"],
 		});
 
-		const duration = new TimesheetEntryDuration(durationColEl, entry);
+		const duration = new TimesheetEntryDuration(durationColEl, entry, this.viewState);
 
 		this.addChild(duration);
+
+		const percentColEl = wrapperEl.createEl("td", {
+			cls: ["timekeep-df-col", "timekeep-df-col--percent"],
+		});
+		this.addChild(
+			new TimesheetEntryPercent(percentColEl, entry, this.settings, this.viewState)
+		);
 
 		const actionsColEl = wrapperEl.createEl("td", {
 			cls: ["timekeep-df-col", "timekeep-df-col--actions"],
@@ -124,21 +142,36 @@ export class TimesheetRowContent extends ReplaceableComponent {
 
 		const actionsWrapper = actionsColEl.createDiv({ cls: "timekeep-df-actions-wrapper" });
 
+		const isRunning = isEntryRunning(entry);
 		const startButton = actionsWrapper.createEl("button", {
-			cls: "timekeep-df-action",
+			cls: ["timekeep-df-action", "timekeep-df-icon-button"],
+			title: isRunning ? "Stop" : "Start",
 			attr: {
-				"data-action": "start",
+				"aria-label": isRunning ? "Stop" : "Start",
+				"data-action": isRunning ? "stop" : "start",
 			},
 		});
-		createObsidianIcon(startButton, "play", "timekeep-df-button-icon");
-		this.registerDomEvent(startButton, "click", this.onClickStart.bind(this));
+		startButton.type = "button";
+		createObsidianIcon(
+			startButton,
+			isRunning ? "stop-circle" : "play",
+			"timekeep-df-button-icon"
+		);
+		this.registerDomEvent(
+			startButton,
+			"click",
+			isRunning ? this.onClickStop.bind(this) : this.onClickStart.bind(this)
+		);
 
 		const editButton = actionsWrapper.createEl("button", {
-			cls: "timekeep-df-action",
+			cls: ["timekeep-df-action", "timekeep-df-icon-button"],
+			title: "Edit",
 			attr: {
+				"aria-label": "Edit",
 				"data-action": "edit",
 			},
 		});
+		editButton.type = "button";
 		createObsidianIcon(editButton, "edit", "timekeep-df-button-icon");
 		this.registerDomEvent(editButton, "click", this.onBeginEditing);
 
@@ -148,6 +181,9 @@ export class TimesheetRowContent extends ReplaceableComponent {
 		const unsubscribeSettings = this.settings.subscribe(this.updateTimes.bind(this));
 
 		this.register(unsubscribeSettings);
+		if (isEntryRunning(entry)) {
+			this.registerInterval(window.setInterval(this.updateTimes.bind(this), 1000));
+		}
 	}
 
 	updateTimes() {
@@ -155,12 +191,17 @@ export class TimesheetRowContent extends ReplaceableComponent {
 
 		const entry = this.entry;
 		const settings = this.settings.getState();
+		const bounds = getEntryTimeBounds(
+			entry,
+			moment(),
+			getTimekeepViewWindow(this.viewState.getState())
+		);
 
-		this.#startTimeEl.textContent = entry.startTime
-			? formatTimestamp(entry.startTime, settings)
+		this.#startTimeEl.textContent = bounds.startTime
+			? formatRowTime(bounds.startTime, settings)
 			: "";
 
-		this.#endTimeEl.textContent = entry.endTime ? formatTimestamp(entry.endTime, settings) : "";
+		this.#endTimeEl.textContent = bounds.endTime ? formatRowTime(bounds.endTime, settings) : "";
 	}
 
 	updateState() {
@@ -207,5 +248,9 @@ export class TimesheetRowContent extends ReplaceableComponent {
 			const entries = startNewNestedEntry(currentTime, entry.id, timekeep.entries);
 			return { ...timekeep, entries };
 		});
+	}
+
+	onClickStop() {
+		this.timekeep.setState((timekeep) => stopTimekeep(timekeep, moment()));
 	}
 }

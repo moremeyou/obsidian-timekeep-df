@@ -55,6 +55,33 @@ describe("TimesheetRunningEntry", () => {
 			onStartEditing
 		);
 		component.load();
+		expect(
+			Array.from(component.wrapperEl?.querySelectorAll("button") ?? []).every((button) =>
+				button.classList.contains("timekeep-df-icon-button")
+			)
+		).toBe(true);
+	});
+
+	it("omits seconds in the active block timestamp", () => {
+		const runningEntry: TimeEntry = {
+			id: 1,
+			name: "Test",
+			startTime: moment("2026-08-11T09:10:22"),
+			endTime: null,
+			subEntries: null,
+		};
+		timekeep.setState({ entries: [runningEntry] });
+		component = new TimesheetRunningEntryViewing(
+			containerEl,
+			timekeep,
+			settings,
+			runningEntry,
+			onStartEditing
+		);
+		component.load();
+
+		expect(component.wrapperEl?.textContent).toContain("26-08-11 09:10");
+		expect(component.wrapperEl?.textContent).not.toContain("09:10:22");
 	});
 
 	it("should be able to stop the entry", () => {

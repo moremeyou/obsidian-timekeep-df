@@ -3,12 +3,20 @@ import type { App } from "obsidian";
 import type { TimekeepSettings } from "@/settings";
 import type { Store } from "@/store";
 
+import { createStore } from "@/store";
+
 import { TimesheetRowContent } from "./TimesheetRowContent";
 import { TimesheetRowContentEditing } from "./TimesheetRowContentEditing";
 
 import { ContentComponent } from "@/components/ContentComponent";
 
 import type { TimeEntry, Timekeep } from "@/timekeep/schema";
+import { createTimekeepViewState, type TimekeepViewState } from "@/timekeep/view";
+
+export interface TimesheetRowPresentation {
+	groupTone?: "odd" | "even";
+	groupPosition?: "start" | "middle" | "end";
+}
 
 /**
  * This container allows a entry to switch between the default and
@@ -24,11 +32,14 @@ export class TimesheetRow extends ContentComponent<
 	timekeep: Store<Timekeep>;
 	/** Access to the timekeep settings */
 	settings: Store<TimekeepSettings>;
+	viewState: Store<TimekeepViewState>;
 
 	/** The entry for this row */
 	entry: TimeEntry;
 	/** Indentation level for the entry */
 	indent: number;
+	/** Derived visual grouping; never persisted in tracker data. */
+	presentation: TimesheetRowPresentation;
 
 	constructor(
 		containerEl: HTMLElement,
@@ -36,16 +47,21 @@ export class TimesheetRow extends ContentComponent<
 		timekeep: Store<Timekeep>,
 		settings: Store<TimekeepSettings>,
 		entry: TimeEntry,
-		indent: number
+		indent: number,
+		presentation: TimesheetRowPresentation = {},
+		viewState?: Store<TimekeepViewState>
 	) {
 		super(containerEl);
 
 		this.app = app;
 		this.timekeep = timekeep;
 		this.settings = settings;
+		this.viewState =
+			viewState ?? createStore(createTimekeepViewState(settings.getState().defaultViewMode));
 
 		this.entry = entry;
 		this.indent = indent;
+		this.presentation = presentation;
 	}
 
 	onload(): void {
@@ -64,6 +80,7 @@ export class TimesheetRow extends ContentComponent<
 				this.onViewContent.bind(this)
 			)
 		);
+		this.applyPresentation();
 	}
 
 	onViewContent() {
@@ -75,8 +92,22 @@ export class TimesheetRow extends ContentComponent<
 				this.settings,
 				this.entry,
 				this.indent,
-				this.onViewEditing.bind(this)
+				this.onViewEditing.bind(this),
+				this.viewState
 			)
 		);
+		this.applyPresentation();
+	}
+
+	applyPresentation() {
+		const rowEl = this.getContent()?.wrapperEl;
+		if (!rowEl) return;
+
+		if (this.presentation.groupTone) {
+			rowEl.setAttribute("data-group-tone", this.presentation.groupTone);
+		}
+		if (this.presentation.groupPosition) {
+			rowEl.setAttribute("data-group-position", this.presentation.groupPosition);
+		}
 	}
 }

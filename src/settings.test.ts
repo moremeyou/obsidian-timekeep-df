@@ -7,10 +7,40 @@ import {
 	TimekeepSettings,
 	legacySettingsCompatibility,
 } from "./settings";
+import { TimekeepViewMode } from "./timekeep/view";
 
 describe("legacy settings compatibility conversion", () => {
 	test("Fresh mobile PDF exports use a fork-specific folder", () => {
 		expect(defaultSettings.pdfMobileExportsFolder).toBe("TimekeepDFExports");
+	});
+
+	test("Fresh timestamp settings default to a 24-hour minute-precision display", () => {
+		expect(defaultSettings.timestampFormat).toBe("YY-MM-DD");
+		expect(defaultSettings.clockFormat).toBe("TWENTY_FOUR_HOUR");
+	});
+
+	test("Fresh work-capacity settings default to eight hours and five days", () => {
+		expect(defaultSettings.totalDailyWorkingHours).toBe(8);
+		expect(defaultSettings.totalDaysPerWeek).toBe(5);
+	});
+
+	test("Fresh trackers default to the Day calendar view", () => {
+		expect(defaultSettings.defaultViewMode).toBe(TimekeepViewMode.DAY);
+	});
+
+	test("Invalid saved calendar views return to Day", () => {
+		const settings = {
+			...defaultSettings,
+			defaultViewMode: "INVALID" as TimekeepViewMode,
+		};
+		legacySettingsCompatibility(settings);
+		expect(settings.defaultViewMode).toBe(TimekeepViewMode.DAY);
+	});
+
+	test("Legacy timestamp formats lose their time and seconds portion", () => {
+		const settings = { ...defaultSettings, timestampFormat: "DD/MM/YYYY HH:mm:ss" };
+		legacySettingsCompatibility(settings);
+		expect(settings.timestampFormat).toBe("DD/MM/YYYY");
 	});
 
 	test("Empty setting", () => {

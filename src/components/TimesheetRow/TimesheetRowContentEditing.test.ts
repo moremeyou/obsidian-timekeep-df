@@ -9,12 +9,24 @@ import type { TimekeepSettings } from "@/settings";
 import type { Store } from "@/store";
 
 import { createMockContainer } from "@/__mocks__/obsidian";
-import { defaultSettings } from "@/settings";
+import { ClockFormat, defaultSettings } from "@/settings";
 import { createStore } from "@/store";
 
 import { TimesheetRowContentEditing } from "./TimesheetRowContentEditing";
 
 import { defaultTimekeep, type TimeEntry, type Timekeep } from "@/timekeep/schema";
+
+function getInput(containerEl: HTMLElement, name: string): HTMLInputElement {
+	const inputEl = containerEl.querySelector<HTMLInputElement>(`input[name="${name}"]`);
+	expect(inputEl).not.toBeNull();
+	return inputEl!;
+}
+
+function submitEditor(containerEl: HTMLElement): void {
+	const formEl = containerEl.querySelector<HTMLFormElement>("form.timekeep-df-editing");
+	expect(formEl).not.toBeNull();
+	formEl!.dispatchEvent(new SubmitEvent("submit", { bubbles: true, cancelable: true }));
+}
 
 describe("TimesheetRowContentEditing", () => {
 	let containerEl: HTMLElement;
@@ -56,6 +68,114 @@ describe("TimesheetRowContentEditing", () => {
 			onFinishEditing
 		);
 		component.load();
+	});
+
+	it("renders native date and time inputs initialized in local time on every platform", () => {
+		const entry: TimeEntry = {
+			id: 1,
+			name: "Test",
+			startTime: moment("2026-08-11T07:05:42.987"),
+			endTime: moment("2026-08-11T18:47:31.456"),
+			subEntries: null,
+		};
+		component = new TimesheetRowContentEditing(
+			containerEl,
+			app,
+			timekeep,
+			settings,
+			entry,
+			onFinishEditing
+		);
+		component.load();
+
+		expect(getInput(containerEl, "timekeep-df-start-date").type).toBe("date");
+		expect(getInput(containerEl, "timekeep-df-start-native-time").type).toBe("time");
+		expect(getInput(containerEl, "timekeep-df-start-date").value).toBe("2026-08-11");
+		expect(getInput(containerEl, "timekeep-df-start-native-time").value).toBe("07:05");
+		expect(getInput(containerEl, "timekeep-df-end-date").value).toBe("2026-08-11");
+		expect(getInput(containerEl, "timekeep-df-end-native-time").value).toBe("18:47");
+		expect(containerEl.querySelectorAll('input[type="number"]')).toHaveLength(0);
+	});
+
+	it("hints the selected 12-hour or 24-hour format to native time pickers", () => {
+		settings.setState({ ...defaultSettings, clockFormat: ClockFormat.TWELVE_HOUR });
+		const entry: TimeEntry = {
+			id: 1,
+			name: "Test",
+			startTime: moment("2026-08-11T18:47"),
+			endTime: null,
+			subEntries: null,
+		};
+		component = new TimesheetRowContentEditing(
+			containerEl,
+			app,
+			timekeep,
+			settings,
+			entry,
+			onFinishEditing
+		);
+		component.load();
+
+		expect(getInput(containerEl, "timekeep-df-start-native-time").lang).toBe("en-US");
+	});
+
+	it("saves native picker changes at minute precision", () => {
+		const entry: TimeEntry = {
+			id: 1,
+			name: "Test",
+			startTime: moment("2026-08-11T09:00:22.123"),
+			endTime: null,
+			subEntries: null,
+		};
+		timekeep.setState({ entries: [entry] });
+		component = new TimesheetRowContentEditing(
+			containerEl,
+			app,
+			timekeep,
+			settings,
+			entry,
+			onFinishEditing
+		);
+		component.load();
+
+		const nativeTimeInputEl = getInput(containerEl, "timekeep-df-start-native-time");
+		nativeTimeInputEl.value = "23:45";
+
+		submitEditor(containerEl);
+		const saved = timekeep.getState().entries[0].startTime!;
+		expect(saved.format("YYYY-MM-DD HH:mm:ss.SSS")).toBe("2026-08-11 23:45:00.000");
+	});
+
+	it("saves edited dates and native times at minute precision", () => {
+		const entry: TimeEntry = {
+			id: 1,
+			name: "Test",
+			startTime: moment("2026-08-11T09:00:22.123"),
+			endTime: moment("2026-08-11T10:00:44.987"),
+			subEntries: null,
+		};
+		timekeep.setState({ entries: [entry] });
+		component = new TimesheetRowContentEditing(
+			containerEl,
+			app,
+			timekeep,
+			settings,
+			entry,
+			onFinishEditing
+		);
+		component.load();
+
+		getInput(containerEl, "timekeep-df-start-date").value = "2026-09-03";
+		getInput(containerEl, "timekeep-df-start-native-time").value = "14:33";
+		getInput(containerEl, "timekeep-df-end-date").value = "2026-09-04";
+		const endNativeTime = getInput(containerEl, "timekeep-df-end-native-time");
+		endNativeTime.value = "01:02";
+		endNativeTime.dispatchEvent(new InputEvent("input", { bubbles: true }));
+
+		submitEditor(containerEl);
+		const [saved] = timekeep.getState().entries;
+		expect(saved.startTime?.format("YYYY-MM-DD HH:mm:ss.SSS")).toBe("2026-09-03 14:33:00.000");
+		expect(saved.endTime?.format("YYYY-MM-DD HH:mm:ss.SSS")).toBe("2026-09-04 01:02:00.000");
 	});
 
 	it("clicking the cancel button should call onFinishEditing", () => {
@@ -204,16 +324,77 @@ describe("TimesheetRowContentEditing", () => {
 		);
 		component.load();
 
-		const startTime =
-			containerEl.querySelector('.timekeep-df-input[name="start-time"]')?.parentElement ??
-			null;
-		const endTime =
-			containerEl.querySelector('.timekeep-df-input[name="end-time"]')?.parentElement ?? null;
+		const startTime = containerEl.querySelector(
+			'.timekeep-df-timestamp-editor[data-timestamp="start"]'
+		);
+		const endTime = containerEl.querySelector(
+			'.timekeep-df-timestamp-editor[data-timestamp="end"]'
+		);
 
 		expect(startTime).not.toBeNull();
 		expect(endTime).not.toBeNull();
 		expect((startTime as HTMLElement).hidden).toBeTruthy();
 		expect((endTime as HTMLElement).hidden).toBeTruthy();
+	});
+
+	it("editing an unstarted entry should hide both timestamp editors", () => {
+		const entry: TimeEntry = {
+			id: 1,
+			name: "Test",
+			startTime: null,
+			endTime: null,
+			subEntries: null,
+		};
+		component = new TimesheetRowContentEditing(
+			containerEl,
+			app,
+			timekeep,
+			settings,
+			entry,
+			onFinishEditing
+		);
+		component.load();
+
+		expect(
+			containerEl.querySelector<HTMLElement>(
+				'.timekeep-df-timestamp-editor[data-timestamp="start"]'
+			)?.hidden
+		).toBeTruthy();
+		expect(
+			containerEl.querySelector<HTMLElement>(
+				'.timekeep-df-timestamp-editor[data-timestamp="end"]'
+			)?.hidden
+		).toBeTruthy();
+	});
+
+	it("editing a running entry should show only the start timestamp editor", () => {
+		const entry: TimeEntry = {
+			id: 1,
+			name: "Test",
+			startTime: moment("2026-08-11T09:00"),
+			endTime: null,
+			subEntries: null,
+		};
+		component = new TimesheetRowContentEditing(
+			containerEl,
+			app,
+			timekeep,
+			settings,
+			entry,
+			onFinishEditing
+		);
+		component.load();
+
+		expect(
+			containerEl.querySelector<HTMLElement>(
+				'.timekeep-df-timestamp-editor[data-timestamp="start"]'
+			)?.hidden
+		).toBeFalsy();
+		expect(
+			containerEl.querySelector<HTMLElement>(
+				'.timekeep-df-timestamp-editor[data-timestamp="end"]'
+			)?.hidden
+		).toBeTruthy();
 	});
 
 	it("clicking delete on an entry should open a modal for confirmation", () => {
@@ -334,7 +515,7 @@ describe("TimesheetRowContentEditing", () => {
 		expect(timekeep.getState()).toEqual({ entries: [] });
 	});
 
-	it("editing a group entry should hide the start and end time inputs", () => {
+	it("preserves existing timestamps when a date or native time is empty or invalid", () => {
 		const start = moment();
 		const entry: TimeEntry = {
 			id: 1,
@@ -359,20 +540,12 @@ describe("TimesheetRowContentEditing", () => {
 		const onSubmit = vi.spyOn(component, "onSubmit");
 		component.load();
 
-		const startTime = containerEl.querySelector('.timekeep-df-input[name="start-time"]');
-		const endTime = containerEl.querySelector('.timekeep-df-input[name="end-time"]');
+		getInput(containerEl, "timekeep-df-start-date").value = "";
+		const endTimeInputEl = getInput(containerEl, "timekeep-df-end-native-time");
+		endTimeInputEl.value = "00";
+		expect(endTimeInputEl.value).toBe("");
 
-		expect(startTime).not.toBeNull();
-		expect(endTime).not.toBeNull();
-
-		(startTime as HTMLInputElement).value = "Test";
-		(endTime as HTMLInputElement).value = "Test";
-
-		const form = containerEl.querySelector("form.timekeep-df-editing");
-		expect(form).not.toBeNull();
-		(form as HTMLFormElement).dispatchEvent(
-			new SubmitEvent("submit", { bubbles: true, cancelable: true })
-		);
+		submitEditor(containerEl);
 
 		expect(onSubmit).toHaveBeenCalledOnce();
 		expect(onFinishEditing).toHaveBeenCalledOnce();

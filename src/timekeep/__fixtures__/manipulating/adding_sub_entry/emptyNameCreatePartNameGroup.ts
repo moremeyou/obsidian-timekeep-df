@@ -49,7 +49,7 @@ export const expected: TimeEntry = {
 		},
 		{
 			id: 4,
-			name: "Part 3",
+			name: "Block 3",
 			startTime: currentTime,
 			endTime: null,
 			subEntries: null,

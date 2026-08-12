@@ -47,10 +47,10 @@ export class TimesheetNameInput extends DomComponent {
 
 		const inputEl = wrapperEl.createEl("input", {
 			cls: "timekeep-df-name",
-			placeholder: "Example Block",
 			type: "text",
 		});
 		inputEl.id = this.inputId;
+		inputEl.setAttribute("aria-label", "Add Activity");
 		inputEl.role = "combobox";
 		inputEl.setAttribute("aria-expanded", "false");
 		inputEl.setAttribute("aria-controls", this.#suggestionsId);

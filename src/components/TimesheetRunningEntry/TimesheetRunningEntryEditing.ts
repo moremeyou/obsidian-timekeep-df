@@ -76,7 +76,7 @@ export class TimesheetRunningEntryEditing extends ReplaceableComponent {
 
 		const nameInputEl = nameWrapperEl.createEl("input", {
 			cls: "timekeep-df-name",
-			placeholder: "Example Block",
+			placeholder: "Example Activity",
 			type: "text",
 			value: this.#editingName,
 		});
@@ -84,14 +84,14 @@ export class TimesheetRunningEntryEditing extends ReplaceableComponent {
 		this.#nameInputEl = nameInputEl;
 
 		const saveButton = formEl.createEl("button", {
-			cls: ["timekeep-df-start", "timekeep-df-start--save"],
+			cls: ["timekeep-df-start", "timekeep-df-start--save", "timekeep-df-icon-button"],
 			title: "Save",
 		});
 		saveButton.type = "submit";
 		createObsidianIcon(saveButton, "save", "timekeep-df-button-icon");
 
 		const cancelButton = formEl.createEl("button", {
-			cls: ["timekeep-df-start", "timekeep-df-start--close"],
+			cls: ["timekeep-df-start", "timekeep-df-start--close", "timekeep-df-icon-button"],
 			title: "Cancel ",
 		});
 		cancelButton.type = "button";

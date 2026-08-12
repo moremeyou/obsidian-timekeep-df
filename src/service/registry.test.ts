@@ -18,8 +18,25 @@ import {
 } from "./registry";
 
 import { stripTimekeepRuntimeData, TimeEntry, Timekeep } from "@/timekeep/schema";
+import { TimekeepViewMode } from "@/timekeep/view";
 
 describe("TimekeepRegistry", () => {
+	it("retains independent view state per tracker for the plugin session", () => {
+		const settings = createStore({
+			...defaultSettings,
+			defaultViewMode: TimekeepViewMode.DAY,
+		});
+		const registry = new TimekeepRegistry(new MockVault().asVault(), settings);
+		const first = registry.getViewState("markdown:Projects.md:10");
+		const firstAgain = registry.getViewState("markdown:Projects.md:10");
+		const second = registry.getViewState("markdown:Projects.md:30");
+
+		first.setState((state) => ({ ...state, mode: TimekeepViewMode.WEEK }));
+
+		expect(firstAgain).toBe(first);
+		expect(firstAgain.getState().mode).toBe(TimekeepViewMode.WEEK);
+		expect(second.getState().mode).toBe(TimekeepViewMode.DAY);
+	});
 	describe("getFileRegistryEntry", () => {
 		it("returns null for markdown without timekeeps", async () => {
 			const vault = new MockVault();

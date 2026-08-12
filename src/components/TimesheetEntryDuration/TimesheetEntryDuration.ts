@@ -1,12 +1,15 @@
 import moment from "moment";
 
+import type { Store } from "@/store";
+
 import { assert } from "@/utils/assert";
-import { formatDurationLong } from "@/utils/time";
+import { formatDurationLong, formatDurationLongWithoutSeconds } from "@/utils/time";
 
 import { DomComponent } from "@/components/DomComponent";
 
 import { getEntryDuration, isEntryRunning } from "@/timekeep/queries";
 import { TimeEntry } from "@/timekeep/schema";
+import { getTimekeepViewWindow, type TimekeepViewState } from "@/timekeep/view";
 
 /**
  * Component for rendering the live-updating duration on
@@ -15,13 +18,15 @@ import { TimeEntry } from "@/timekeep/schema";
 export class TimesheetEntryDuration extends DomComponent {
 	/** The entry this duration belongs to */
 	entry: TimeEntry;
+	viewState: Store<TimekeepViewState> | undefined;
 
 	/** Currently tracked background interval for content */
 	currentContentInterval: number | undefined;
 
-	constructor(containerEl: HTMLElement, entry: TimeEntry) {
+	constructor(containerEl: HTMLElement, entry: TimeEntry, viewState?: Store<TimekeepViewState>) {
 		super(containerEl);
 		this.entry = entry;
+		this.viewState = viewState;
 	}
 
 	onload(): void {
@@ -32,6 +37,7 @@ export class TimesheetEntryDuration extends DomComponent {
 
 		// Initial update
 		this.updateTime();
+		if (this.viewState) this.register(this.viewState.subscribe(this.updateTime.bind(this)));
 
 		const isRunning = isEntryRunning(this.entry);
 
@@ -58,8 +64,16 @@ export class TimesheetEntryDuration extends DomComponent {
 		assert(timeEl, "Time element should be defined");
 
 		const currentTime = moment();
-		const duration = getEntryDuration(this.entry, currentTime);
-		const value = formatDurationLong(duration);
+		const duration = this.viewState
+			? getEntryDuration(
+					this.entry,
+					currentTime,
+					getTimekeepViewWindow(this.viewState.getState())
+				)
+			: getEntryDuration(this.entry, currentTime);
+		const value = isEntryRunning(this.entry)
+			? formatDurationLong(duration)
+			: formatDurationLongWithoutSeconds(duration);
 
 		timeEl.textContent = value;
 	}

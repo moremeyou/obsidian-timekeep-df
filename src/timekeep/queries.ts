@@ -1,6 +1,7 @@
 import type { Moment } from "moment";
 
 import { Timekeep, TimeEntry } from "@/timekeep/schema";
+import type { TimekeepViewWindow } from "@/timekeep/view";
 
 /**
  * Find an entry within the entries using the ID of the entry
@@ -126,9 +127,13 @@ export function isKeepRunning(timekeep: Timekeep): boolean {
  * @param currentTime The current time to use for unfinished entries
  * @returns The duration in milliseconds
  */
-export function getEntryDuration(entry: TimeEntry, currentTime: Moment): number {
+export function getEntryDuration(
+	entry: TimeEntry,
+	currentTime: Moment,
+	window?: TimekeepViewWindow
+): number {
 	if (entry.subEntries !== null) {
-		return getTotalDuration(entry.subEntries, currentTime);
+		return getTotalDuration(entry.subEntries, currentTime, window);
 	}
 
 	// Entry is not started
@@ -138,7 +143,56 @@ export function getEntryDuration(entry: TimeEntry, currentTime: Moment): number 
 
 	// Get the end time or use current time if not ended
 	const endTime = entry.endTime ?? currentTime;
+	if (window) {
+		const clippedStart = entry.startTime.isAfter(window.start) ? entry.startTime : window.start;
+		const clippedEnd = endTime.isBefore(window.end) ? endTime : window.end;
+		return Math.max(0, clippedEnd.diff(clippedStart));
+	}
 	return endTime.diff(entry.startTime);
+}
+
+/**
+ * Gets the earliest start and latest end across an entry's descendant sessions.
+ * Running sessions use the supplied current time as their derived end.
+ */
+export function getEntryTimeBounds(
+	entry: TimeEntry,
+	currentTime: Moment,
+	window?: TimekeepViewWindow
+): { startTime: Moment | null; endTime: Moment | null } {
+	if (entry.subEntries === null) {
+		if (entry.startTime === null) return { startTime: null, endTime: null };
+		const endTime = entry.endTime ?? currentTime;
+		if (window) {
+			const overlaps =
+				entry.startTime.isBefore(window.end) &&
+				(endTime.isAfter(window.start) || entry.startTime.isSame(endTime));
+			if (!overlaps) return { startTime: null, endTime: null };
+
+			return {
+				startTime: entry.startTime.isAfter(window.start) ? entry.startTime : window.start,
+				endTime: endTime.isBefore(window.end) ? endTime : window.end,
+			};
+		}
+		return {
+			startTime: entry.startTime,
+			endTime,
+		};
+	}
+
+	let startTime: Moment | null = null;
+	let endTime: Moment | null = null;
+	for (const child of entry.subEntries) {
+		const childBounds = getEntryTimeBounds(child, currentTime, window);
+		if (childBounds.startTime && (!startTime || childBounds.startTime.isBefore(startTime))) {
+			startTime = childBounds.startTime;
+		}
+		if (childBounds.endTime && (!endTime || childBounds.endTime.isAfter(endTime))) {
+			endTime = childBounds.endTime;
+		}
+	}
+
+	return { startTime, endTime };
 }
 
 /**
@@ -149,10 +203,41 @@ export function getEntryDuration(entry: TimeEntry, currentTime: Moment): number 
  * @param currentTime The current time to use for unfinished entries
  * @returns The total duration in milliseconds
  */
-export function getTotalDuration(entries: TimeEntry[], currentTime: Moment): number {
+export function getTotalDuration(
+	entries: TimeEntry[],
+	currentTime: Moment,
+	window?: TimekeepViewWindow
+): number {
 	return entries.reduce(
-		(totalDuration, entry) => totalDuration + getEntryDuration(entry, currentTime),
+		(totalDuration, entry) => totalDuration + getEntryDuration(entry, currentTime, window),
 		0
+	);
+}
+
+/** Whether an entry has a session overlapping the selected calendar window. */
+export function isEntryWithinWindow(
+	entry: TimeEntry,
+	currentTime: Moment,
+	window: TimekeepViewWindow,
+	includeUnstarted: boolean
+): boolean {
+	if (entry.subEntries !== null) {
+		return (
+			includeUnstarted ||
+			entry.subEntries.some((child) =>
+				isEntryWithinWindow(child, currentTime, window, includeUnstarted)
+			)
+		);
+	}
+
+	if (entry.startTime === null) return includeUnstarted;
+	const endTime = entry.endTime ?? currentTime;
+	if (endTime.isBefore(entry.startTime)) {
+		return !entry.startTime.isBefore(window.start) && entry.startTime.isBefore(window.end);
+	}
+	return (
+		entry.startTime.isBefore(window.end) &&
+		(endTime.isAfter(window.start) || entry.startTime.isSame(endTime))
 	);
 }
 

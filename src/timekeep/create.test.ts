@@ -34,7 +34,7 @@ describe("withEntry", () => {
 		expect(stripEntriesRuntimeData(output)).toEqual(stripEntriesRuntimeData(expected));
 	});
 
-	it("should generate block name when empty", async () => {
+	it("should generate an Activity name when empty", async () => {
 		const { input, currentTime, expected } =
 			await import("./__fixtures__/manipulating/adding_entry/addEmptyBlockName");
 
@@ -85,7 +85,7 @@ describe("withSubEntry", () => {
 		expect(stripEntryRuntimeData(output)).toEqual(stripEntryRuntimeData(expected));
 	});
 
-	it("empty name should generate a part name (single)", async () => {
+	it("empty name should generate a Block name (single)", async () => {
 		const { input, currentTime, expected } =
 			await import("./__fixtures__/manipulating/adding_sub_entry/emptyNameCreatePartNameSingle");
 
@@ -93,7 +93,7 @@ describe("withSubEntry", () => {
 		expect(stripEntryRuntimeData(output)).toEqual(stripEntryRuntimeData(expected));
 	});
 
-	it("empty name should generate a part name (group)", async () => {
+	it("empty name should generate a Block name (group)", async () => {
 		const { input, currentTime, expected } =
 			await import("./__fixtures__/manipulating/adding_sub_entry/emptyNameCreatePartNameGroup");
 

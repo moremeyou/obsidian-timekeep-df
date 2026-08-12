@@ -20,6 +20,7 @@ import { getRunningEntry } from "@/timekeep/queries";
 import type { TimeEntry, Timekeep } from "@/timekeep/schema";
 import { stripTimekeepRuntimeData } from "@/timekeep/schema";
 import { stopTimekeep } from "@/timekeep/update";
+import { createTimekeepViewState, type TimekeepViewState } from "@/timekeep/view";
 
 /** Entry within the timekeep registry */
 export type TimekeepRegistryEntry = TimekeepRegistryEntryFile | TimekeepRegistryEntryMarkdown;
@@ -76,6 +77,8 @@ export class TimekeepRegistry extends Component {
 
 	/** Store for entries within the registry */
 	entries: Store<TimekeepRegistryEntry[]>;
+	/** Per-tracker UI view state retained for the current plugin session. */
+	viewStates: Map<string, Store<TimekeepViewState>>;
 
 	/** Settings access */
 	settings: Store<TimekeepSettings>;
@@ -96,10 +99,22 @@ export class TimekeepRegistry extends Component {
 		super();
 		this.#vault = vault;
 		this.entries = createStore<TimekeepRegistryEntry[]>([]);
+		this.viewStates = new Map();
 		this.settings = settings;
 		this.tasks = [];
 		this.events = [];
 		this.enabled = settings.getState().registryEnabled;
+	}
+
+	getViewState(trackerKey: string): Store<TimekeepViewState> {
+		const existing = this.viewStates.get(trackerKey);
+		if (existing) return existing;
+
+		const viewState = createStore(
+			createTimekeepViewState(this.settings.getState().defaultViewMode)
+		);
+		this.viewStates.set(trackerKey, viewState);
+		return viewState;
 	}
 
 	onload() {

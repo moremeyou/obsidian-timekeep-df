@@ -2,7 +2,7 @@ import { App } from "obsidian";
 
 import { CustomOutputFormat } from "@/output";
 import { TimekeepSettings } from "@/settings";
-import { Store } from "@/store";
+import { createStore, Store } from "@/store";
 
 import { ReplaceableComponent } from "../ReplaceableComponent";
 
@@ -11,8 +11,10 @@ import { TimesheetExportActions } from "@/components/TimesheetExportActions";
 import { TimesheetRunningEntry } from "@/components/TimesheetRunningEntry";
 import { TimesheetStartForm } from "@/components/TimesheetStartForm";
 import { TimesheetTable } from "@/components/TimesheetTable";
+import { TimesheetViewControls } from "@/components/TimesheetViewControls";
 
 import { Timekeep } from "@/timekeep/schema";
+import { createTimekeepViewState, type TimekeepViewState } from "@/timekeep/view";
 
 import { TimekeepAutocomplete } from "@/service/autocomplete";
 
@@ -30,6 +32,8 @@ export class Timesheet extends ReplaceableComponent {
 	customOutputFormats: Store<Record<string, CustomOutputFormat>>;
 	/** Autocomplete */
 	autocomplete: TimekeepAutocomplete;
+	/** Calendar window selected for this tracker session. */
+	viewState: Store<TimekeepViewState>;
 
 	constructor(
 		containerEl: HTMLElement,
@@ -37,7 +41,8 @@ export class Timesheet extends ReplaceableComponent {
 		timekeep: Store<Timekeep>,
 		settings: Store<TimekeepSettings>,
 		customOutputFormats: Store<Record<string, CustomOutputFormat>>,
-		autocomplete: TimekeepAutocomplete
+		autocomplete: TimekeepAutocomplete,
+		viewState?: Store<TimekeepViewState>
 	) {
 		super(containerEl);
 
@@ -46,6 +51,8 @@ export class Timesheet extends ReplaceableComponent {
 		this.settings = settings;
 		this.customOutputFormats = customOutputFormats;
 		this.autocomplete = autocomplete;
+		this.viewState =
+			viewState ?? createStore(createTimekeepViewState(settings.getState().defaultViewMode));
 	}
 
 	createContainer(): HTMLElement {
@@ -55,31 +62,64 @@ export class Timesheet extends ReplaceableComponent {
 	}
 
 	render(wrapperEl: HTMLElement): void {
-		const counters = new TimesheetCounters(wrapperEl, this.settings, this.timekeep);
+		const viewControls = new TimesheetViewControls(wrapperEl, this.viewState);
+
+		const counters = new TimesheetCounters(
+			wrapperEl,
+			this.settings,
+			this.timekeep,
+			this.viewState
+		);
+
+		const runningEntry = new TimesheetRunningEntry(wrapperEl, this.timekeep, this.settings);
+
+		const table = new TimesheetTable(
+			wrapperEl,
+			this.app,
+			this.timekeep,
+			this.settings,
+			this.viewState
+		);
+		this.addChild(viewControls);
+		this.addChild(counters);
+		this.addChild(runningEntry);
+		this.addChild(table);
+
+		const utilityGridEl = wrapperEl.createDiv({ cls: "timekeep-df-utility-grid" });
+		utilityGridEl.createDiv({
+			cls: ["timekeep-df-utility-heading", "timekeep-df-utility-heading--add"],
+			text: "Add Activity",
+		});
+		utilityGridEl.createDiv({
+			cls: ["timekeep-df-utility-heading", "timekeep-df-utility-heading--export"],
+			text: "Export",
+		});
+		const addActivityCellEl = utilityGridEl.createDiv({
+			cls: ["timekeep-df-utility-cell", "timekeep-df-utility-cell--add"],
+			attr: { "aria-label": "Add Activity" },
+		});
+		const exportCellEl = utilityGridEl.createDiv({
+			cls: ["timekeep-df-utility-cell", "timekeep-df-utility-cell--export"],
+			attr: { "aria-label": "Export" },
+		});
 
 		const startForm = new TimesheetStartForm(
-			wrapperEl,
+			addActivityCellEl,
 			this.timekeep,
 			this.settings,
 			this.autocomplete
 		);
 
-		const runningEntry = new TimesheetRunningEntry(wrapperEl, this.timekeep, this.settings);
-
-		const table = new TimesheetTable(wrapperEl, this.app, this.timekeep, this.settings);
-
 		const exportActions = new TimesheetExportActions(
-			wrapperEl,
+			exportCellEl,
 			this.app,
 			this.timekeep,
 			this.settings,
-			this.customOutputFormats
+			this.customOutputFormats,
+			this.viewState
 		);
 
-		this.addChild(counters);
-		this.addChild(runningEntry);
 		this.addChild(startForm);
-		this.addChild(table);
 		this.addChild(exportActions);
 	}
 }

@@ -30,7 +30,15 @@ This plugin provides a command for inserting time trackers: `Timekeep DF: Insert
 
 ## ✏️ Editing & Deleting
 
-If you accidentally gave a block an incorrect name or started the timer late, you can use the editing feature to update the stored data or delete the entry.
+If you accidentally gave an Activity or Block an incorrect name, or started its timer late, you can use the editing feature to update the stored data or delete the entry.
+
+Start and end timestamps use the platform's native date and time pickers on desktop, tablet, and mobile. Choose **12-hour** or **24-hour** under **Settings → Timekeep DF → Clock format**. Timestamps show minute precision; seconds appear only in live durations for active Activity and Block rows.
+
+Expanded Activities visually group their Block rows and derive the Activity's displayed start/end times from the earliest and latest full date/time values across all descendant sessions. Table rows show time only; the complete date and timestamp remain stored.
+
+Each tracker has **Day**, **Week**, **Month**, and **Year** calendar views with previous, next, and Today navigation. Forward navigation stops at the period containing today. Sessions crossing a view boundary are clipped for display and calculation only—the original timestamps are never rewritten. **Default timesheet view** starts at Day. The **%** column uses **Total daily working hours** (8 by default); Week, Month, and Year capacity also uses **Total days per week** (5 by default). The registry retains each tracker's selected view for the current Obsidian session without adding view parameters to the note.
+
+All Activity and Block rows remain visible in every view. The tracker export buttons—Markdown, CSV, JSON, PDF, and registered custom formats—use the selected calendar window too. Their export snapshot retains every row, clips overlapping sessions to the window, and leaves out-of-window rows without interval timestamps or duration; stored tracker data is not modified.
 
 ![Editing](images/editing.png)
 
@@ -44,7 +52,7 @@ This plugin is heavily inspired by [ObsidianSimpleTimeTracker](https://github.co
 > same schema, but the fork does not automatically claim or convert official trackers.
 > Rename or migrate a tracker only when you deliberately want to transfer ownership.
 
-The time block start and stop times are stored as timestamps, making it possible for you to start your time tracker, then close Obsidian and have the tracking continue when you open it again.
+Activity and Block start/stop times are stored as timestamps, making it possible for you to start your time tracker, then close Obsidian and have the tracking continue when you open it again.
 
 Below is an example of how this is stored:
 
@@ -52,7 +60,7 @@ Below is an example of how this is stored:
 {
     "entries": [
         {
-            "name": "Example Time Block",
+            "name": "Example Activity",
             "startTime": "2024-03-17T06:32:36.118Z",
             "endTime": "2024-03-17T06:32:37.012Z",
             "subEntries": null
@@ -67,23 +75,23 @@ Below are the various formats that timekeeping data can be exported to:
 
 ### Markdown Table
 
-| Block              | Start time        | End time          | Duration |
+| Activity           | Start             | End               | Duration |
 | ------------------ | ----------------- | ----------------- | -------- |
-| Example Time Block | 24-03-17 19:32:36 | 24-03-17 19:32:37 | 0s       |
+| Example Activity   | 24-03-17 19:32 | 24-03-17 19:32 | 0s       |
 | **Total**          |                   |                   | **0s**   |
 
 ```md
-| Block              | Start time        | End time          | Duration |
+| Activity           | Start             | End               | Duration |
 | ------------------ | ----------------- | ----------------- | -------- |
-| Example Time Block | 24-03-17 19:32:36 | 24-03-17 19:32:37 | 0s       |
+| Example Activity   | 24-03-17 19:32 | 24-03-17 19:32 | 0s       |
 | **Total**          |                   |                   | **0s**   |
 ```
 
 ### CSV
 
 ```csv
-Block,Start time,End time,Duration
-Example Time Block,24-03-17 19:32:36,24-03-17 19:32:37,0s
+Activity,Start,End,Duration
+Example Activity,24-03-17 19:32,24-03-17 19:32,0s
 ```
 
 > [!NOTE]
@@ -94,7 +102,7 @@ Example Time Block,24-03-17 19:32:36,24-03-17 19:32:37,0s
 The JSON export format simply copies the JSON stored inside the timekeep:
 
 ```json
-{"entries":[{"name":"Example Time Block","startTime":"2024-03-17T06:32:36.118Z","endTime":"2024-03-17T06:32:37.012Z","subEntries":null}]}
+{"entries":[{"name":"Example Activity","startTime":"2024-03-17T06:32:36.118Z","endTime":"2024-03-17T06:32:37.012Z","subEntries":null}]}
 ```
 
 ### Generated PDFs
@@ -110,7 +118,7 @@ If you would like to create a timekeep through a template plugin, you can do so 
 If you have frequently used entry names you can define them in your template by specifying `null` for both the `startTime` and `endTime`:
 
 ```json
-{"entries":[{"name":"Example Time Block","startTime":"2024-03-17T06:32:36.118Z","endTime":"2024-03-17T06:32:37.012Z","subEntries":null}]}
+{"entries":[{"name":"Example Activity","startTime":"2024-03-17T06:32:36.118Z","endTime":"2024-03-17T06:32:37.012Z","subEntries":null}]}
 ```
 
 This will create an entry that is not yet started; you can start it by clicking the play button without having to type out the name.
@@ -175,7 +183,7 @@ dv.span(totalRunningDuration);
 
 If your lists become longer you will likely see some jumpy/flickery behavior with timekeep when making modifications (add/save/delete/collapse/expand), this is a limitation of how Obsidian re-renders the app.
 
-Because Obsidian re-creates the entire app when the code block changes (Since the timekeep data is stored in the codeblock, modifications cause this to happen. Thus the DOM is thrown away causing a full re-render). This issue also means local state will all be lost on modification (This is why the collapsed state must be persisted to the timekeep.)
+Because Obsidian re-creates the entire app when the code block changes (Since the timekeep data is stored in the codeblock, modifications cause this to happen. Thus the DOM is thrown away causing a full re-render). The registry now retains calendar view navigation during the current plugin session; persisted tracker fields such as collapsed state remain in tracker data.
 
 I do not believe this can be fixed but PRs are welcome if you are aware of a way to fix this.
 

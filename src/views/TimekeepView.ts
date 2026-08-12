@@ -15,8 +15,10 @@ import { TimesheetSaveError } from "@/components/TimesheetSaveError";
 
 import type { LoadResult } from "@/timekeep/parser";
 import { defaultTimekeep, stripTimekeepRuntimeData, type Timekeep } from "@/timekeep/schema";
+import { createTimekeepViewState, type TimekeepViewState } from "@/timekeep/view";
 
 import { TimekeepAutocomplete } from "@/service/autocomplete";
+import { TimekeepRegistry } from "@/service/registry";
 
 export default class TimekeepView extends ContentComponent<
 	Timesheet | TimesheetLoadError | TimesheetSaveError | EmptyComponent
@@ -29,6 +31,9 @@ export default class TimekeepView extends ContentComponent<
 	customOutputFormats: Store<Record<string, CustomOutputFormat>>;
 	/** Autocomplete */
 	autocomplete: TimekeepAutocomplete;
+	registry: TimekeepRegistry | undefined;
+	trackerKey: (() => string) | undefined;
+	fallbackViewState: Store<TimekeepViewState>;
 
 	/** Loading result for the timekeep data */
 	loadResult: Store<LoadResult | null>;
@@ -50,7 +55,9 @@ export default class TimekeepView extends ContentComponent<
 		customOutputFormats: Store<Record<string, CustomOutputFormat>>,
 		autocomplete: TimekeepAutocomplete,
 		loadResult: Store<LoadResult | null>,
-		saveAdapter: TimesheetSaveAdapter
+		saveAdapter: TimesheetSaveAdapter,
+		registry?: TimekeepRegistry,
+		trackerKey?: () => string
 	) {
 		super(containerEl);
 
@@ -63,6 +70,11 @@ export default class TimekeepView extends ContentComponent<
 		this.settings = settings;
 		this.customOutputFormats = customOutputFormats;
 		this.autocomplete = autocomplete;
+		this.registry = registry;
+		this.trackerKey = trackerKey;
+		this.fallbackViewState = createStore(
+			createTimekeepViewState(settings.getState().defaultViewMode)
+		);
 
 		this.saveAdapter = saveAdapter;
 	}
@@ -108,7 +120,10 @@ export default class TimekeepView extends ContentComponent<
 					this.timekeep,
 					this.settings,
 					this.customOutputFormats,
-					this.autocomplete
+					this.autocomplete,
+					this.registry && this.trackerKey
+						? this.registry.getViewState(this.trackerKey())
+						: this.fallbackViewState
 				)
 			);
 		} else {
