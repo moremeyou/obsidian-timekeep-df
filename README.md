@@ -17,25 +17,60 @@
 
 This plugin provides a simple and easy way to track time spent on various tasks. After tracking your time, you can export the tracked time as a **Markdown Table**, **CSV**, **JSON**, or **PDF**.
 
-![Tracker](images/tracker.png)
+## ✨ What’s new in Timekeep DF
 
-This plugin provides a command for inserting time trackers: `Timekeep DF: Insert Tracker`. Alternatively, a Timekeep DF tracker can be created with the fork-specific code block below:
+### Focused live-work dashboard
 
-````
-```df-timekeep
+- The primary card makes the current **Activity**, active **Block** path, and live hours/minutes/seconds **Duration** easy to scan.
+- A large, centered Start/Stop control uses consistent icon geometry across desktop, tablet, and mobile.
+- The companion card shows the selected Day, Week, Month, or Year total. It uses the theme’s green state while within capacity and red when over capacity.
+- With no timer running, the focus card says **Get to work!** or **Stop working!** depending on whether the selected period is over its working-hours target.
+- Range navigation, Today, the native range selector, and the formatted date sit above the focus cards.
 
-```
-````
+### Activity and Block table refinements
 
-## ✨ Timekeep DF highlights
+- The hierarchy is now consistently named **Activity → Block** throughout the interface. Top-level rows are Activities; their child work sessions are Blocks.
+- Start/Stop is the leftmost column, followed by Activity, Duration, %, Start, and End; Edit stays at the far right. Numeric and time columns remain stable so changing values do not make the table jitter, while Activity receives the flexible width.
+- Expanded Activities and all of their Blocks share the top-level Activity background and one outline. Adjacent Activities remain visually separate, and hover behavior is unchanged.
+- Activity start/end values are derived from the earliest and latest complete descendant dates and times. A running descendant updates the parent end live.
+- Start and End cells show local time only, but the complete dates and timestamps remain stored. Table durations omit seconds; the live dashboard Duration retains seconds.
+- Empty rows are hidden in the selected calendar window. An Activity remains visible when any descendant Block has duration in that window.
+- Automatic Block names restart at **Block 1** for each local calendar day; Block names do not need to be globally unique.
 
-- **A glanceable work dashboard.** The top cards emphasize the current Activity, active Block path, live duration, and selected-period total. Capacity-aware color states show whether the selected Day, Week, Month, or Year is within or over its configured working-hours target. When no timer is running, the focus card prompts **Get to work!** or **Stop working!** according to that capacity.
-- **A clearer Activity → Block hierarchy.** Top-level work is named **Activity** and its child sessions are named **Blocks**. Expanded groups share the Activity color and outline, while the Activity row reports the earliest descendant start and latest descendant end using the complete stored dates and times. Automatic Block numbering restarts for each local calendar day.
-- **Calendar-window navigation.** Every tracker can be viewed by Day, Week, Month, or Year, with previous/next and Today controls. Navigation cannot move beyond the period containing today. The registry retains each tracker’s selected window for the current Obsidian session without adding parameters to the note.
-- **Window-aware calculations and exports.** Rows, totals, percentages, Markdown, CSV, JSON, PDF, and custom exports all use the selected calendar window. Sessions that cross a boundary are clipped only in the derived view/export; their stored timestamps remain intact.
-- **Safe historical entry.** Start/Stop remains reserved for the current period. In an earlier period, adding an Activity—or using the **+** control on an existing Activity—opens its editor without starting a live timer. Unsaved, zero-duration drafts stay out of the normal filtered view, and registry-backed name matching avoids duplicate Activities.
-- **Native, responsive editing.** Date and time use platform-native pickers with configurable 12-hour or 24-hour display. Desktop editing stays in context; tablet and mobile use compact modals designed for the visible screen rather than the horizontally scrolling table. Save, Cancel, Delete, **-5 Min**, and **+5 Min** controls share consistent device-aware styling.
-- **A denser responsive table.** Start/Stop sits at the left edge, Edit at the right, and the Activity column receives the flexible width. Time columns display time only, while full dates remain stored. Table durations omit seconds for stability; the live Duration card retains hours, minutes, and seconds.
+### Day, Week, Month, and Year views
+
+- Every tracker has a native Day/Week/Month/Year selector, previous/next navigation, a Today button, and a clear date or date-range label.
+- Navigation cannot move beyond the period containing today. Start/Stop is available only in the current selected period because it represents real-time tracking.
+- Views are non-destructive windows—not midnight resets. They filter and clip calculations without rewriting, splitting, or discarding stored sessions, including sessions that cross a boundary.
+- The registry retains each tracker’s selected view and navigation state for the current Obsidian session without adding parameters to the note or changing the tracker schema.
+- The **%** column is calculated against the selected view’s capacity, rounds upward to 0.1%, and can exceed 100%.
+
+### Current and historical entry workflows
+
+- In the current period, adding an Activity starts it immediately; every Activity/Block play control toggles to Stop while that row is active.
+- In a previous period, adding an Activity opens its editor immediately and never starts a live timer. Registry-backed autocomplete reuses the matching Activity instead of creating duplicate top-level names.
+- In a previous period, each Activity’s real-time control becomes **+**. It creates or reopens a correctly numbered child Block and opens the editor immediately.
+- A historical draft with no positive duration stays out of the normal filtered table. Canceling it leaves no visible zero-duration row; saving valid times makes it part of that period.
+
+### Native, safer editing
+
+- Start and End use separate native date and time pickers on every device, with configurable 12-hour or 24-hour display.
+- Editors initialize in local time and save at minute precision, zeroing seconds and milliseconds without dropping the stored date.
+- **-5 Min** and **+5 Min** adjustments sit alongside Save, Cancel, and Delete. Invalid or empty date/time input does not replace a valid stored timestamp.
+- Desktop editing remains inline. Tablet and mobile use compact screen-aware modals so controls are not sized from the horizontally scrolling table.
+- Save and Delete use clear Lucide icons, delete confirmation has a compact responsive layout, and redundant close controls have been removed.
+
+### Responsive controls and exports
+
+- Button backgrounds, borders, corner radii, icon sizes, and vertical alignment are explicitly normalized across desktop and touch devices.
+- The responsive table preserves usable Activity width on mobile and keeps the action controls reachable at both edges.
+- **ADD ACTIVITY** and **EXPORT** share a card below the table. Desktop/tablet use two columns; mobile stacks the sections with an Export label and compact **MD**, **CSV**, **JSON**, and **PDF** buttons.
+- Markdown, CSV, JSON, PDF, and registered custom exports use the same selected view, row filtering, and boundary clipping as the table. Export snapshots never mutate stored tracker data.
+
+### Safe side-by-side isolation
+
+- Timekeep DF remains isolated under plugin id `obsidian-timekeep-df`, `df-timekeep` code blocks, `.timekeep-df` files, its own settings/data, scoped styles, and isolated PDF globals.
+- The official Timekeep plugin continues to own `timekeep` code blocks and `.timekeep` files. Timekeep DF never claims or silently converts them.
 
 ## ⚙️ Time and capacity settings
 
@@ -47,6 +82,18 @@ Timekeep DF adds these settings under **Settings → Timekeep DF**:
 | Default timesheet view | Day | Chooses the initial Day, Week, Month, or Year window. |
 | Total daily working hours | 8 | Calculates the **%** column and Day capacity. |
 | Total days per week | 5 | Scales Week, Month, and Year capacity. |
+
+## ➕ Create a tracker
+
+![Tracker](images/tracker.png)
+
+Use the command `Timekeep DF: Insert Tracker`, or add the fork-specific code block below:
+
+````
+```df-timekeep
+
+```
+````
 
 ## ✏️ Editing & Deleting
 
