@@ -3,7 +3,7 @@ import moment from "moment";
 import type { Store } from "@/store";
 
 import { assert } from "@/utils/assert";
-import { formatDurationLong, formatDurationLongWithoutSeconds } from "@/utils/time";
+import { formatDurationLongWithoutSeconds } from "@/utils/time";
 
 import { DomComponent } from "@/components/DomComponent";
 
@@ -71,10 +71,6 @@ export class TimesheetEntryDuration extends DomComponent {
 					getTimekeepViewWindow(this.viewState.getState())
 				)
 			: getEntryDuration(this.entry, currentTime);
-		const value = isEntryRunning(this.entry)
-			? formatDurationLong(duration)
-			: formatDurationLongWithoutSeconds(duration);
-
-		timeEl.textContent = value;
+		timeEl.textContent = formatDurationLongWithoutSeconds(duration);
 	}
 }

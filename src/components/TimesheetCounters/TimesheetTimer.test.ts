@@ -72,6 +72,21 @@ describe("TimesheetTimer", () => {
 		expect(secondary.hidden).toBe(true);
 	});
 
+	it("should update its label", () => {
+		timer.load();
+		timer.setLabel("Week total");
+
+		expect(container.querySelector(".timekeep-df-timer-label")?.textContent).toBe("Week total");
+	});
+
+	it("should expose the selected-period capacity state", () => {
+		timer.load();
+		timer.setCapacityState("within");
+		expect(timer.wrapperEl?.getAttribute("data-capacity-state")).toBe("within");
+		timer.setCapacityState("over");
+		expect(timer.wrapperEl?.getAttribute("data-capacity-state")).toBe("over");
+	});
+
 	it("secondary value should be hidden if it is empty", () => {
 		timer.load();
 

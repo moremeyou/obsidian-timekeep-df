@@ -5,7 +5,7 @@ import type { Store } from "@/store";
 
 import { createStore } from "@/store";
 import { assert } from "@/utils/assert";
-import { formatDuration } from "@/utils/time";
+import { formatDuration, formatDurationLong } from "@/utils/time";
 
 import { TimesheetTimer } from "./TimesheetTimer";
 
@@ -20,7 +20,9 @@ import {
 import type { Timekeep } from "@/timekeep/schema";
 import {
 	createTimekeepViewState,
+	getTimekeepViewCapacityHours,
 	getTimekeepViewWindow,
+	TimekeepViewMode,
 	type TimekeepViewState,
 } from "@/timekeep/view";
 
@@ -35,10 +37,10 @@ export class TimesheetCounters extends DomComponent {
 	settings: Store<TimekeepSettings>;
 	viewState: Store<TimekeepViewState>;
 
-	/** Timer for the current entry */
-	currentTimer: TimesheetTimer | undefined;
-	/** Timer for the total time */
+	/** Timer for the selected calendar period total. */
 	totalTimer: TimesheetTimer | undefined;
+	/** Live duration for the currently running Activity or Block. */
+	durationTimer: TimesheetTimer | undefined;
 
 	/** Currently tracked background interval for content */
 	currentContentInterval: number | undefined;
@@ -65,10 +67,10 @@ export class TimesheetCounters extends DomComponent {
 		});
 		this.wrapperEl = wrapperEl;
 
-		this.currentTimer = new TimesheetTimer(wrapperEl, "Current");
-		this.totalTimer = new TimesheetTimer(wrapperEl, "Total");
+		this.durationTimer = new TimesheetTimer(wrapperEl, "Duration");
+		this.totalTimer = new TimesheetTimer(wrapperEl, "Day total");
 
-		this.addChild(this.currentTimer);
+		this.addChild(this.durationTimer);
 		this.addChild(this.totalTimer);
 
 		const onUpdate = this.onUpdate.bind(this);
@@ -107,26 +109,45 @@ export class TimesheetCounters extends DomComponent {
 	 * Updates the values of the timers using the current elapsed time
 	 */
 	updateTimers() {
-		assert(this.currentTimer && this.totalTimer, "Timers must be defined for updateTimers");
+		assert(
+			this.durationTimer && this.totalTimer && this.wrapperEl,
+			"Counter elements must be defined for updateTimers"
+		);
 
 		const timekeep = this.timekeep.getState();
 		const settings = this.settings.getState();
 
 		const currentTime = moment();
+		const runningEntry = getRunningEntry(timekeep.entries);
+		this.durationTimer.setValues(
+			runningEntry ? formatDurationLong(getEntryDuration(runningEntry, currentTime)) : "0s",
+			""
+		);
 		const window = getTimekeepViewWindow(this.viewState.getState());
 		const total = getTotalDuration(timekeep.entries, currentTime, window);
-		const runningEntry = getRunningEntry(timekeep.entries);
-		const current = runningEntry ? getEntryDuration(runningEntry, currentTime, window) : 0;
+		const viewModeLabel: Record<TimekeepViewMode, string> = {
+			[TimekeepViewMode.DAY]: "Day total",
+			[TimekeepViewMode.WEEK]: "Week total",
+			[TimekeepViewMode.MONTH]: "Month total",
+			[TimekeepViewMode.YEAR]: "Year total",
+		};
 
-		this.currentTimer.setHidden(runningEntry === null || current === 0);
-		this.currentTimer.setValues(
-			formatDuration(settings.primaryDurationFormat, current),
-			formatDuration(settings.secondaryDurationFormat, current)
-		);
-
+		this.totalTimer.setLabel(viewModeLabel[this.viewState.getState().mode]);
 		this.totalTimer.setValues(
-			formatDuration(settings.primaryDurationFormat, total),
-			formatDuration(settings.secondaryDurationFormat, total)
+			total <= 0 ? "0.0h" : formatDuration(settings.primaryDurationFormat, total),
+			""
 		);
+		const capacityMS =
+			getTimekeepViewCapacityHours(
+				this.viewState.getState(),
+				settings.totalDailyWorkingHours,
+				settings.totalDaysPerWeek
+			) *
+			60 *
+			60 *
+			1000;
+		const capacityState = total <= 0 ? "empty" : total > capacityMS ? "over" : "within";
+		this.totalTimer.setCapacityState(capacityState);
+		this.wrapperEl.setAttribute("data-capacity-state", capacityState);
 	}
 }

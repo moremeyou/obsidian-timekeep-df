@@ -20,6 +20,7 @@ export class ConfirmModal extends Modal {
 	}
 
 	onOpen(): void {
+		this.modalEl.addClass("timekeep-df-confirm-modal");
 		this.contentEl.createEl("p", { text: this.message });
 
 		new Setting(this.contentEl)

@@ -9,6 +9,7 @@ import type { Store } from "@/store";
 
 import { createStore } from "@/store";
 
+import type { HistoricalActivityDraft } from "@/timekeep/draft";
 import {
 	extractTimekeepCodeblocksWithPosition,
 	load,
@@ -79,6 +80,8 @@ export class TimekeepRegistry extends Component {
 	entries: Store<TimekeepRegistryEntry[]>;
 	/** Per-tracker UI view state retained for the current plugin session. */
 	viewStates: Map<string, Store<TimekeepViewState>>;
+	/** Per-tracker transient edit request retained across Obsidian rerenders. */
+	historicalDrafts: Map<string, Store<HistoricalActivityDraft | null>>;
 
 	/** Settings access */
 	settings: Store<TimekeepSettings>;
@@ -100,6 +103,7 @@ export class TimekeepRegistry extends Component {
 		this.#vault = vault;
 		this.entries = createStore<TimekeepRegistryEntry[]>([]);
 		this.viewStates = new Map();
+		this.historicalDrafts = new Map();
 		this.settings = settings;
 		this.tasks = [];
 		this.events = [];
@@ -115,6 +119,15 @@ export class TimekeepRegistry extends Component {
 		);
 		this.viewStates.set(trackerKey, viewState);
 		return viewState;
+	}
+
+	getHistoricalDraft(trackerKey: string): Store<HistoricalActivityDraft | null> {
+		const existing = this.historicalDrafts.get(trackerKey);
+		if (existing) return existing;
+
+		const historicalDraft = createStore<HistoricalActivityDraft | null>(null);
+		this.historicalDrafts.set(trackerKey, historicalDraft);
+		return historicalDraft;
 	}
 
 	onload() {

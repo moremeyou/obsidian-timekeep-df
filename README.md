@@ -5,9 +5,8 @@
 
 <center><p>Obsidian plugin for time tracking</p></center>
 
-![License](https://img.shields.io/github/license/jacobtread/obsidian-timekeep?style=for-the-badge)
-![Build](https://img.shields.io/github/actions/workflow/status/jacobtread/obsidian-timekeep/build.yml?style=for-the-badge)
-![Tests](https://img.shields.io/github/actions/workflow/status/jacobtread/obsidian-timekeep/tests.yml?style=for-the-badge&label=Tests)
+![License](https://img.shields.io/github/license/moremeyou/obsidian-timekeep-df?style=for-the-badge)
+![CI](https://img.shields.io/github/actions/workflow/status/moremeyou/obsidian-timekeep-df/ci.yml?style=for-the-badge&label=CI)
 
 > [!NOTE]
 > This repository is the public **Timekeep DF** development derivative of
@@ -28,17 +27,42 @@ This plugin provides a command for inserting time trackers: `Timekeep DF: Insert
 ```
 ````
 
+## ✨ Timekeep DF highlights
+
+- **A glanceable work dashboard.** The top cards emphasize the current Activity, active Block path, live duration, and selected-period total. Capacity-aware color states show whether the selected Day, Week, Month, or Year is within or over its configured working-hours target. When no timer is running, the focus card prompts **Get to work!** or **Stop working!** according to that capacity.
+- **A clearer Activity → Block hierarchy.** Top-level work is named **Activity** and its child sessions are named **Blocks**. Expanded groups share the Activity color and outline, while the Activity row reports the earliest descendant start and latest descendant end using the complete stored dates and times. Automatic Block numbering restarts for each local calendar day.
+- **Calendar-window navigation.** Every tracker can be viewed by Day, Week, Month, or Year, with previous/next and Today controls. Navigation cannot move beyond the period containing today. The registry retains each tracker’s selected window for the current Obsidian session without adding parameters to the note.
+- **Window-aware calculations and exports.** Rows, totals, percentages, Markdown, CSV, JSON, PDF, and custom exports all use the selected calendar window. Sessions that cross a boundary are clipped only in the derived view/export; their stored timestamps remain intact.
+- **Safe historical entry.** Start/Stop remains reserved for the current period. In an earlier period, adding an Activity—or using the **+** control on an existing Activity—opens its editor without starting a live timer. Unsaved, zero-duration drafts stay out of the normal filtered view, and registry-backed name matching avoids duplicate Activities.
+- **Native, responsive editing.** Date and time use platform-native pickers with configurable 12-hour or 24-hour display. Desktop editing stays in context; tablet and mobile use compact modals designed for the visible screen rather than the horizontally scrolling table. Save, Cancel, Delete, **-5 Min**, and **+5 Min** controls share consistent device-aware styling.
+- **A denser responsive table.** Start/Stop sits at the left edge, Edit at the right, and the Activity column receives the flexible width. Time columns display time only, while full dates remain stored. Table durations omit seconds for stability; the live Duration card retains hours, minutes, and seconds.
+
+## ⚙️ Time and capacity settings
+
+Timekeep DF adds these settings under **Settings → Timekeep DF**:
+
+| Setting | Default | Purpose |
+| --- | --- | --- |
+| Clock format | 24-hour | Selects 12-hour or 24-hour timestamp display and native-picker hints. |
+| Default timesheet view | Day | Chooses the initial Day, Week, Month, or Year window. |
+| Total daily working hours | 8 | Calculates the **%** column and Day capacity. |
+| Total days per week | 5 | Scales Week, Month, and Year capacity. |
+
 ## ✏️ Editing & Deleting
 
 If you accidentally gave an Activity or Block an incorrect name, or started its timer late, you can use the editing feature to update the stored data or delete the entry.
 
-Start and end timestamps use the platform's native date and time pickers on desktop, tablet, and mobile. Choose **12-hour** or **24-hour** under **Settings → Timekeep DF → Clock format**. Timestamps show minute precision; seconds appear only in live durations for active Activity and Block rows.
+Start and end timestamps use the platform's native date and time pickers on desktop, tablet, and mobile. Choose **12-hour** or **24-hour** under **Settings → Timekeep DF → Clock format**. Saved edits use minute precision: seconds and milliseconds are zeroed. Seconds remain visible only in the live Duration card.
 
 Expanded Activities visually group their Block rows and derive the Activity's displayed start/end times from the earliest and latest full date/time values across all descendant sessions. Table rows show time only; the complete date and timestamp remain stored.
 
 Each tracker has **Day**, **Week**, **Month**, and **Year** calendar views with previous, next, and Today navigation. Forward navigation stops at the period containing today. Sessions crossing a view boundary are clipped for display and calculation only—the original timestamps are never rewritten. **Default timesheet view** starts at Day. The **%** column uses **Total daily working hours** (8 by default); Week, Month, and Year capacity also uses **Total days per week** (5 by default). The registry retains each tracker's selected view for the current Obsidian session without adding view parameters to the note.
 
-All Activity and Block rows remain visible in every view. The tracker export buttons—Markdown, CSV, JSON, PDF, and registered custom formats—use the selected calendar window too. Their export snapshot retains every row, clips overlapping sessions to the window, and leaves out-of-window rows without interval timestamps or duration; stored tracker data is not modified.
+The tracker header prioritizes the current Activity, its active Block path, and a live hours/minutes/seconds elapsed value. The selected Day, Week, Month, or Year total remains visible as secondary context.
+
+Each view shows only Activities and Blocks with tracked duration in its selected calendar window. Parent Activities remain visible when a descendant Block has duration. The tracker export buttons—Markdown, CSV, JSON, PDF, and registered custom formats—apply the same filter and clip overlapping sessions to the window; stored tracker data is not modified.
+
+For current periods, the row control starts or stops real-time tracking. For historical periods, that control becomes **+** and opens a new Block in the editor. Adding an Activity in a historical period also opens the editor immediately and never starts a live timer. A historical draft becomes part of the visible window only after it has a valid positive duration.
 
 ![Editing](images/editing.png)
 

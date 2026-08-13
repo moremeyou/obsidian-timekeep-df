@@ -35,14 +35,19 @@ describe("TimesheetCounters", () => {
 		vi.useRealTimers();
 	});
 
-	it("should initialize wrapper and timers on load", () => {
+	it("should initialize the selected-period total on load", () => {
 		component.load();
 
 		expect(component.wrapperEl).toBeInstanceOf(HTMLDivElement);
 		expect(component.wrapperEl?.className).toBe("timekeep-df-timers");
 
-		expect(component.currentTimer).toBeInstanceOf(TimesheetTimer);
+		expect(component.durationTimer).toBeInstanceOf(TimesheetTimer);
 		expect(component.totalTimer).toBeInstanceOf(TimesheetTimer);
+		expect(
+			Array.from(component.wrapperEl?.querySelectorAll(".timekeep-df-timer-label") ?? []).map(
+				(label) => label.textContent
+			)
+		).toEqual(["Duration", "Day total"]);
 	});
 
 	it("should call updateTimers on load", () => {
@@ -53,20 +58,20 @@ describe("TimesheetCounters", () => {
 		expect(spy).toHaveBeenCalled();
 	});
 
-	it("should set timer values using getEntryDuration and getTotalDuration", () => {
+	it("should set timer values using the selected-period total duration", () => {
 		component.load();
 
-		assert(component.currentTimer && component.totalTimer);
+		assert(component.totalTimer);
+		assert(component.durationTimer);
 
-		const currentSetValues = vi.spyOn(component.currentTimer, "setValues");
 		const totalSetValues = vi.spyOn(component.totalTimer, "setValues");
-		const setCurrentHidden = vi.spyOn(component.currentTimer, "setHidden");
+		const durationSetValues = vi.spyOn(component.durationTimer, "setValues");
 
 		component.onUpdate();
 
-		expect(setCurrentHidden).toHaveBeenCalledWith(true);
-		expect(currentSetValues).toHaveBeenCalledWith("0s", "0.00h");
-		expect(totalSetValues).toHaveBeenCalledWith("0s", "0.00h");
+		expect(totalSetValues).toHaveBeenCalledWith("0.0h", "");
+		expect(durationSetValues).toHaveBeenCalledWith("0s", "");
+		expect(component.wrapperEl?.getAttribute("data-capacity-state")).toBe("empty");
 	});
 
 	it("should schedule interval if keep is running", () => {
@@ -95,7 +100,7 @@ describe("TimesheetCounters", () => {
 		expect(clearSpy).toHaveBeenCalledWith(fakeIntervalID);
 	});
 
-	it("should show the current and total duration if theres a running entry", () => {
+	it("should keep the selected-period total live while an entry is running", () => {
 		const start = moment("2026-08-12T10:00:00");
 		const oneHourLater = moment(start).add(1, "hour");
 
@@ -114,11 +119,11 @@ describe("TimesheetCounters", () => {
 
 		component.load();
 
-		assert(component.currentTimer && component.totalTimer);
+		assert(component.totalTimer);
+		assert(component.durationTimer);
 
-		const currentSetValues = vi.spyOn(component.currentTimer, "setValues");
 		const totalSetValues = vi.spyOn(component.totalTimer, "setValues");
-		const setCurrentHidden = vi.spyOn(component.currentTimer, "setHidden");
+		const durationSetValues = vi.spyOn(component.durationTimer, "setValues");
 
 		timekeepStore.setState({
 			entries: [
@@ -132,9 +137,8 @@ describe("TimesheetCounters", () => {
 			],
 		});
 
-		expect(setCurrentHidden).toHaveBeenCalledWith(false);
-		expect(currentSetValues).toHaveBeenCalledWith("1h 0s", "1.00h");
-		expect(totalSetValues).toHaveBeenCalledWith("1h 0s", "1.00h");
+		expect(totalSetValues).toHaveBeenCalledWith("1h 0s", "");
+		expect(durationSetValues).toHaveBeenCalledWith("1h 0s", "");
 	});
 
 	it("should show total duration as the sum of all entry durations", () => {
@@ -156,11 +160,9 @@ describe("TimesheetCounters", () => {
 
 		component.load();
 
-		assert(component.currentTimer && component.totalTimer);
+		assert(component.totalTimer);
 
-		const currentSetValues = vi.spyOn(component.currentTimer, "setValues");
 		const totalSetValues = vi.spyOn(component.totalTimer, "setValues");
-		const setCurrentHidden = vi.spyOn(component.currentTimer, "setHidden");
 
 		timekeepStore.setState({
 			entries: [
@@ -183,8 +185,66 @@ describe("TimesheetCounters", () => {
 			],
 		});
 
-		expect(setCurrentHidden).toHaveBeenCalledWith(false);
-		expect(currentSetValues).toHaveBeenCalledWith("1h 0s", "1.00h");
-		expect(totalSetValues).toHaveBeenCalledWith("3h 0s", "3.00h");
+		expect(totalSetValues).toHaveBeenCalledWith("3h 0s", "");
+	});
+
+	it("labels the total for the selected calendar range", () => {
+		const viewState = createStore({
+			mode: TimekeepViewMode.DAY,
+			anchorDate: "2026-08-12",
+			followCurrent: true,
+		});
+		component = new TimesheetCounters(container, settingsStore, timekeepStore, viewState);
+		component.load();
+
+		const label = component.totalTimer?.wrapperEl?.querySelector(".timekeep-df-timer-label");
+		expect(label?.textContent).toBe("Day total");
+
+		viewState.setState({ ...viewState.getState(), mode: TimekeepViewMode.WEEK });
+		expect(label?.textContent).toBe("Week total");
+	});
+
+	it("marks a non-zero total within capacity green and an over-capacity total red", () => {
+		vi.useFakeTimers();
+		vi.setSystemTime(moment("2026-08-12T18:00:00").toDate());
+		settingsStore.setState({ ...defaultSettings, totalDailyWorkingHours: 8 });
+		component = new TimesheetCounters(
+			container,
+			settingsStore,
+			timekeepStore,
+			createStore({
+				mode: TimekeepViewMode.DAY,
+				anchorDate: "2026-08-12",
+				followCurrent: true,
+			})
+		);
+		component.load();
+
+		const timer = component.wrapperEl;
+		timekeepStore.setState({
+			entries: [
+				{
+					id: 1,
+					name: "Within",
+					startTime: moment("2026-08-12T10:00:00"),
+					endTime: moment("2026-08-12T18:00:00"),
+					subEntries: null,
+				},
+			],
+		});
+		expect(timer?.getAttribute("data-capacity-state")).toBe("within");
+
+		timekeepStore.setState({
+			entries: [
+				{
+					id: 1,
+					name: "Over",
+					startTime: moment("2026-08-12T09:00:00"),
+					endTime: moment("2026-08-12T18:00:00"),
+					subEntries: null,
+				},
+			],
+		});
+		expect(timer?.getAttribute("data-capacity-state")).toBe("over");
 	});
 });

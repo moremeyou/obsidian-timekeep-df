@@ -1,7 +1,7 @@
 import moment from "moment";
 import { expect, it, describe } from "vitest";
 
-import { withEntry, createEntry, withSubEntry } from "./create";
+import { withEntry, createEntry, createUnstartedEntry, withSubEntry } from "./create";
 import { stripEntryRuntimeData, stripEntriesRuntimeData } from "./schema";
 
 describe("createEntry", () => {
@@ -23,6 +23,17 @@ describe("createEntry", () => {
 		const entry1 = createEntry("Block 1", currentTime);
 		const entry2 = createEntry("Block 2", currentTime);
 		expect(entry1.id).not.toBe(entry2.id);
+	});
+});
+
+describe("createUnstartedEntry", () => {
+	it("creates an Activity without a timer interval", () => {
+		expect(stripEntryRuntimeData(createUnstartedEntry("Planning"))).toEqual({
+			name: "Planning",
+			startTime: null,
+			endTime: null,
+			subEntries: null,
+		});
 	});
 });
 
@@ -99,5 +110,35 @@ describe("withSubEntry", () => {
 
 		const output = withSubEntry(input, "", currentTime);
 		expect(stripEntryRuntimeData(output)).toEqual(stripEntryRuntimeData(expected));
+	});
+
+	it("resets automatic Block numbering on each local calendar day", () => {
+		const firstDay = moment("2026-08-11T23:55:00");
+		const secondDay = moment("2026-08-12T00:05:00");
+		const parent = {
+			id: 1,
+			name: "Activity",
+			startTime: null,
+			endTime: null,
+			subEntries: [
+				{
+					id: 2,
+					name: "Block 1",
+					startTime: firstDay,
+					endTime: moment(firstDay).add(1, "minute"),
+					subEntries: null,
+				},
+			],
+		};
+
+		const firstOnSecondDay = withSubEntry(parent, "", secondDay);
+		const secondOnSecondDay = withSubEntry(
+			firstOnSecondDay,
+			"",
+			moment(secondDay).add(1, "hour")
+		);
+
+		expect(firstOnSecondDay.subEntries.at(-1)?.name).toBe("Block 1");
+		expect(secondOnSecondDay.subEntries.at(-1)?.name).toBe("Block 2");
 	});
 });

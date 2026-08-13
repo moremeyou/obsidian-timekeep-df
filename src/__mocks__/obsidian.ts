@@ -21,6 +21,7 @@ export const mockRequireApiVersion = vi.fn(() => true);
 export const MockPlatform = vi.mockObject({
 	isDesktop: true,
 	isMobile: false,
+	isPhone: false,
 	isDesktopApp: true,
 	isMobileApp: false,
 });

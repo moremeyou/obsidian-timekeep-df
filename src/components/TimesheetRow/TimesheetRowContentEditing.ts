@@ -12,10 +12,12 @@ import { ReplaceableComponent } from "@/components/ReplaceableComponent";
 
 import { ConfirmModal } from "@/modals/ConfirmModal";
 
+import type { HistoricalActivityDraft } from "@/timekeep/draft";
 import type { TimeEntry, Timekeep } from "@/timekeep/schema";
 import { removeEntry, updateEntry } from "@/timekeep/update";
 
 type TimestampInputName = "start" | "end";
+export type TimesheetRowEditorPresentation = "row" | "modal";
 
 interface TimestampEditor {
 	containerEl: HTMLElement;
@@ -41,6 +43,9 @@ export class TimesheetRowContentEditing extends ReplaceableComponent {
 
 	/** The entry for this row */
 	entry: TimeEntry;
+	/** Transient context for an unstarted interval opened from a historical range. */
+	historicalDraft: HistoricalActivityDraft | null;
+	presentation: TimesheetRowEditorPresentation;
 
 	/** Input for the entry name */
 	#nameInputEl: HTMLInputElement | undefined;
@@ -58,7 +63,9 @@ export class TimesheetRowContentEditing extends ReplaceableComponent {
 		timekeep: Store<Timekeep>,
 		settings: Store<TimekeepSettings>,
 		entry: TimeEntry,
-		onFinishEditing: VoidFunction
+		onFinishEditing: VoidFunction,
+		historicalDraft: HistoricalActivityDraft | null = null,
+		presentation: TimesheetRowEditorPresentation = "row"
 	) {
 		super(containerEl);
 
@@ -67,27 +74,31 @@ export class TimesheetRowContentEditing extends ReplaceableComponent {
 		this.settings = settings;
 
 		this.entry = entry;
+		this.historicalDraft = historicalDraft;
+		this.presentation = presentation;
 		this.onFinishEditing = onFinishEditing;
 	}
 
 	createContainer(): HTMLElement {
-		return createEl("tr", { cls: "timekeep-df-row" });
+		return this.presentation === "row"
+			? createEl("tr", { cls: "timekeep-df-row" })
+			: createDiv({ cls: "timekeep-df-row-edit-modal-content" });
 	}
 
 	render(wrapperEl: HTMLElement): void {
-		const colEl = wrapperEl.createEl("td");
-		colEl.colSpan = 6;
+		const contentEl = this.presentation === "row" ? wrapperEl.createEl("td") : wrapperEl;
+		if (contentEl instanceof HTMLTableCellElement) contentEl.colSpan = 7;
 
-		const formEl = colEl.createEl("form", { cls: "timekeep-df-editing" });
+		const formEl = contentEl.createEl("form", { cls: "timekeep-df-editing" });
 		this.registerDomEvent(formEl, "submit", this.onSubmit.bind(this));
 
 		const nameLabelEl = formEl.createEl("label", {
 			cls: "timekeep-df-input-label",
-			text: "Name",
 		});
 		const nameInputEl = nameLabelEl.createEl("input", {
 			cls: "timekeep-df-input",
 			type: "text",
+			attr: { "aria-label": "Name" },
 		});
 		nameInputEl.name = "name";
 		this.#nameInputEl = nameInputEl;
@@ -96,18 +107,42 @@ export class TimesheetRowContentEditing extends ReplaceableComponent {
 		this.#startTimeEditor = this.createTimestampEditor(formEl, "start", clockFormat);
 		this.#endTimeEditor = this.createTimestampEditor(formEl, "end", clockFormat);
 
-		const actionsEl = formEl.createDiv({
+		const footerEl = formEl.createDiv({ cls: "timekeep-df-editing-footer" });
+		const actionsEl = footerEl.createDiv({
 			cls: "timekeep-df-editing-actions",
 		});
+		const adjustmentActionsEl = footerEl.createDiv({
+			cls: "timekeep-df-editing-adjustments",
+		});
+		adjustmentActionsEl.hidden =
+			this.entry.subEntries !== null ||
+			(this.entry.startTime === null && this.historicalDraft === null);
+
+		const subtractButton = adjustmentActionsEl.createEl("button", {
+			cls: "timekeep-df-action",
+			attr: { "data-action": "subtract-five-minutes" },
+		});
+		subtractButton.type = "button";
+		createObsidianIcon(subtractButton, "rotate-ccw-clock", "timekeep-df-text-button-icon");
+		subtractButton.appendText("-5 Min");
+		this.registerDomEvent(subtractButton, "click", () => this.adjustDuration(-5));
+
+		const addButton = adjustmentActionsEl.createEl("button", {
+			cls: "timekeep-df-action",
+			attr: { "data-action": "add-five-minutes" },
+		});
+		addButton.type = "button";
+		addButton.appendText("+5 Min");
+		this.registerDomEvent(addButton, "click", () => this.adjustDuration(5));
 
 		const saveButton = actionsEl.createEl("button", {
-			cls: "timekeep-df-action",
+			cls: "mod-cta timekeep-df-action",
 			attr: {
 				"data-action": "save",
 			},
 		});
 		saveButton.type = "submit";
-		createObsidianIcon(saveButton, "edit", "timekeep-df-text-button-icon");
+		createObsidianIcon(saveButton, "save", "timekeep-df-text-button-icon");
 		saveButton.appendText("Save");
 
 		const cancelButton = actionsEl.createEl("button", {
@@ -117,18 +152,20 @@ export class TimesheetRowContentEditing extends ReplaceableComponent {
 			},
 		});
 		cancelButton.type = "button";
-		createObsidianIcon(cancelButton, "x", "timekeep-df-text-button-icon");
 		this.registerDomEvent(cancelButton, "click", this.onFinishEditing);
 		cancelButton.appendText("Cancel");
 
-		const deleteButton = actionsEl.createEl("button", {
+		const destructiveActionsEl = footerEl.createDiv({
+			cls: "timekeep-df-editing-destructive",
+		});
+		const deleteButton = destructiveActionsEl.createEl("button", {
 			cls: "timekeep-df-action",
 			attr: {
 				"data-action": "delete",
 			},
 		});
 		deleteButton.type = "button";
-		createObsidianIcon(deleteButton, "trash", "timekeep-df-text-button-icon");
+		createObsidianIcon(deleteButton, "trash-2", "timekeep-df-text-button-icon");
 		deleteButton.appendText("Delete");
 
 		this.registerDomEvent(deleteButton, "click", this.onConfirmDelete.bind(this));
@@ -139,12 +176,37 @@ export class TimesheetRowContentEditing extends ReplaceableComponent {
 		onUpdateState();
 	}
 
+	/** Adjust the edited duration without changing stored data until Save is pressed. */
+	adjustDuration(minutes: number): void {
+		assert(this.#startTimeEditor && this.#endTimeEditor, "Timestamp editors should exist");
+
+		const start = this.#startTimeEditor.getValue();
+		if (!start.isValid()) return;
+		if (this.historicalDraft) {
+			const end = this.#endTimeEditor.getValue();
+			if (!end.isValid()) return;
+			this.#endTimeEditor.setValue(moment.max(start, moment(end).add(minutes, "minutes")));
+			return;
+		}
+
+		if (this.entry.endTime !== null) {
+			const end = this.#endTimeEditor.getValue();
+			if (!end.isValid()) return;
+			this.#endTimeEditor.setValue(moment.max(start, moment(end).add(minutes, "minutes")));
+			return;
+		}
+
+		const latestStart = moment().startOf("minute");
+		const adjustedStart = moment(start).subtract(minutes, "minutes");
+		this.#startTimeEditor.setValue(moment.min(adjustedStart, latestStart));
+	}
+
 	createTimestampEditor(
 		formEl: HTMLElement,
 		name: TimestampInputName,
 		clockFormat: ClockFormat
 	): TimestampEditor {
-		const title = name === "start" ? "Start" : "End";
+		const title = name === "start" ? "START" : "END";
 		const containerEl = formEl.createDiv({
 			cls: "timekeep-df-timestamp-editor",
 			attr: { "data-timestamp": name },
@@ -153,17 +215,17 @@ export class TimesheetRowContentEditing extends ReplaceableComponent {
 
 		const fieldsEl = containerEl.createDiv({ cls: "timekeep-df-timestamp-fields" });
 		const dateFieldEl = fieldsEl.createEl("label", { cls: "timekeep-df-timestamp-field" });
-		dateFieldEl.createSpan({ text: "Date" });
 		const dateInputEl = dateFieldEl.createEl("input", {
 			cls: "timekeep-df-date-input",
+			attr: { "aria-label": `${title} date` },
 		});
 		dateInputEl.type = "date";
 		dateInputEl.name = `timekeep-df-${name}-date`;
 
 		const timeFieldEl = fieldsEl.createDiv({ cls: "timekeep-df-timestamp-field" });
-		timeFieldEl.createSpan({ text: "Time" });
 		const nativeTimeInputEl = timeFieldEl.createEl("input", {
 			cls: "timekeep-df-native-time-input",
+			attr: { "aria-label": `${title} time` },
 		});
 		nativeTimeInputEl.type = "time";
 		nativeTimeInputEl.name = `timekeep-df-${name}-native-time`;
@@ -196,20 +258,26 @@ export class TimesheetRowContentEditing extends ReplaceableComponent {
 
 		this.#nameInputEl.value = entry.name;
 
-		this.#startTimeEditor.containerEl.hidden = entry.startTime === null;
+		this.#startTimeEditor.containerEl.hidden =
+			entry.startTime === null && this.historicalDraft === null;
 		if (entry.startTime) this.#startTimeEditor.setValue(entry.startTime);
+		else if (this.historicalDraft)
+			this.#startTimeEditor.setValue(this.historicalDraft.initialTime);
 
-		this.#endTimeEditor.containerEl.hidden = entry.endTime === null;
+		this.#endTimeEditor.containerEl.hidden =
+			entry.endTime === null && this.historicalDraft === null;
 		if (entry.endTime) this.#endTimeEditor.setValue(entry.endTime);
+		else if (this.historicalDraft)
+			this.#endTimeEditor.setValue(this.historicalDraft.initialTime);
 	}
 
 	onConfirmDelete() {
 		const modal = new ConfirmModal(
 			this.app,
-			"Are you sure you want to delete this entry?",
+			"Delete this Activity or Block? This cannot be undone.",
 			this.onConfirmedDelete.bind(this)
 		);
-		modal.setTitle("Confirm Delete");
+		modal.setTitle("Confirm delete");
 		modal.open();
 	}
 
@@ -220,9 +288,11 @@ export class TimesheetRowContentEditing extends ReplaceableComponent {
 
 		const entry = this.entry;
 
+		if (this.historicalDraft) this.onFinishEditing();
 		this.timekeep.setState((timekeep) => ({
 			entries: removeEntry(timekeep.entries, entry),
 		}));
+		if (!this.historicalDraft) this.onFinishEditing();
 	}
 
 	onSubmit(event: Event) {
@@ -241,14 +311,25 @@ export class TimesheetRowContentEditing extends ReplaceableComponent {
 
 		// Update the start and end times for non groups
 		if (newEntry.subEntries === null) {
-			if (entry.startTime !== null) {
+			if (this.historicalDraft) {
+				const startTimeValue = this.#startTimeEditor.getValue();
+				const endTimeValue = this.#endTimeEditor.getValue();
+				if (
+					startTimeValue.isValid() &&
+					endTimeValue.isValid() &&
+					endTimeValue.isAfter(startTimeValue)
+				) {
+					newEntry.startTime = startTimeValue;
+					newEntry.endTime = endTimeValue;
+				}
+			} else if (entry.startTime !== null) {
 				const startTimeValue = this.#startTimeEditor.getValue();
 				if (startTimeValue.isValid()) {
 					newEntry.startTime = startTimeValue;
 				}
 			}
 
-			if (entry.endTime !== null) {
+			if (!this.historicalDraft && entry.endTime !== null) {
 				const endTimeValue = this.#endTimeEditor.getValue();
 				if (endTimeValue.isValid()) {
 					newEntry.endTime = endTimeValue;
@@ -256,11 +337,14 @@ export class TimesheetRowContentEditing extends ReplaceableComponent {
 			}
 		}
 
+		// Clear a historical editor before its data update can rebuild the table.
+		if (this.historicalDraft) this.onFinishEditing();
+
 		// Save the updated entry
 		this.timekeep.setState((timekeep) => ({
 			entries: updateEntry(timekeep.entries, entry.id, newEntry),
 		}));
 
-		this.onFinishEditing();
+		if (!this.historicalDraft) this.onFinishEditing();
 	}
 }

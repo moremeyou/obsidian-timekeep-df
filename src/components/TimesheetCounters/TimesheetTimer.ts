@@ -12,6 +12,8 @@ export class TimesheetTimer extends DomComponent {
 	#primaryValueEl: HTMLSpanElement | undefined;
 	/** Secondary value display element */
 	#secondaryValueEl: HTMLSpanElement | undefined;
+	/** Label display element */
+	#labelEl: HTMLSpanElement | undefined;
 
 	constructor(containerEl: HTMLElement, label: string) {
 		super(containerEl);
@@ -26,12 +28,25 @@ export class TimesheetTimer extends DomComponent {
 
 		const primaryValueEl = wrapperEl.createDiv({ cls: "timekeep-df-timer-value" });
 		const secondaryValueEl = wrapperEl.createDiv({ cls: "timekeep-df-timer-value-small" });
-		wrapperEl.createSpan({ text: this.#label });
+		const labelEl = wrapperEl.createSpan({ cls: "timekeep-df-timer-label", text: this.#label });
 
 		this.#primaryValueEl = primaryValueEl;
 		this.#secondaryValueEl = secondaryValueEl;
+		this.#labelEl = labelEl;
 
 		this.setValues("", " ");
+	}
+
+	/** Update the timer label. */
+	setLabel(label: string) {
+		this.#label = label;
+		if (this.#labelEl) this.#labelEl.textContent = label;
+	}
+
+	/** Set the capacity state used by the selected-period card. */
+	setCapacityState(state: "empty" | "within" | "over") {
+		if (!this.wrapperEl) return;
+		this.wrapperEl.setAttribute("data-capacity-state", state);
 	}
 
 	/**

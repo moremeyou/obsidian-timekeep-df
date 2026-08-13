@@ -14,6 +14,7 @@ import { createStore } from "@/store";
 
 import { TimesheetRowContentEditing } from "./TimesheetRowContentEditing";
 
+import type { HistoricalActivityDraft } from "@/timekeep/draft";
 import { defaultTimekeep, type TimeEntry, type Timekeep } from "@/timekeep/schema";
 
 function getInput(containerEl: HTMLElement, name: string): HTMLInputElement {
@@ -46,6 +47,7 @@ describe("TimesheetRowContentEditing", () => {
 
 	afterEach(() => {
 		if (component) component.unload();
+		vi.useRealTimers();
 	});
 
 	it("should load without error", () => {
@@ -95,6 +97,19 @@ describe("TimesheetRowContentEditing", () => {
 		expect(getInput(containerEl, "timekeep-df-end-date").value).toBe("2026-08-11");
 		expect(getInput(containerEl, "timekeep-df-end-native-time").value).toBe("18:47");
 		expect(containerEl.querySelectorAll('input[type="number"]')).toHaveLength(0);
+		expect(
+			containerEl
+				.querySelector<HTMLInputElement>('input[name="name"]')
+				?.getAttribute("aria-label")
+		).toBe("Name");
+		expect(containerEl.querySelector('[data-timestamp="start"]')?.textContent).toBe("START");
+		expect(containerEl.querySelector('[data-timestamp="end"]')?.textContent).toBe("END");
+		expect(getInput(containerEl, "timekeep-df-start-date").getAttribute("aria-label")).toBe(
+			"START date"
+		);
+		expect(
+			getInput(containerEl, "timekeep-df-start-native-time").getAttribute("aria-label")
+		).toBe("START time");
 	});
 
 	it("hints the selected 12-hour or 24-hour format to native time pickers", () => {
@@ -176,6 +191,76 @@ describe("TimesheetRowContentEditing", () => {
 		const [saved] = timekeep.getState().entries;
 		expect(saved.startTime?.format("YYYY-MM-DD HH:mm:ss.SSS")).toBe("2026-09-03 14:33:00.000");
 		expect(saved.endTime?.format("YYYY-MM-DD HH:mm:ss.SSS")).toBe("2026-09-04 01:02:00.000");
+	});
+
+	it("keeps an empty historical draft unstarted on Save", () => {
+		const entry: TimeEntry = {
+			id: 1,
+			name: "Historical Activity",
+			startTime: null,
+			endTime: null,
+			subEntries: null,
+		};
+		const draft: HistoricalActivityDraft = {
+			activityId: entry.id,
+			activityName: entry.name,
+			entryId: entry.id,
+			entryName: entry.name,
+			initialTime: moment("2026-08-11T14:25"),
+		};
+		timekeep.setState({ entries: [entry] });
+		component = new TimesheetRowContentEditing(
+			containerEl,
+			app,
+			timekeep,
+			settings,
+			entry,
+			onFinishEditing,
+			draft
+		);
+		component.load();
+
+		submitEditor(containerEl);
+		expect(timekeep.getState().entries[0]).toMatchObject({
+			startTime: null,
+			endTime: null,
+		});
+		expect(onFinishEditing).toHaveBeenCalledOnce();
+	});
+
+	it("saves a positive historical draft interval at minute precision", () => {
+		const entry: TimeEntry = {
+			id: 1,
+			name: "Historical Activity",
+			startTime: null,
+			endTime: null,
+			subEntries: null,
+		};
+		const draft: HistoricalActivityDraft = {
+			activityId: entry.id,
+			activityName: entry.name,
+			entryId: entry.id,
+			entryName: entry.name,
+			initialTime: moment("2026-08-11T14:25"),
+		};
+		timekeep.setState({ entries: [entry] });
+		component = new TimesheetRowContentEditing(
+			containerEl,
+			app,
+			timekeep,
+			settings,
+			entry,
+			onFinishEditing,
+			draft
+		);
+		component.load();
+
+		getInput(containerEl, "timekeep-df-end-native-time").value = "14:30";
+		submitEditor(containerEl);
+
+		const saved = timekeep.getState().entries[0];
+		expect(saved.startTime?.format("YYYY-MM-DD HH:mm:ss.SSS")).toBe("2026-08-11 14:25:00.000");
+		expect(saved.endTime?.format("YYYY-MM-DD HH:mm:ss.SSS")).toBe("2026-08-11 14:30:00.000");
 	});
 
 	it("clicking the cancel button should call onFinishEditing", () => {
@@ -425,6 +510,140 @@ describe("TimesheetRowContentEditing", () => {
 
 		const contentEl: HTMLElement = document!.querySelector(".mock-modal-content")!;
 		expect(contentEl).toBeInstanceOf(HTMLElement);
+	});
+
+	it("uses the full seven-column row and a text-only Cancel action", () => {
+		component = new TimesheetRowContentEditing(
+			containerEl,
+			app,
+			timekeep,
+			settings,
+			{
+				id: 1,
+				name: "Test",
+				startTime: null,
+				endTime: null,
+				subEntries: [],
+			},
+			onFinishEditing
+		);
+		component.load();
+
+		expect(component.wrapperEl?.querySelector("td")?.colSpan).toBe(7);
+		const cancelButton = component.wrapperEl?.querySelector('[data-action="cancel"]');
+		expect(cancelButton?.textContent).toBe("Cancel");
+		expect(cancelButton?.querySelector("svg")).toBeNull();
+	});
+
+	it("offers five-minute duration adjustments using icon-and-text buttons", () => {
+		const entry: TimeEntry = {
+			id: 1,
+			name: "Test",
+			startTime: moment("2026-08-11T09:00"),
+			endTime: moment("2026-08-11T10:00"),
+			subEntries: null,
+		};
+		timekeep.setState({ entries: [entry] });
+		component = new TimesheetRowContentEditing(
+			containerEl,
+			app,
+			timekeep,
+			settings,
+			entry,
+			onFinishEditing
+		);
+		component.load();
+
+		const subtract = containerEl.querySelector<HTMLButtonElement>(
+			'[data-action="subtract-five-minutes"]'
+		);
+		const add = containerEl.querySelector<HTMLButtonElement>(
+			'[data-action="add-five-minutes"]'
+		);
+		expect(subtract?.textContent).toContain("-5 Min");
+		expect(subtract?.querySelector("svg")).not.toBeNull();
+		expect(add?.textContent).toContain("+5 Min");
+		expect(add?.querySelector("svg")).toBeNull();
+		const footer = containerEl.querySelector(".timekeep-df-editing-footer");
+		expect(footer?.children.item(0)?.classList.contains("timekeep-df-editing-actions")).toBe(
+			true
+		);
+		expect(
+			footer?.children.item(1)?.classList.contains("timekeep-df-editing-adjustments")
+		).toBe(true);
+		expect(
+			footer?.children.item(2)?.classList.contains("timekeep-df-editing-destructive")
+		).toBe(true);
+		expect(footer?.querySelector('[data-action="save"] svg')?.getAttribute("data-icon")).toBe(
+			"save"
+		);
+		expect(footer?.querySelector('[data-action="delete"] svg')?.getAttribute("data-icon")).toBe(
+			"trash-2"
+		);
+
+		subtract!.click();
+		expect(getInput(containerEl, "timekeep-df-end-native-time").value).toBe("09:55");
+		add!.click();
+		add!.click();
+		expect(getInput(containerEl, "timekeep-df-end-native-time").value).toBe("10:05");
+		expect(timekeep.getState().entries[0].endTime?.format("HH:mm")).toBe("10:00");
+
+		submitEditor(containerEl);
+		expect(timekeep.getState().entries[0].endTime?.format("HH:mm:ss.SSS")).toBe("10:05:00.000");
+	});
+
+	it("adjusts a running duration by moving its start and never into the future", () => {
+		vi.useFakeTimers();
+		vi.setSystemTime(moment("2026-08-11T10:00").toDate());
+		const entry: TimeEntry = {
+			id: 1,
+			name: "Test",
+			startTime: moment("2026-08-11T09:55"),
+			endTime: null,
+			subEntries: null,
+		};
+		component = new TimesheetRowContentEditing(
+			containerEl,
+			app,
+			timekeep,
+			settings,
+			entry,
+			onFinishEditing
+		);
+		component.load();
+
+		containerEl.querySelector<HTMLButtonElement>('[data-action="add-five-minutes"]')!.click();
+		expect(getInput(containerEl, "timekeep-df-start-native-time").value).toBe("09:50");
+
+		containerEl
+			.querySelector<HTMLButtonElement>('[data-action="subtract-five-minutes"]')!
+			.click();
+		containerEl
+			.querySelector<HTMLButtonElement>('[data-action="subtract-five-minutes"]')!
+			.click();
+		expect(getInput(containerEl, "timekeep-df-start-native-time").value).toBe("10:00");
+	});
+
+	it("hides duration adjustment buttons for groups and unstarted entries", () => {
+		component = new TimesheetRowContentEditing(
+			containerEl,
+			app,
+			timekeep,
+			settings,
+			{
+				id: 1,
+				name: "Group",
+				startTime: null,
+				endTime: null,
+				subEntries: [],
+			},
+			onFinishEditing
+		);
+		component.load();
+		expect(
+			component.wrapperEl?.querySelector<HTMLElement>(".timekeep-df-editing-adjustments")
+				?.hidden
+		).toBe(true);
 	});
 
 	it("cancelling deletion should do nothing", () => {

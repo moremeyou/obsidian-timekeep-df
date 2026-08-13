@@ -5,6 +5,7 @@ import {
 	canNavigateTimekeepViewForward,
 	createTimekeepViewSnapshot,
 	createTimekeepViewState,
+	filterTimekeepViewEntries,
 	formatTimekeepViewLabel,
 	getTimekeepViewCapacityHours,
 	getTimekeepViewWindow,
@@ -61,7 +62,7 @@ describe("timekeep calendar views", () => {
 		).toBe(false);
 	});
 
-	it("creates an export snapshot with every row and only interval time", () => {
+	it("filters empty rows while retaining parents and clipping export timestamps", () => {
 		const source = {
 			entries: [
 				{
@@ -99,13 +100,35 @@ describe("timekeep calendar views", () => {
 		);
 		const entries = snapshot.entries[0].subEntries!;
 
-		expect(entries).toHaveLength(2);
-		expect(entries[0]).toMatchObject({ startTime: null, endTime: null });
-		expect(entries[1].startTime?.format("YYYY-MM-DD HH:mm")).toBe("2026-08-12 00:00");
-		expect(entries[1].endTime?.format("YYYY-MM-DD HH:mm")).toBe("2026-08-12 02:00");
+		expect(entries).toHaveLength(1);
+		expect(entries[0].name).toBe("Crosses midnight");
+		expect(entries[0].startTime?.format("YYYY-MM-DD HH:mm")).toBe("2026-08-12 00:00");
+		expect(entries[0].endTime?.format("YYYY-MM-DD HH:mm")).toBe("2026-08-12 02:00");
 		expect(source.entries[0].subEntries![1].startTime.format("YYYY-MM-DD HH:mm")).toBe(
 			"2026-08-11 23:00"
 		);
+	});
+
+	it("keeps an active zero-age row visible in the current window", () => {
+		const currentTime = moment("2026-08-12T12:00:00");
+		const entries = filterTimekeepViewEntries(
+			[
+				{
+					id: 1,
+					name: "Just started",
+					startTime: moment(currentTime),
+					endTime: null,
+					subEntries: null,
+				},
+			],
+			currentTime,
+			getTimekeepViewWindow({
+				mode: TimekeepViewMode.DAY,
+				anchorDate: "2026-08-12",
+				followCurrent: true,
+			})
+		);
+		expect(entries.map((entry) => entry.name)).toEqual(["Just started"]);
 	});
 
 	it("labels each selected period", () => {

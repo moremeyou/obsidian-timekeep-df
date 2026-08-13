@@ -10,6 +10,7 @@ import { createStore, Store } from "@/store";
 
 import { TimesheetRowContent } from "./TimesheetRowContent";
 
+import type { HistoricalActivityDraft } from "@/timekeep/draft";
 import { defaultTimekeep, TimeEntry, Timekeep } from "@/timekeep/schema";
 import { TimekeepViewMode } from "@/timekeep/view";
 
@@ -55,6 +56,129 @@ describe("TimesheetRowContent", () => {
 			})
 		);
 		component.load();
+		expect(component.wrapperEl?.firstElementChild?.classList).toContain(
+			"timekeep-df-col--actions"
+		);
+		expect(component.wrapperEl?.lastElementChild?.classList).toContain(
+			"timekeep-df-col--actions"
+		);
+		expect(
+			component.wrapperEl?.firstElementChild?.querySelector('[data-action="add-block"]')
+		).not.toBeNull();
+		expect(
+			component.wrapperEl?.firstElementChild?.querySelector("svg")?.getAttribute("data-icon")
+		).toBe("plus");
+		expect(
+			component.wrapperEl?.lastElementChild?.querySelector('[data-action="edit"]')
+		).not.toBeNull();
+	});
+
+	it("shows Add Block outside the current range and restores timer controls in the current range", () => {
+		vi.useFakeTimers();
+		vi.setSystemTime(new Date("2026-08-12T12:00:00"));
+		const viewState = createStore({
+			mode: TimekeepViewMode.DAY,
+			anchorDate: "2026-08-11",
+			followCurrent: false,
+		});
+		timekeep.setState({ entries: [entry] });
+		const component = new TimesheetRowContent(
+			containerEl,
+			app,
+			timekeep,
+			settings,
+			entry,
+			0,
+			onBeginEditing,
+			viewState
+		);
+		component.load();
+
+		const button = component.wrapperEl?.querySelector<HTMLButtonElement>(
+			'[data-action="add-block"]'
+		);
+		expect(button?.disabled).toBe(false);
+		expect(button?.title).toBe("Add Block");
+		component.onClickStop();
+		expect(timekeep.getState().entries[0].endTime).toBeNull();
+
+		viewState.setState({ ...viewState.getState(), anchorDate: "2026-08-12" });
+		expect(button?.dataset.action).toBe("stop");
+		expect(button?.disabled).toBe(false);
+		component.unload();
+		vi.useRealTimers();
+	});
+
+	it("adds and immediately selects the next historical Block under the owning Activity", () => {
+		vi.useFakeTimers();
+		vi.setSystemTime(new Date("2026-08-12T12:34:56"));
+		const activity: TimeEntry = {
+			id: 20,
+			name: "Project Management",
+			startTime: null,
+			endTime: null,
+			subEntries: [
+				{
+					id: 21,
+					name: "Block 1",
+					startTime: moment("2026-08-11T09:00"),
+					endTime: moment("2026-08-11T10:00"),
+					subEntries: null,
+				},
+				{
+					id: 22,
+					name: "Research",
+					startTime: moment("2026-08-11T11:00"),
+					endTime: moment("2026-08-11T12:00"),
+					subEntries: null,
+				},
+				{
+					id: 23,
+					name: "Block 1",
+					startTime: moment("2026-08-10T09:00"),
+					endTime: moment("2026-08-10T10:00"),
+					subEntries: null,
+				},
+			],
+		};
+		timekeep.setState({ entries: [activity] });
+		const historicalDraft = createStore<HistoricalActivityDraft | null>(null);
+		const component = new TimesheetRowContent(
+			containerEl,
+			app,
+			timekeep,
+			settings,
+			activity,
+			0,
+			onBeginEditing,
+			createStore({
+				mode: TimekeepViewMode.DAY,
+				anchorDate: "2026-08-11",
+				followCurrent: false,
+			}),
+			historicalDraft,
+			activity.id
+		);
+		component.load();
+
+		component.wrapperEl?.querySelector<HTMLButtonElement>('[data-action="add-block"]')?.click();
+
+		const updatedActivity = timekeep.getState().entries[0];
+		expect(updatedActivity.subEntries).toHaveLength(4);
+		expect(updatedActivity.subEntries?.[3]).toMatchObject({
+			name: "Block 3",
+			startTime: null,
+			endTime: null,
+		});
+		expect(historicalDraft.getState()).toMatchObject({
+			activityId: activity.id,
+			entryId: updatedActivity.subEntries?.[3].id,
+		});
+		expect(historicalDraft.getState()?.initialTime.format("YYYY-MM-DD HH:mm:ss")).toBe(
+			"2026-08-11 12:34:00"
+		);
+		component.unload();
+		vi.useRealTimers();
 	});
 
 	it("shows completed row timestamps without seconds", () => {
@@ -81,7 +205,7 @@ describe("TimesheetRowContent", () => {
 		);
 		component.load();
 
-		const times = component.wrapperEl?.querySelectorAll(".timekeep-df-time");
+		const times = component.wrapperEl?.querySelectorAll(".timekeep-df-col--time");
 		expect(times?.item(0).textContent).toBe("09:10");
 		expect(times?.item(1).textContent).toBe("10:11");
 	});

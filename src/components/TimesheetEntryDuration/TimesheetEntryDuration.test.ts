@@ -26,7 +26,6 @@ describe("TimesheetEntryDuration", () => {
 		// Mock helper functions
 		vi.spyOn(queries, "isEntryRunning").mockReturnValue(false);
 		vi.spyOn(queries, "getEntryDuration").mockReturnValue(42); // arbitrary duration
-		vi.spyOn(timeUtils, "formatDurationLong").mockReturnValue("42s");
 		vi.spyOn(timeUtils, "formatDurationLongWithoutSeconds").mockReturnValue("0m");
 
 		// Mock setInterval / clearInterval
@@ -72,12 +71,12 @@ describe("TimesheetEntryDuration", () => {
 		expect(registerSpy).toHaveBeenCalledWith(component.currentContentInterval);
 	});
 
-	it("should show seconds when the entry or a descendant is running", () => {
+	it("should omit seconds when the entry or a descendant is running", () => {
 		(queries.isEntryRunning as any).mockReturnValue(true);
 		component.load();
 
-		expect(timeUtils.formatDurationLong).toHaveBeenCalledWith(42);
-		expect(component.wrapperEl?.textContent).toBe("42s");
+		expect(timeUtils.formatDurationLongWithoutSeconds).toHaveBeenCalledWith(42);
+		expect(component.wrapperEl?.textContent).toBe("0m");
 	});
 
 	it("should clear existing interval before scheduling new one", () => {

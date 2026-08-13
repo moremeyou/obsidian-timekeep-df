@@ -36,6 +36,10 @@ describe("TimesheetRunningEntryEditing", () => {
 			onFinishedEditing
 		);
 		component.load();
+		expect(component.wrapperEl?.querySelector("label")?.textContent).toBe("Edit:");
+		expect(
+			component.wrapperEl?.querySelector(".timekeep-df-name-wrapper")?.children
+		).toHaveLength(2);
 	});
 
 	it("uses unique fork-scoped input IDs with matching labels", () => {

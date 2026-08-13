@@ -70,7 +70,7 @@ export class TimesheetRunningEntryEditing extends ReplaceableComponent {
 		});
 
 		const nameLabelEl = nameWrapperEl.createEl("label", {
-			text: "Edit Name:",
+			text: "Edit:",
 		});
 		nameLabelEl.htmlFor = this.#nameInputId;
 

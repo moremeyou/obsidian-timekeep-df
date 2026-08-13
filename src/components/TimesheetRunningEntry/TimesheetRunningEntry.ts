@@ -1,34 +1,40 @@
 import type { TimekeepSettings } from "@/settings";
 import type { Store } from "@/store";
 
+import { createStore } from "@/store";
 import { assert } from "@/utils/assert";
 
-import { EmptyComponent } from "../EmptyComponent";
 import { TimesheetRunningEntryEditing } from "./TimesheetRunningEntryEditing";
+import { TimesheetRunningEntryEmpty } from "./TimesheetRunningEntryEmpty";
 import { TimesheetRunningEntryViewing } from "./TimesheetRunningEntryViewing";
 
 import { ContentComponent } from "@/components/ContentComponent";
 
 import { getRunningEntry } from "@/timekeep/queries";
 import type { Timekeep } from "@/timekeep/schema";
+import { createTimekeepViewState, type TimekeepViewState } from "@/timekeep/view";
 
 export class TimesheetRunningEntry extends ContentComponent<
-	TimesheetRunningEntryViewing | TimesheetRunningEntryEditing | EmptyComponent
+	TimesheetRunningEntryViewing | TimesheetRunningEntryEditing | TimesheetRunningEntryEmpty
 > {
 	/** Access to the timekeep */
 	timekeep: Store<Timekeep>;
 	/** Access to the timekeep settings */
 	settings: Store<TimekeepSettings>;
+	viewState: Store<TimekeepViewState>;
 
 	constructor(
 		containerEl: HTMLElement,
 		timekeep: Store<Timekeep>,
-		settings: Store<TimekeepSettings>
+		settings: Store<TimekeepSettings>,
+		viewState?: Store<TimekeepViewState>
 	) {
 		super(containerEl);
 
 		this.timekeep = timekeep;
 		this.settings = settings;
+		this.viewState =
+			viewState ?? createStore(createTimekeepViewState(settings.getState().defaultViewMode));
 	}
 
 	onload(): void {
@@ -58,7 +64,14 @@ export class TimesheetRunningEntry extends ContentComponent<
 		const timekeep = this.timekeep.getState();
 		const currentEntry = getRunningEntry(timekeep.entries);
 		if (!currentEntry) {
-			this.setContent(new EmptyComponent(contentEl));
+			this.setContent(
+				new TimesheetRunningEntryEmpty(
+					contentEl,
+					this.timekeep,
+					this.settings,
+					this.viewState
+				)
+			);
 			return;
 		}
 
@@ -83,7 +96,14 @@ export class TimesheetRunningEntry extends ContentComponent<
 		const timekeep = this.timekeep.getState();
 		const currentEntry = getRunningEntry(timekeep.entries);
 		if (!currentEntry) {
-			this.setContent(new EmptyComponent(contentEl));
+			this.setContent(
+				new TimesheetRunningEntryEmpty(
+					contentEl,
+					this.timekeep,
+					this.settings,
+					this.viewState
+				)
+			);
 			return;
 		}
 
@@ -93,7 +113,8 @@ export class TimesheetRunningEntry extends ContentComponent<
 				this.timekeep,
 				this.settings,
 				currentEntry,
-				this.setEditingView.bind(this)
+				this.setEditingView.bind(this),
+				this.viewState
 			)
 		);
 	}

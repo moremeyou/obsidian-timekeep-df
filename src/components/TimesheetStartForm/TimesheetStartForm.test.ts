@@ -12,7 +12,9 @@ import { createStore } from "@/store";
 
 import { TimesheetStartForm } from "./TimesheetStartForm";
 
+import type { HistoricalActivityDraft } from "@/timekeep/draft";
 import { defaultTimekeep, type Timekeep } from "@/timekeep/schema";
+import { TimekeepViewMode } from "@/timekeep/view";
 
 import { TimekeepAutocomplete } from "@/service/autocomplete";
 import { TimekeepRegistry } from "@/service/registry";
@@ -39,6 +41,7 @@ describe("TimesheetStart", () => {
 
 	afterEach(() => {
 		if (component) component.unload();
+		vi.useRealTimers();
 	});
 
 	it("should load without error", () => {
@@ -86,5 +89,61 @@ describe("TimesheetStart", () => {
 				},
 			],
 		});
+	});
+
+	it("adds an unstarted Activity in a historical range without stopping current work", () => {
+		vi.useFakeTimers();
+		const currentTime = moment("2026-08-12T12:00:00");
+		vi.setSystemTime(currentTime.toDate());
+		const runningEntry = {
+			id: 50,
+			name: "Current work",
+			startTime: moment("2026-08-12T10:00:00"),
+			endTime: null,
+			subEntries: null,
+		};
+		timekeep.setState({ entries: [runningEntry] });
+		const viewState = createStore({
+			mode: TimekeepViewMode.DAY,
+			anchorDate: "2026-08-11",
+			followCurrent: false,
+		});
+		const historicalDraft = createStore<HistoricalActivityDraft | null>(null);
+		autocomplete.names.setState(["Historical Activity"]);
+		component = new TimesheetStartForm(
+			containerEl,
+			timekeep,
+			settings,
+			autocomplete,
+			viewState,
+			historicalDraft
+		);
+		component.load();
+
+		const formEl = component.wrapperEl as HTMLFormElement;
+		expect(formEl.querySelector<HTMLButtonElement>("button")?.disabled).toBe(false);
+		formEl.querySelector<HTMLInputElement>(".timekeep-df-name")!.value = "historical activity";
+		formEl.dispatchEvent(new SubmitEvent("submit", { bubbles: true, cancelable: true }));
+
+		const [stillRunning, added] = timekeep.getState().entries;
+		expect(stillRunning.endTime).toBeNull();
+		expect(added).toMatchObject({
+			name: "Historical Activity",
+			startTime: null,
+			endTime: null,
+			subEntries: null,
+		});
+		expect(historicalDraft.getState()).toMatchObject({
+			activityId: added.id,
+			entryId: added.id,
+		});
+		expect(historicalDraft.getState()?.initialTime.format("YYYY-MM-DD HH:mm:ss")).toBe(
+			"2026-08-11 12:00:00"
+		);
+
+		formEl.querySelector<HTMLInputElement>(".timekeep-df-name")!.value = "Historical Activity";
+		formEl.dispatchEvent(new SubmitEvent("submit", { bubbles: true, cancelable: true }));
+		expect(timekeep.getState().entries).toHaveLength(2);
+		expect(historicalDraft.getState()?.entryId).toBe(added.id);
 	});
 });

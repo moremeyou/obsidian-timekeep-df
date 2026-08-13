@@ -37,6 +37,26 @@ describe("TimekeepRegistry", () => {
 		expect(firstAgain.getState().mode).toBe(TimekeepViewMode.WEEK);
 		expect(second.getState().mode).toBe(TimekeepViewMode.DAY);
 	});
+
+	it("retains historical drafts across tracker rerenders", () => {
+		const settings = createStore(defaultSettings);
+		const registry = new TimekeepRegistry(new MockVault().asVault(), settings);
+		const first = registry.getHistoricalDraft("markdown:Projects.md:10");
+		first.setState({
+			activityId: 1,
+			activityName: "Project Management",
+			entryId: 2,
+			entryName: "Block 2",
+			initialTime: moment("2026-08-11T14:25"),
+		});
+
+		expect(registry.getHistoricalDraft("markdown:Projects.md:10")).toBe(first);
+		expect(registry.getHistoricalDraft("markdown:Projects.md:10").getState()).toMatchObject({
+			activityName: "Project Management",
+			entryName: "Block 2",
+		});
+		expect(registry.getHistoricalDraft("markdown:Projects.md:30").getState()).toBeNull();
+	});
 	describe("getFileRegistryEntry", () => {
 		it("returns null for markdown without timekeeps", async () => {
 			const vault = new MockVault();

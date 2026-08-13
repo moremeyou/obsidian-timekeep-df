@@ -530,35 +530,35 @@ describe("TimesheetExportActions", () => {
 
 		await component.onCopyMarkdown();
 		const markdownOutput = writeText.mock.calls.at(-1)?.[0];
-		expect(markdownOutput).toContain("Outside");
+		expect(markdownOutput).not.toContain("Outside");
 		expect(markdownOutput).toContain("Crosses midnight");
 		expect(markdownOutput).toContain("26-08-12 00:00");
 
 		await component.onCopyCSV();
 		const csvOutput = writeText.mock.calls.at(-1)?.[0];
-		expect(csvOutput).toContain("Outside,,,");
+		expect(csvOutput).not.toContain("Outside");
 		expect(csvOutput).toContain("Crosses midnight,26-08-12 00:00,26-08-12 02:00");
 
 		await component.onCopyJSON();
 		const jsonOutput = JSON.parse(writeText.mock.calls.at(-1)?.[0] ?? "{}");
-		expect(jsonOutput.entries).toHaveLength(2);
-		expect(jsonOutput.entries[0]).toMatchObject({ startTime: null, endTime: null });
-		expect(jsonOutput.entries[1].startTime).toBe(
-			component.getExportTimekeep(currentTime).entries[1].startTime?.toJSON()
+		expect(jsonOutput.entries).toHaveLength(1);
+		expect(jsonOutput.entries[0].name).toBe("Crosses midnight");
+		expect(jsonOutput.entries[0].startTime).toBe(
+			component.getExportTimekeep(currentTime).entries[0].startTime?.toJSON()
 		);
 
 		const exportPdfSpy = vi.spyOn(exportPdf, "exportPdf").mockResolvedValue(undefined);
 		await component.onSavePDF();
 		const pdfTimekeep = exportPdfSpy.mock.calls.at(-1)?.[1];
-		expect(pdfTimekeep?.entries[0]).toMatchObject({ startTime: null, endTime: null });
-		expect(pdfTimekeep?.entries[1].startTime?.format("YYYY-MM-DD HH:mm")).toBe(
+		expect(pdfTimekeep?.entries).toHaveLength(1);
+		expect(pdfTimekeep?.entries[0].startTime?.format("YYYY-MM-DD HH:mm")).toBe(
 			"2026-08-12 00:00"
 		);
 
 		container.querySelector<HTMLButtonElement>('[data-custom-format="custom"]')?.click();
 		const customTimekeep = onCustomExport.mock.calls.at(-1)?.[0];
-		expect(customTimekeep.entries[0]).toMatchObject({ startTime: null, endTime: null });
-		expect(customTimekeep.entries[1].startTime.format("YYYY-MM-DD HH:mm")).toBe(
+		expect(customTimekeep.entries).toHaveLength(1);
+		expect(customTimekeep.entries[0].startTime.format("YYYY-MM-DD HH:mm")).toBe(
 			"2026-08-12 00:00"
 		);
 

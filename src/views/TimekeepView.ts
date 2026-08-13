@@ -13,6 +13,7 @@ import { Timesheet } from "@/components/Timesheet";
 import { TimesheetLoadError } from "@/components/TimesheetLoadError";
 import { TimesheetSaveError } from "@/components/TimesheetSaveError";
 
+import type { HistoricalActivityDraft } from "@/timekeep/draft";
 import type { LoadResult } from "@/timekeep/parser";
 import { defaultTimekeep, stripTimekeepRuntimeData, type Timekeep } from "@/timekeep/schema";
 import { createTimekeepViewState, type TimekeepViewState } from "@/timekeep/view";
@@ -34,6 +35,7 @@ export default class TimekeepView extends ContentComponent<
 	registry: TimekeepRegistry | undefined;
 	trackerKey: (() => string) | undefined;
 	fallbackViewState: Store<TimekeepViewState>;
+	fallbackHistoricalDraft: Store<HistoricalActivityDraft | null>;
 
 	/** Loading result for the timekeep data */
 	loadResult: Store<LoadResult | null>;
@@ -75,6 +77,7 @@ export default class TimekeepView extends ContentComponent<
 		this.fallbackViewState = createStore(
 			createTimekeepViewState(settings.getState().defaultViewMode)
 		);
+		this.fallbackHistoricalDraft = createStore<HistoricalActivityDraft | null>(null);
 
 		this.saveAdapter = saveAdapter;
 	}
@@ -113,6 +116,7 @@ export default class TimekeepView extends ContentComponent<
 
 			this.register(this.timekeep.subscribe(this.onSave.bind(this)));
 
+			const trackerKey = this.registry && this.trackerKey ? this.trackerKey() : null;
 			this.setContent(
 				new Timesheet(
 					this.containerEl,
@@ -121,9 +125,10 @@ export default class TimekeepView extends ContentComponent<
 					this.settings,
 					this.customOutputFormats,
 					this.autocomplete,
-					this.registry && this.trackerKey
-						? this.registry.getViewState(this.trackerKey())
-						: this.fallbackViewState
+					trackerKey ? this.registry?.getViewState(trackerKey) : this.fallbackViewState,
+					trackerKey
+						? this.registry?.getHistoricalDraft(trackerKey)
+						: this.fallbackHistoricalDraft
 				)
 			);
 		} else {

@@ -15,6 +15,7 @@ import { TimesheetEntryDuration } from "@/components/TimesheetEntryDuration";
 import { TimesheetEntryName } from "@/components/TimesheetEntryName";
 import { TimesheetEntryPercent } from "@/components/TimesheetEntryPercent";
 
+import { prepareHistoricalBlockDraft, type HistoricalActivityDraft } from "@/timekeep/draft";
 import { getEntryTimeBounds, getRunningEntry, isEntryRunning } from "@/timekeep/queries";
 import type { TimeEntry, Timekeep } from "@/timekeep/schema";
 import { startNewNestedEntry } from "@/timekeep/start";
@@ -22,6 +23,7 @@ import { setEntryCollapsed, stopTimekeep, updateEntry } from "@/timekeep/update"
 import {
 	createTimekeepViewState,
 	getTimekeepViewWindow,
+	timekeepViewIncludesCurrent,
 	type TimekeepViewState,
 } from "@/timekeep/view";
 
@@ -36,6 +38,9 @@ export class TimesheetRowContent extends ReplaceableComponent {
 	/** Access to the timekeep settings */
 	settings: Store<TimekeepSettings>;
 	viewState: Store<TimekeepViewState>;
+	historicalDraft: Store<HistoricalActivityDraft | null>;
+	/** Top-level Activity that owns this row. */
+	activityId: number;
 
 	/** The entry for this row */
 	entry: TimeEntry;
@@ -46,6 +51,8 @@ export class TimesheetRowContent extends ReplaceableComponent {
 	#startTimeEl: HTMLSpanElement | undefined;
 	/** Element for displaying the end time */
 	#endTimeEl: HTMLSpanElement | undefined;
+	/** Start/stop control whose availability follows the selected view. */
+	#startStopButtonEl: HTMLButtonElement | undefined;
 
 	/** Callback to begin editing the row */
 	onBeginEditing: VoidFunction;
@@ -58,7 +65,9 @@ export class TimesheetRowContent extends ReplaceableComponent {
 		entry: TimeEntry,
 		indent: number,
 		onBeginEditing: VoidFunction,
-		viewState?: Store<TimekeepViewState>
+		viewState?: Store<TimekeepViewState>,
+		historicalDraft?: Store<HistoricalActivityDraft | null>,
+		activityId?: number
 	) {
 		super(containerEl);
 
@@ -67,6 +76,8 @@ export class TimesheetRowContent extends ReplaceableComponent {
 		this.settings = settings;
 		this.viewState =
 			viewState ?? createStore(createTimekeepViewState(settings.getState().defaultViewMode));
+		this.historicalDraft = historicalDraft ?? createStore<HistoricalActivityDraft | null>(null);
+		this.activityId = activityId ?? entry.id;
 
 		this.entry = entry;
 		this.indent = indent;
@@ -80,6 +91,19 @@ export class TimesheetRowContent extends ReplaceableComponent {
 
 	render(wrapperEl: HTMLElement): void {
 		const entry = this.entry;
+		const startStopColEl = wrapperEl.createEl("td", {
+			cls: ["timekeep-df-col", "timekeep-df-col--actions"],
+		});
+
+		const startStopWrapper = startStopColEl.createDiv({ cls: "timekeep-df-actions-wrapper" });
+
+		const startButton = startStopWrapper.createEl("button", {
+			cls: ["timekeep-df-action", "timekeep-df-icon-button"],
+		});
+		startButton.type = "button";
+		this.#startStopButtonEl = startButton;
+		this.registerDomEvent(startButton, "click", this.onClickPrimaryAction.bind(this));
+
 		const nameColEl = wrapperEl.createEl("td", {
 			cls: ["timekeep-df-col", "timekeep-df-col--name"],
 		});
@@ -109,18 +133,6 @@ export class TimesheetRowContent extends ReplaceableComponent {
 			);
 		}
 
-		const startTimeColEl = wrapperEl.createEl("td", {
-			cls: ["timekeep-df-col", "timekeep-df-col--time"],
-		});
-		const startTimeEl = startTimeColEl.createSpan({ cls: "timekeep-df-time" });
-		this.#startTimeEl = startTimeEl;
-
-		const endTimeColEl = wrapperEl.createEl("td", {
-			cls: ["timekeep-df-col", "timekeep-df-col--time"],
-		});
-		const endTimeEl = endTimeColEl.createSpan({ cls: "timekeep-df-time" });
-		this.#endTimeEl = endTimeEl;
-
 		const durationColEl = wrapperEl.createEl("td", {
 			cls: ["timekeep-df-col", "timekeep-df-col--duration"],
 		});
@@ -136,34 +148,23 @@ export class TimesheetRowContent extends ReplaceableComponent {
 			new TimesheetEntryPercent(percentColEl, entry, this.settings, this.viewState)
 		);
 
-		const actionsColEl = wrapperEl.createEl("td", {
+		const startTimeColEl = wrapperEl.createEl("td", {
+			cls: ["timekeep-df-col", "timekeep-df-col--time"],
+		});
+		const startTimeEl = startTimeColEl.createSpan({ cls: "timekeep-df-time" });
+		this.#startTimeEl = startTimeEl;
+
+		const endTimeColEl = wrapperEl.createEl("td", {
+			cls: ["timekeep-df-col", "timekeep-df-col--time"],
+		});
+		const endTimeEl = endTimeColEl.createSpan({ cls: "timekeep-df-time" });
+		this.#endTimeEl = endTimeEl;
+
+		const editColEl = wrapperEl.createEl("td", {
 			cls: ["timekeep-df-col", "timekeep-df-col--actions"],
 		});
-
-		const actionsWrapper = actionsColEl.createDiv({ cls: "timekeep-df-actions-wrapper" });
-
-		const isRunning = isEntryRunning(entry);
-		const startButton = actionsWrapper.createEl("button", {
-			cls: ["timekeep-df-action", "timekeep-df-icon-button"],
-			title: isRunning ? "Stop" : "Start",
-			attr: {
-				"aria-label": isRunning ? "Stop" : "Start",
-				"data-action": isRunning ? "stop" : "start",
-			},
-		});
-		startButton.type = "button";
-		createObsidianIcon(
-			startButton,
-			isRunning ? "stop-circle" : "play",
-			"timekeep-df-button-icon"
-		);
-		this.registerDomEvent(
-			startButton,
-			"click",
-			isRunning ? this.onClickStop.bind(this) : this.onClickStart.bind(this)
-		);
-
-		const editButton = actionsWrapper.createEl("button", {
+		const editWrapper = editColEl.createDiv({ cls: "timekeep-df-actions-wrapper" });
+		const editButton = editWrapper.createEl("button", {
 			cls: ["timekeep-df-action", "timekeep-df-icon-button"],
 			title: "Edit",
 			attr: {
@@ -179,8 +180,10 @@ export class TimesheetRowContent extends ReplaceableComponent {
 		this.updateState();
 
 		const unsubscribeSettings = this.settings.subscribe(this.updateTimes.bind(this));
+		const unsubscribeViewState = this.viewState.subscribe(this.updateState.bind(this));
 
 		this.register(unsubscribeSettings);
+		this.register(unsubscribeViewState);
 		if (isEntryRunning(entry)) {
 			this.registerInterval(window.setInterval(this.updateTimes.bind(this), 1000));
 		}
@@ -205,7 +208,7 @@ export class TimesheetRowContent extends ReplaceableComponent {
 	}
 
 	updateState() {
-		assert(this.wrapperEl, "Wrapper element should be defined");
+		assert(this.wrapperEl && this.#startStopButtonEl, "Row elements should be defined");
 
 		const entry = this.entry;
 
@@ -224,6 +227,48 @@ export class TimesheetRowContent extends ReplaceableComponent {
 		rowEl.setAttribute("data-running-within", String(isRunningWithin));
 		rowEl.setAttribute("data-sub-entries", String(this.entry.subEntries !== null));
 		rowEl.setAttribute("data-invalid", String(isInvalidEntry));
+
+		const canControlTimer = timekeepViewIncludesCurrent(this.viewState.getState(), moment());
+		const isRunning = isEntryRunning(entry);
+		const title = canControlTimer ? (isRunning ? "Stop" : "Start") : "Add Block";
+		const action = canControlTimer ? (isRunning ? "stop" : "start") : "add-block";
+		const icon = canControlTimer ? (isRunning ? "stop-circle" : "play") : "plus";
+
+		this.#startStopButtonEl.title = title;
+		this.#startStopButtonEl.setAttribute("aria-label", title);
+		this.#startStopButtonEl.setAttribute("data-action", action);
+		this.#startStopButtonEl.disabled = false;
+		this.#startStopButtonEl.setAttribute("aria-disabled", "false");
+		this.#startStopButtonEl.empty();
+		createObsidianIcon(this.#startStopButtonEl, icon, "timekeep-df-button-icon");
+	}
+
+	onClickPrimaryAction() {
+		if (!timekeepViewIncludesCurrent(this.viewState.getState(), moment())) {
+			this.onClickAddHistoricalBlock();
+			return;
+		}
+		if (isEntryRunning(this.entry)) this.onClickStop();
+		else this.onClickStart();
+	}
+
+	onClickAddHistoricalBlock() {
+		const currentTime = moment();
+		if (timekeepViewIncludesCurrent(this.viewState.getState(), currentTime)) return;
+		const initialTime = moment(this.viewState.getState().anchorDate, "YYYY-MM-DD", true)
+			.hour(currentTime.hour())
+			.minute(currentTime.minute())
+			.startOf("minute");
+
+		const timekeep = this.timekeep.getState();
+		const prepared = prepareHistoricalBlockDraft(
+			timekeep.entries,
+			this.activityId,
+			initialTime
+		);
+		if (!prepared) return;
+		this.timekeep.setState({ ...timekeep, entries: prepared.entries });
+		this.historicalDraft.setState(prepared.draft);
 	}
 
 	onToggleCollapsed() {
@@ -241,6 +286,7 @@ export class TimesheetRowContent extends ReplaceableComponent {
 	}
 
 	onClickStart() {
+		if (!timekeepViewIncludesCurrent(this.viewState.getState(), moment())) return;
 		const entry = this.entry;
 
 		this.timekeep.setState((timekeep) => {
@@ -251,6 +297,7 @@ export class TimesheetRowContent extends ReplaceableComponent {
 	}
 
 	onClickStop() {
+		if (!timekeepViewIncludesCurrent(this.viewState.getState(), moment())) return;
 		this.timekeep.setState((timekeep) => stopTimekeep(timekeep, moment()));
 	}
 }

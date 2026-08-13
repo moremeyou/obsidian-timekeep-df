@@ -1,5 +1,7 @@
 import type { App } from "obsidian";
 
+import moment from "moment";
+
 import type { TimekeepSettings } from "@/settings";
 import type { Store } from "@/store";
 
@@ -9,9 +11,15 @@ import { assert } from "@/utils/assert";
 import { DomComponent } from "@/components/DomComponent";
 import { TimesheetRow, type TimesheetRowPresentation } from "@/components/TimesheetRow";
 
+import type { HistoricalActivityDraft } from "@/timekeep/draft";
 import type { Timekeep } from "@/timekeep/schema";
 import { getEntriesSorted } from "@/timekeep/sort";
-import { createTimekeepViewState, type TimekeepViewState } from "@/timekeep/view";
+import {
+	createTimekeepViewState,
+	filterTimekeepViewEntries,
+	getTimekeepViewWindow,
+	type TimekeepViewState,
+} from "@/timekeep/view";
 
 /**
  * Table component for rendering the contents of the timekeep
@@ -24,6 +32,7 @@ export class TimesheetTable extends DomComponent {
 	/** Access to the timekeep settings */
 	settings: Store<TimekeepSettings>;
 	viewState: Store<TimekeepViewState>;
+	historicalDraft: Store<HistoricalActivityDraft | null>;
 
 	/** Table body for row content */
 	#bodyEl: HTMLElement | undefined;
@@ -36,7 +45,8 @@ export class TimesheetTable extends DomComponent {
 		app: App,
 		timekeep: Store<Timekeep>,
 		settings: Store<TimekeepSettings>,
-		viewState?: Store<TimekeepViewState>
+		viewState?: Store<TimekeepViewState>,
+		historicalDraft?: Store<HistoricalActivityDraft | null>
 	) {
 		super(containerEl);
 
@@ -45,6 +55,7 @@ export class TimesheetTable extends DomComponent {
 		this.settings = settings;
 		this.viewState =
 			viewState ?? createStore(createTimekeepViewState(settings.getState().defaultViewMode));
+		this.historicalDraft = historicalDraft ?? createStore<HistoricalActivityDraft | null>(null);
 	}
 
 	onload(): void {
@@ -59,15 +70,22 @@ export class TimesheetTable extends DomComponent {
 		});
 
 		const tableHeadRowEl = tableHeadEl.createEl("tr");
+		tableHeadRowEl.createEl("th", {
+			cls: "timekeep-df-head--actions",
+			attr: { "aria-label": "Start or stop" },
+		});
 		tableHeadRowEl.createEl("th", { cls: "timekeep-df-head--name", text: "Activity" });
-		tableHeadRowEl.createEl("th", { cls: "timekeep-df-head--time", text: "Start" });
-		tableHeadRowEl.createEl("th", { cls: "timekeep-df-head--time", text: "End" });
 		tableHeadRowEl.createEl("th", {
 			cls: "timekeep-df-head--duration",
 			text: "Duration",
 		});
 		tableHeadRowEl.createEl("th", { cls: "timekeep-df-head--percent", text: "%" });
-		tableHeadRowEl.createEl("th", { cls: "timekeep-df-head--actions", text: "Actions" });
+		tableHeadRowEl.createEl("th", { cls: "timekeep-df-head--time", text: "Start" });
+		tableHeadRowEl.createEl("th", { cls: "timekeep-df-head--time", text: "End" });
+		tableHeadRowEl.createEl("th", {
+			cls: "timekeep-df-head--actions",
+			attr: { "aria-label": "Edit" },
+		});
 
 		const bodyEl = tableEl.createEl("tbody");
 		this.#bodyEl = bodyEl;
@@ -77,10 +95,12 @@ export class TimesheetTable extends DomComponent {
 		const unsubscribeSettings = this.settings.subscribe(onUpdate);
 		const unsubscribeTimekeep = this.timekeep.subscribe(onUpdate);
 		const unsubscribeViewState = this.viewState.subscribe(onUpdate);
+		const unsubscribeHistoricalDraft = this.historicalDraft.subscribe(onUpdate);
 
 		this.register(unsubscribeSettings);
 		this.register(unsubscribeTimekeep);
 		this.register(unsubscribeViewState);
+		this.register(unsubscribeHistoricalDraft);
 
 		onUpdate();
 	}
@@ -149,13 +169,86 @@ export class TimesheetTable extends DomComponent {
 			}
 		};
 
-		const topLevelEntries = getEntriesSorted(timekeep.entries, settings);
+		let visibleEntries = filterTimekeepViewEntries(
+			timekeep.entries,
+			moment(),
+			getTimekeepViewWindow(this.viewState.getState())
+		);
+		const historicalDraft = this.historicalDraft.getState();
+		let resolvedHistoricalDraft: HistoricalActivityDraft | null = null;
+		if (historicalDraft) {
+			const sourceActivity =
+				timekeep.entries.find((entry) => entry.id === historicalDraft.activityId) ??
+				timekeep.entries.find(
+					(entry) => entry.name.trim() === historicalDraft.activityName.trim()
+				);
+			if (sourceActivity) {
+				const visibleActivityIndex = visibleEntries.findIndex(
+					(entry) => entry.id === sourceActivity.id
+				);
+				const draftEntry =
+					historicalDraft.activityId === historicalDraft.entryId
+						? sourceActivity
+						: (sourceActivity.subEntries?.find(
+								(entry) => entry.id === historicalDraft.entryId
+							) ??
+							sourceActivity.subEntries?.find(
+								(entry) =>
+									entry.startTime === null &&
+									entry.name.trim() === historicalDraft.entryName.trim()
+							));
+
+				if (draftEntry) {
+					resolvedHistoricalDraft = {
+						...historicalDraft,
+						activityId: sourceActivity.id,
+						activityName: sourceActivity.name,
+						entryId: draftEntry.id,
+						entryName: draftEntry.name,
+					};
+				}
+
+				if (draftEntry && visibleActivityIndex === -1) {
+					visibleEntries = [
+						...visibleEntries,
+						draftEntry.id === sourceActivity.id
+							? sourceActivity
+							: {
+									...sourceActivity,
+									startTime: null,
+									endTime: null,
+									collapsed: false,
+									subEntries: [draftEntry],
+								},
+					];
+				} else if (
+					draftEntry &&
+					visibleActivityIndex !== -1 &&
+					visibleEntries[visibleActivityIndex].subEntries !== null
+				) {
+					const visibleActivity = visibleEntries[visibleActivityIndex];
+					if (!visibleActivity.subEntries.some((entry) => entry.id === draftEntry.id)) {
+						visibleEntries = visibleEntries.map((entry, index) =>
+							index === visibleActivityIndex
+								? {
+										...visibleActivity,
+										collapsed: false,
+										subEntries: [...visibleActivity.subEntries, draftEntry],
+									}
+								: entry
+						);
+					}
+				}
+			}
+		}
+		const topLevelEntries = getEntriesSorted(visibleEntries, settings);
 		for (let topLevelIndex = 0; topLevelIndex < topLevelEntries.length; topLevelIndex += 1) {
 			const entry = topLevelEntries[topLevelIndex];
 			const startIndex = descriptors.length;
 			const isExpandedGroup =
 				entry.subEntries !== null && !entry.collapsed && entry.subEntries.length > 0;
 			const presentation: TimesheetRowPresentation = {
+				activityId: entry.id,
 				groupTone: topLevelIndex % 2 === 0 ? "odd" : "even",
 			};
 			appendEntry(entry, 0, presentation);
@@ -181,7 +274,9 @@ export class TimesheetTable extends DomComponent {
 				entry,
 				depth,
 				presentation,
-				this.viewState
+				this.viewState,
+				this.historicalDraft,
+				resolvedHistoricalDraft?.entryId === entry.id ? resolvedHistoricalDraft : null
 			);
 
 			this.addChild(row);

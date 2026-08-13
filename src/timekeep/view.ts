@@ -1,5 +1,6 @@
 import moment, { type Moment } from "moment";
 
+import { getEntryDuration, isEntryRunning } from "@/timekeep/queries";
 import type { TimeEntry, Timekeep } from "@/timekeep/schema";
 
 export enum TimekeepViewMode {
@@ -125,10 +126,28 @@ export function canNavigateTimekeepViewForward(
 	return selected.start.isBefore(current.start);
 }
 
-/**
- * Creates a view-scoped export copy while preserving the complete source tracker.
- * All rows remain present; leaf timestamps are clipped or cleared for the selected window.
- */
+/** Return source entries that have duration in the selected window without changing timestamps. */
+export function filterTimekeepViewEntries(
+	entries: TimeEntry[],
+	currentTime: Moment,
+	window: TimekeepViewWindow
+): TimeEntry[] {
+	return entries.flatMap((entry): TimeEntry[] => {
+		if (entry.subEntries !== null) {
+			const subEntries = filterTimekeepViewEntries(entry.subEntries, currentTime, window);
+			return subEntries.length > 0 ? [{ ...entry, subEntries }] : [];
+		}
+
+		const runningInWindow =
+			isEntryRunning(entry) &&
+			entry.startTime !== null &&
+			entry.startTime.isBefore(window.end) &&
+			!currentTime.isBefore(window.start);
+		return getEntryDuration(entry, currentTime, window) > 0 || runningInWindow ? [entry] : [];
+	});
+}
+
+/** Creates a filtered, view-scoped export copy without modifying the source tracker. */
 export function createTimekeepViewSnapshot(
 	timekeep: Timekeep,
 	currentTime: Moment,
@@ -160,7 +179,8 @@ export function createTimekeepViewSnapshot(
 		};
 	};
 
-	return { ...timekeep, entries: timekeep.entries.map(snapshotEntry) };
+	const visibleEntries = filterTimekeepViewEntries(timekeep.entries, currentTime, window);
+	return { ...timekeep, entries: visibleEntries.map(snapshotEntry) };
 }
 
 export function getTimekeepViewCapacityHours(
