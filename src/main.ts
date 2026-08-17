@@ -21,6 +21,7 @@ import { createNewTimekeepFile } from "@/timekeep/createNewTimekeepFile";
 import type { Timekeep, TimeEntry } from "@/timekeep/schema";
 
 import { TimekeepAutocomplete } from "@/service/autocomplete";
+import { AutomaticBreakService } from "@/service/automaticBreaks";
 import { TimekeepRegistry } from "@/service/registry";
 
 import createMerged from "@/commands/createMerged";
@@ -63,9 +64,13 @@ export default class TimekeepPlugin extends Plugin {
 
 	/** Name autocomplete service */
 	autocomplete: TimekeepAutocomplete;
+	/** Background cap for automatic Breaks whose tracker view is closed. */
+	automaticBreaks: AutomaticBreakService;
 
 	/** Currently loaded status bar view if present */
 	#statusBarView: TimesheetStatusBar | null = null;
+	/** Prevents a queued layout-ready callback from reviving an unloaded instance */
+	#acceptLayoutReady = false;
 
 	constructor(app: App, manifest: PluginManifest) {
 		super(app, manifest);
@@ -76,15 +81,18 @@ export default class TimekeepPlugin extends Plugin {
 		const customOutputFormats = createStore({});
 
 		// Subscribe to settings changes to save them
-		settingsStore.subscribe(() => {
-			void saveSettings(settingsStore.getState());
-		});
+		this.register(
+			settingsStore.subscribe(() => {
+				void saveSettings(settingsStore.getState());
+			})
+		);
 
 		this.customOutputFormats = customOutputFormats;
 		this.settingsStore = settingsStore;
 
 		this.registry = new TimekeepRegistry(app.vault, settingsStore);
 		this.autocomplete = new TimekeepAutocomplete(this.registry, settingsStore);
+		this.automaticBreaks = new AutomaticBreakService(this.registry, settingsStore);
 
 		// Expose new API
 		const api = new TimekeepApi(
@@ -110,28 +118,37 @@ export default class TimekeepPlugin extends Plugin {
 	}
 
 	async onload(): Promise<void> {
+		this.#acceptLayoutReady = true;
+		this.register(() => {
+			this.#acceptLayoutReady = false;
+		});
+
 		const loadedSettings = await this.loadSettings();
 		this.settingsStore.setState(loadedSettings);
 		this.addSettingTab(new TimekeepSettingsTab(this.app, this));
 
 		this.addChild(this.autocomplete);
+		this.addChild(this.automaticBreaks);
 
 		const onLoadStatusBar = this.onLoadStatusBar.bind(this);
-		this.settingsStore.subscribe(onLoadStatusBar);
+		this.register(this.settingsStore.subscribe(onLoadStatusBar));
 		onLoadStatusBar();
 
 		// Hook ready event
-		this.app.workspace.onLayoutReady(this.onReady.bind(this));
+		this.app.workspace.onLayoutReady(() => {
+			if (this.#acceptLayoutReady) this.onReady();
+		});
 
 		// Register code block processing
 		const codeBlockProcessor = TimekeepMarkdownView.markdownPostProcessor(
 			this.app,
 			this.settingsStore,
 			this.customOutputFormats,
-			this.autocomplete
+			this.autocomplete,
+			this.registry
 		);
 		const markdownPostProcessor = this.registerMarkdownCodeBlockProcessor(
-			"timekeep",
+			"df-timekeep",
 			codeBlockProcessor
 		);
 
@@ -148,18 +165,19 @@ export default class TimekeepPlugin extends Plugin {
 		this.addCommand(newTimekeepFile(this.app));
 
 		// Custom timekeep file format
-		this.registerView("timekeep", (leaf) => {
+		this.registerView("timekeep-df", (leaf) => {
 			return new TimekeepFileView(
 				leaf,
 				this.settingsStore,
 				this.customOutputFormats,
-				this.autocomplete
+				this.autocomplete,
+				this.registry
 			);
 		});
 
-		this.registerExtensions(["timekeep"], "timekeep");
+		this.registerExtensions(["timekeep-df"], "timekeep-df");
 
-		this.app.workspace.on("file-menu", this.onFileMenu.bind(this));
+		this.registerEvent(this.app.workspace.on("file-menu", this.onFileMenu.bind(this)));
 	}
 
 	private onFileMenu(menu: Menu, parent: TAbstractFile) {
@@ -168,7 +186,7 @@ export default class TimekeepPlugin extends Plugin {
 		const folder = parent;
 
 		menu.addItem((item) => {
-			item.setTitle("New Timekeep")
+			item.setTitle("New Timekeep DF")
 				.setIcon("clock")
 				.onClick(async () => {
 					await createNewTimekeepFile(this.app, folder);

@@ -161,18 +161,18 @@ function createPdfTable(
 			body: [
 				[
 					{
-						text: "Block Name",
+						text: "Activity",
 						style: ["tableCell", "tableCellHeader"],
 						border: [true, false, false, true],
 					},
 					{
-						text: "Start Time",
+						text: "Start",
 						style: ["tableCell", "tableCellHeader"],
 						alignment: "center",
 						border: [false, false, false, true],
 					},
 					{
-						text: "End Time",
+						text: "End",
 						style: ["tableCell", "tableCellHeader"],
 						alignment: "center",
 						border: [false, false, false, true],

@@ -18,6 +18,10 @@ import { stopTimekeep } from "@/timekeep/update";
  * @returns The total number of stopped timekeeps
  */
 export async function stopFileTimekeeps(vault: Vault, file: TFile, currentTime: Moment) {
+	if (file.extension !== "md") {
+		return 0;
+	}
+
 	const content = await vault.cachedRead(file);
 	const initialTimekeeps = extractTimekeepCodeblocksWithPosition(content);
 

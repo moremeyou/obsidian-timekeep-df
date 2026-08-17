@@ -7,11 +7,14 @@ import {
 	SortOrder,
 	FontFamily,
 	DurationFormat,
+	ClockFormat,
 	UnstartedOrder,
 	defaultSettings,
 	TimekeepSettings,
 	PdfExportBehavior,
 } from "@/settings";
+
+import { TimekeepViewMode } from "@/timekeep/view";
 
 export class TimekeepSettingsTab extends PluginSettingTab {
 	settingsStore: Store<TimekeepSettings>;
@@ -28,11 +31,11 @@ export class TimekeepSettingsTab extends PluginSettingTab {
 
 		// General settings section
 		new Setting(this.containerEl)
-			.setName("Timestamp display format")
+			.setName("Timestamp date display format")
 			.setDesc(
 				createFragment((f) => {
 					f.createSpan({
-						text: "The way that timestamps in time tracker tables should be displayed. Uses ",
+						text: "The date portion shown in timestamps. Uses ",
 					});
 					f.createEl("a", {
 						text: "moment.js",
@@ -50,6 +53,155 @@ export class TimekeepSettingsTab extends PluginSettingTab {
 					this.settingsStore.setState((currentValue) => ({
 						...currentValue,
 						timestampFormat: newFormat,
+					}));
+				});
+			});
+
+		new Setting(this.containerEl)
+			.setName("Clock format")
+			.setDesc("Use a 12-hour or 24-hour clock for timestamps. Timestamps omit seconds.")
+			.addDropdown((t) => {
+				t.addOptions({
+					[ClockFormat.TWELVE_HOUR]: "12-hour (1:30 PM)",
+					[ClockFormat.TWENTY_FOUR_HOUR]: "24-hour (13:30)",
+				});
+				t.setValue(settings.clockFormat);
+				t.onChange((v) => {
+					this.settingsStore.setState((currentValue) => ({
+						...currentValue,
+						clockFormat: v as ClockFormat,
+					}));
+				});
+			});
+
+		new Setting(this.containerEl)
+			.setName("Default timesheet view")
+			.setDesc(
+				"The initial calendar window for each tracker. Navigation is kept per tracker for the current Obsidian session and does not alter tracker data."
+			)
+			.addDropdown((t) => {
+				t.addOptions({
+					[TimekeepViewMode.DAY]: "Day",
+					[TimekeepViewMode.WEEK]: "Week",
+					[TimekeepViewMode.MONTH]: "Month",
+					[TimekeepViewMode.QUARTER]: "Quarter",
+					[TimekeepViewMode.YEAR]: "Year",
+				});
+				t.setValue(settings.defaultViewMode);
+				t.onChange((v) => {
+					this.settingsStore.setState((currentValue) => ({
+						...currentValue,
+						defaultViewMode: v as TimekeepViewMode,
+					}));
+				});
+			});
+
+		new Setting(this.containerEl)
+			.setName("Total daily working hours")
+			.setDesc("Daily capacity used to calculate each row's percentage.")
+			.addText((t) => {
+				t.inputEl.type = "number";
+				t.inputEl.min = "0.1";
+				t.inputEl.step = "0.1";
+				t.setValue(String(settings.totalDailyWorkingHours));
+				t.onChange((v) => {
+					const parsed = Number.parseFloat(v);
+					if (!Number.isFinite(parsed) || parsed <= 0) return;
+					this.settingsStore.setState((currentValue) => ({
+						...currentValue,
+						totalDailyWorkingHours: parsed,
+					}));
+				});
+			});
+
+		new Setting(this.containerEl)
+			.setName("Total days per week")
+			.setDesc(
+				"Working weekdays used for Week, Month, Quarter, and Year percentage capacity."
+			)
+			.addText((t) => {
+				t.inputEl.type = "number";
+				t.inputEl.min = "1";
+				t.inputEl.step = "1";
+				t.setValue(String(settings.totalDaysPerWeek));
+				t.onChange((v) => {
+					const parsed = Number.parseInt(v, 10);
+					if (!Number.isFinite(parsed) || parsed <= 0) return;
+					this.settingsStore.setState((currentValue) => ({
+						...currentValue,
+						totalDaysPerWeek: parsed,
+					}));
+				});
+			});
+
+		new Setting(this.containerEl)
+			.setName("Automatic breaks")
+			.setDesc(
+				"Optionally start a Break Activity whenever you explicitly stop work during configured working hours. Starting another Activity ends the Break normally."
+			)
+			.setHeading();
+
+		new Setting(this.containerEl)
+			.setName("Enable automatic breaks")
+			.setDesc(
+				"When enabled, stopping a non-Break Activity during working hours starts a Break automatically. Leave this off to enter breaks manually."
+			)
+			.addToggle((t) => {
+				t.setValue(settings.automaticBreaksEnabled);
+				t.onChange((v) => {
+					this.settingsStore.setState((currentValue) => ({
+						...currentValue,
+						automaticBreaksEnabled: v,
+					}));
+				});
+			});
+
+		new Setting(this.containerEl)
+			.setName("Break Activity name")
+			.setDesc(
+				"The top-level Activity used for automatically tracked breaks. Repeated breaks are consolidated into dated Blocks under this Activity."
+			)
+			.addText((t) => {
+				t.setValue(settings.automaticBreakName);
+				t.onChange((v) => {
+					const name = v.trim() || defaultSettings.automaticBreakName;
+					this.settingsStore.setState((currentValue) => ({
+						...currentValue,
+						automaticBreakName: name,
+					}));
+				});
+			});
+
+		new Setting(this.containerEl)
+			.setName("Working hours start")
+			.setDesc("Automatic breaks can begin at or after this local time.")
+			.addText((t) => {
+				t.inputEl.type = "time";
+				t.inputEl.step = "60";
+				t.setValue(settings.workingHoursStart);
+				t.onChange((v) => {
+					if (!/^([01]\d|2[0-3]):[0-5]\d$/.test(v)) return;
+					this.settingsStore.setState((currentValue) => ({
+						...currentValue,
+						workingHoursStart: v,
+					}));
+				});
+			});
+
+		new Setting(this.containerEl)
+			.setName("Working hours end")
+			.setDesc(
+				"Automatic breaks stop at this local time. An earlier end time represents an overnight work window."
+			)
+			.addText((t) => {
+				t.inputEl.type = "time";
+				t.inputEl.step = "60";
+				t.setValue(settings.workingHoursEnd);
+				t.onChange((v) => {
+					if (!/^([01]\d|2[0-3]):[0-5]\d$/.test(v)) return;
+					this.settingsStore.setState((currentValue) => ({
+						...currentValue,
+						workingHoursEnd: v,
 					}));
 				});
 			});
@@ -381,7 +533,7 @@ export class TimekeepSettingsTab extends PluginSettingTab {
 		new Setting(this.containerEl)
 			.setName("Registry")
 			.setDesc(
-				"Timekeep uses an internal registry to track timekeep instances within your vault for functionality like autocomplete"
+				"Timekeep DF uses an internal registry to track its own instances within your vault for functionality like autocomplete"
 			)
 			.setHeading();
 
@@ -403,7 +555,7 @@ export class TimekeepSettingsTab extends PluginSettingTab {
 		new Setting(this.containerEl)
 			.setName("Index concurrency")
 			.setDesc(
-				"Maximum files to read concurrently on initialization (decrease this if you find you are lagging when opening your vault because of timekeep)"
+				"Maximum files Timekeep DF reads concurrently on initialization (decrease this if opening your vault becomes slow)"
 			)
 
 			.addText((t) => {
@@ -425,7 +577,7 @@ export class TimekeepSettingsTab extends PluginSettingTab {
 		new Setting(this.containerEl)
 			.setName("Status Bar")
 			.setDesc(
-				"Timekeep can show status bar entries for running timers within your vault. This requires that the registry option above is enabled"
+				"Timekeep DF can show status bar entries for its running timers. This requires that the registry option above is enabled"
 			)
 			.setHeading();
 
@@ -445,7 +597,7 @@ export class TimekeepSettingsTab extends PluginSettingTab {
 		new Setting(this.containerEl)
 			.setName("Show folder path")
 			.setDesc(
-				'Whether to include the folder path of the file in the status item (i.e "Path/To/Entry: Block 1: 3h 5min 30s").'
+				'Whether to include the folder path of the file in the status item (i.e "Path/To/Entry: Activity 1: 3h 5min 30s").'
 			)
 			.addToggle((t) => {
 				t.setValue(settings.statusBarShowFolderPath);
@@ -474,7 +626,7 @@ export class TimekeepSettingsTab extends PluginSettingTab {
 		new Setting(this.containerEl)
 			.setName("Autocomplete")
 			.setDesc(
-				"Timekeep can autocomplete entry names from existing timekeeps. This requires that the registry option above is enabled"
+				"Timekeep DF can autocomplete entry names from existing DF trackers. This requires that the registry option above is enabled"
 			)
 			.setHeading();
 

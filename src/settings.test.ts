@@ -7,8 +7,62 @@ import {
 	TimekeepSettings,
 	legacySettingsCompatibility,
 } from "./settings";
+import { TimekeepViewMode } from "./timekeep/view";
 
 describe("legacy settings compatibility conversion", () => {
+	test("Fresh mobile PDF exports use a fork-specific folder", () => {
+		expect(defaultSettings.pdfMobileExportsFolder).toBe("TimekeepDFExports");
+	});
+
+	test("Fresh timestamp settings default to a 24-hour minute-precision display", () => {
+		expect(defaultSettings.timestampFormat).toBe("YY-MM-DD");
+		expect(defaultSettings.clockFormat).toBe("TWENTY_FOUR_HOUR");
+	});
+
+	test("Fresh work-capacity settings default to eight hours and five days", () => {
+		expect(defaultSettings.totalDailyWorkingHours).toBe(8);
+		expect(defaultSettings.totalDaysPerWeek).toBe(5);
+	});
+
+	test("Automatic breaks are opt-in with a standard workday default", () => {
+		expect(defaultSettings.automaticBreaksEnabled).toBe(false);
+		expect(defaultSettings.automaticBreakName).toBe("Break");
+		expect(defaultSettings.workingHoursStart).toBe("09:00");
+		expect(defaultSettings.workingHoursEnd).toBe("17:00");
+	});
+
+	test("Fresh trackers default to the Day calendar view", () => {
+		expect(defaultSettings.defaultViewMode).toBe(TimekeepViewMode.DAY);
+	});
+
+	test("Invalid saved calendar views return to Day", () => {
+		const settings = {
+			...defaultSettings,
+			defaultViewMode: "INVALID" as TimekeepViewMode,
+		};
+		legacySettingsCompatibility(settings);
+		expect(settings.defaultViewMode).toBe(TimekeepViewMode.DAY);
+	});
+
+	test("Invalid automatic-break text settings return to safe defaults", () => {
+		const settings = {
+			...defaultSettings,
+			automaticBreakName: "   ",
+			workingHoursStart: "morning",
+			workingHoursEnd: "evening",
+		};
+		legacySettingsCompatibility(settings);
+		expect(settings.automaticBreakName).toBe("Break");
+		expect(settings.workingHoursStart).toBe("09:00");
+		expect(settings.workingHoursEnd).toBe("17:00");
+	});
+
+	test("Legacy timestamp formats lose their time and seconds portion", () => {
+		const settings = { ...defaultSettings, timestampFormat: "DD/MM/YYYY HH:mm:ss" };
+		legacySettingsCompatibility(settings);
+		expect(settings.timestampFormat).toBe("DD/MM/YYYY");
+	});
+
 	test("Empty setting", () => {
 		// Checking the legacySettingsCompatibility does not add any settings without existing legacy settings
 		const setting = {};

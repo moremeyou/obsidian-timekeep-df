@@ -1,8 +1,9 @@
-
-
-# Intellij
+# Local editor and IDE state
 *.iml
-.idea
+.idea/
+.vscode/
+.zed/
+*.code-workspace
 
 # npm
 node_modules
@@ -26,3 +27,46 @@ coverage
 
 test-vault/.obsidian
 test-vault/*
+
+# Local agent instructions and AI workspace metadata
+AGENTS.md
+AGENTS.local.md
+CLAUDE.md
+GEMINI.md
+.agents/
+.codex/
+.claude/
+.cursor/
+.cursorrules
+
+# Secrets, credentials, and machine-local configuration
+.env
+.env.*
+!.env.example
+!.env.*.example
+*.pem
+*.key
+*.p12
+*.pfx
+*.keystore
+credentials.json
+secrets.json
+*.local
+*.local.json
+*.local.yml
+*.local.yaml
+
+# Local Obsidian vault/plugin state and tracker data
+.obsidian/
+*.timekeep
+*.timekeep-df
+
+# Local caches, logs, and temporary files
+.cache/
+.pnpm-store/
+.tmp/
+*.log
+npm-debug.log*
+pnpm-debug.log*
+yarn-debug.log*
+yarn-error.log*

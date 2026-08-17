@@ -20,14 +20,14 @@ describe("TimesheetTimer", () => {
 
 		const timerEl = container.children[0] as HTMLElement;
 		expect(timerEl).toBeDefined();
-		expect(timerEl.className).toBe("timekeep-timer");
+		expect(timerEl.className).toBe("timekeep-df-timer");
 
 		const primary = timerEl.children[0] as HTMLElement;
 		const secondary = timerEl.children[1] as HTMLElement;
 		const label = timerEl.children[2] as HTMLElement;
 
-		expect(primary.className).toBe("timekeep-timer-value");
-		expect(secondary.className).toBe("timekeep-timer-value-small");
+		expect(primary.className).toBe("timekeep-df-timer-value");
+		expect(secondary.className).toBe("timekeep-df-timer-value-small");
 		expect(label.textContent).toBe("Test Label");
 
 		expect(primary.textContent).toBe("");
@@ -70,6 +70,21 @@ describe("TimesheetTimer", () => {
 		expect(primary.textContent).toBe("2h 0m 5s");
 		expect(secondary.textContent).toBe("");
 		expect(secondary.hidden).toBe(true);
+	});
+
+	it("should update its label", () => {
+		timer.load();
+		timer.setLabel("Week total");
+
+		expect(container.querySelector(".timekeep-df-timer-label")?.textContent).toBe("Week total");
+	});
+
+	it("should expose the selected-period capacity state", () => {
+		timer.load();
+		timer.setCapacityState("within");
+		expect(timer.wrapperEl?.getAttribute("data-capacity-state")).toBe("within");
+		timer.setCapacityState("over");
+		expect(timer.wrapperEl?.getAttribute("data-capacity-state")).toBe("over");
 	});
 
 	it("secondary value should be hidden if it is empty", () => {

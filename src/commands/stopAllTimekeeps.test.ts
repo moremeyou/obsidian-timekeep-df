@@ -17,7 +17,7 @@ describe("stopFileTimekeeps", () => {
 		const command = stopAllTimekeeps(app);
 		const callback = command.callback!;
 		await callback();
-		expect(MockNotice).toHaveBeenLastCalledWith("Nothing to stop.", 1500);
+		expect(MockNotice).toHaveBeenLastCalledWith("Timekeep DF: nothing to stop.", 1500);
 	});
 
 	it("when stopped timekeeps should report count", async () => {
@@ -38,7 +38,7 @@ describe("stopFileTimekeeps", () => {
 		const command = stopAllTimekeeps(app);
 		const callback = command.callback!;
 		await callback();
-		expect(MockNotice).toHaveBeenLastCalledWith("Stopped 1 tracker", 1500);
+		expect(MockNotice).toHaveBeenLastCalledWith("Timekeep DF: stopped 1 tracker", 1500);
 	});
 
 	it("when stopped timekeeps should report count for multiple", async () => {
@@ -66,7 +66,7 @@ describe("stopFileTimekeeps", () => {
 		const command = stopAllTimekeeps(app);
 		const callback = command.callback!;
 		await callback();
-		expect(MockNotice).toHaveBeenLastCalledWith("Stopped 2 trackers", 1500);
+		expect(MockNotice).toHaveBeenLastCalledWith("Timekeep DF: stopped 2 trackers", 1500);
 	});
 
 	it("on error the error should be reported", async () => {
@@ -89,6 +89,9 @@ describe("stopFileTimekeeps", () => {
 		const command = stopAllTimekeeps(app);
 		const callback = command.callback!;
 		await callback();
-		expect(MockNotice).toHaveBeenLastCalledWith("Failed to stop timekeeps: test error", 1500);
+		expect(MockNotice).toHaveBeenLastCalledWith(
+			"Timekeep DF failed to stop trackers: test error",
+			1500
+		);
 	});
 });

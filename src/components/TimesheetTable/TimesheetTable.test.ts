@@ -11,7 +11,9 @@ import { assert } from "@/utils/assert";
 
 import { TimesheetTable } from "./TimesheetTable";
 
+import type { HistoricalActivityDraft } from "@/timekeep/draft";
 import { defaultTimekeep, type Timekeep } from "@/timekeep/schema";
+import { TimekeepViewMode } from "@/timekeep/view";
 
 describe("TimesheetTable", () => {
 	let containerEl: HTMLElement;
@@ -30,6 +32,23 @@ describe("TimesheetTable", () => {
 
 	it("should load without error", () => {
 		expect(() => component.load()).not.toThrow();
+		const headings = Array.from(component.wrapperEl?.querySelectorAll("th") ?? []).map(
+			(heading) => heading.textContent
+		);
+		expect(headings).toContain("%");
+		expect(headings).not.toContain("% of Day");
+		expect(headings).toEqual(["", "Activity", "Duration", "%", "Start", "End", ""]);
+		expect(component.wrapperEl?.classList.contains("timekeep-df-table-wrapper")).toBe(true);
+		const headingElements = component.wrapperEl?.querySelectorAll("th");
+		expect(headingElements?.item(0).className).toBe("timekeep-df-head--actions");
+		expect(headingElements?.item(1).className).toBe("timekeep-df-head--name");
+		expect(headingElements?.item(2).className).toBe("timekeep-df-head--duration");
+		expect(headingElements?.item(3).className).toBe("timekeep-df-head--percent");
+		expect(headingElements?.item(4).className).toBe("timekeep-df-head--time");
+		expect(headingElements?.item(5).className).toBe("timekeep-df-head--time");
+		expect(headingElements?.item(6).className).toBe("timekeep-df-head--actions");
+		expect(headingElements?.item(0).getAttribute("aria-label")).toBe("Start or stop");
+		expect(headingElements?.item(6).getAttribute("aria-label")).toBe("Edit");
 	});
 
 	it("should be able to render rows", () => {
@@ -48,6 +67,190 @@ describe("TimesheetTable", () => {
 		component.load();
 	});
 
+	it("shows only rows with duration in the selected calendar window", () => {
+		vi.useFakeTimers();
+		vi.setSystemTime(new Date("2026-08-12T12:00:00"));
+		const viewState = createStore({
+			mode: TimekeepViewMode.DAY,
+			anchorDate: "2026-08-12",
+			followCurrent: true,
+		});
+		component = new TimesheetTable(containerEl, app, timekeep, settings, viewState);
+		timekeep.setState({
+			entries: [
+				{
+					id: 1,
+					name: "Yesterday",
+					startTime: moment("2026-08-11T09:00:00"),
+					endTime: moment("2026-08-11T10:00:00"),
+					subEntries: null,
+				},
+				{
+					id: 2,
+					name: "Today",
+					startTime: moment("2026-08-12T09:00:00"),
+					endTime: moment("2026-08-12T10:00:00"),
+					subEntries: null,
+				},
+			],
+		});
+
+		component.load();
+		const rows = component.wrapperEl?.querySelectorAll("tbody > tr");
+		expect(rows).toHaveLength(1);
+		expect(rows?.item(0).textContent).toContain("Today");
+		expect(component.wrapperEl?.textContent).not.toContain("Yesterday");
+		vi.useRealTimers();
+	});
+
+	it("temporarily shows and edits an empty historical draft, then hides it on cancel", () => {
+		const viewState = createStore({
+			mode: TimekeepViewMode.DAY,
+			anchorDate: "2026-08-11",
+			followCurrent: false,
+		});
+		const draftEntry = {
+			id: 91,
+			name: "Historical Activity",
+			startTime: null,
+			endTime: null,
+			subEntries: null,
+		};
+		const historicalDraft = createStore<HistoricalActivityDraft | null>({
+			activityId: draftEntry.id,
+			activityName: draftEntry.name,
+			entryId: draftEntry.id,
+			entryName: draftEntry.name,
+			initialTime: moment("2026-08-11T14:25"),
+		});
+		timekeep.setState({ entries: [draftEntry] });
+		component = new TimesheetTable(
+			containerEl,
+			app,
+			timekeep,
+			settings,
+			viewState,
+			historicalDraft
+		);
+
+		component.load();
+		expect(component.wrapperEl?.querySelector("form.timekeep-df-editing")).not.toBeNull();
+		expect(
+			component.wrapperEl?.querySelector<HTMLInputElement>(
+				'input[name="timekeep-df-start-date"]'
+			)?.value
+		).toBe("2026-08-11");
+		expect(
+			component.wrapperEl?.querySelector<HTMLInputElement>(
+				'input[name="timekeep-df-start-native-time"]'
+			)?.value
+		).toBe("14:25");
+
+		component.wrapperEl?.querySelector<HTMLButtonElement>('[data-action="cancel"]')?.click();
+		expect(historicalDraft.getState()).toBeNull();
+		expect(component.wrapperEl?.querySelectorAll("tbody > tr")).toHaveLength(0);
+		expect(timekeep.getState().entries).toEqual([draftEntry]);
+	});
+
+	it("reopens a historical draft after parser runtime IDs change", () => {
+		const historicalDraft = createStore<HistoricalActivityDraft | null>({
+			activityId: 90,
+			activityName: "Project Management",
+			entryId: 91,
+			entryName: "Block 2",
+			initialTime: moment("2026-08-11T14:25"),
+		});
+		timekeep.setState({
+			entries: [
+				{
+					id: 190,
+					name: "Project Management",
+					collapsed: true,
+					startTime: null,
+					endTime: null,
+					subEntries: [
+						{
+							id: 191,
+							name: "Block 2",
+							startTime: null,
+							endTime: null,
+							subEntries: null,
+						},
+					],
+				},
+			],
+		});
+		component = new TimesheetTable(
+			containerEl,
+			app,
+			timekeep,
+			settings,
+			createStore({
+				mode: TimekeepViewMode.DAY,
+				anchorDate: "2026-08-11",
+				followCurrent: false,
+			}),
+			historicalDraft
+		);
+
+		component.load();
+		expect(component.wrapperEl?.querySelector("form.timekeep-df-editing")).not.toBeNull();
+		expect(component.wrapperEl?.querySelectorAll("tbody > tr")).toHaveLength(2);
+		expect(
+			component.wrapperEl?.querySelector<HTMLInputElement>('form input[name="name"]')?.value
+		).toBe("Block 2");
+	});
+
+	it("opens the next child Block editor from a historical row plus button", () => {
+		const viewState = createStore({
+			mode: TimekeepViewMode.DAY,
+			anchorDate: "2026-08-11",
+			followCurrent: false,
+		});
+		const historicalDraft = createStore<HistoricalActivityDraft | null>(null);
+		timekeep.setState({
+			entries: [
+				{
+					id: 90,
+					name: "Project Management",
+					startTime: null,
+					endTime: null,
+					subEntries: [
+						{
+							id: 91,
+							name: "Block 1",
+							startTime: moment("2026-08-11T09:00"),
+							endTime: moment("2026-08-11T10:00"),
+							subEntries: null,
+						},
+					],
+				},
+			],
+		});
+		component = new TimesheetTable(
+			containerEl,
+			app,
+			timekeep,
+			settings,
+			viewState,
+			historicalDraft
+		);
+		component.load();
+
+		component.wrapperEl
+			?.querySelector<HTMLButtonElement>('tbody > tr [data-action="add-block"]')
+			?.click();
+
+		expect(component.wrapperEl?.querySelector("form.timekeep-df-editing")).not.toBeNull();
+		expect(
+			component.wrapperEl?.querySelector<HTMLInputElement>('form input[name="name"]')?.value
+		).toBe("Block 2");
+		expect(timekeep.getState().entries[0].subEntries).toHaveLength(2);
+		expect(historicalDraft.getState()?.entryId).toBe(
+			timekeep.getState().entries[0].subEntries?.[1].id
+		);
+	});
+
 	it("should be able to render groups with nested rows", () => {
 		const start = moment();
 		timekeep.setState({
@@ -62,7 +265,7 @@ describe("TimesheetTable", () => {
 							id: 2,
 							name: "Test",
 							startTime: moment(start),
-							endTime: moment(start),
+							endTime: moment(start).add(1, "minute"),
 							subEntries: null,
 						},
 					],
@@ -70,6 +273,89 @@ describe("TimesheetTable", () => {
 			],
 		});
 		component.load();
+
+		const rows = component.wrapperEl?.querySelectorAll<HTMLTableRowElement>("tbody > tr");
+		expect(rows).toHaveLength(2);
+		expect(rows?.item(0).dataset.groupPosition).toBe("start");
+		expect(rows?.item(1).dataset.groupPosition).toBe("end");
+		expect(rows?.item(0).dataset.groupTone).toBe(rows?.item(1).dataset.groupTone);
+	});
+
+	it("alternates the next parent independently of an expanded group's row count", () => {
+		const start = moment();
+		timekeep.setState({
+			entries: [
+				{
+					id: 1,
+					name: "Expanded",
+					startTime: null,
+					endTime: null,
+					subEntries: [
+						{
+							id: 2,
+							name: "Part",
+							startTime: moment(start),
+							endTime: moment(start).add(1, "minute"),
+							subEntries: null,
+						},
+					],
+				},
+				{
+					id: 3,
+					name: "Next parent",
+					startTime: moment(start),
+					endTime: moment(start).add(1, "minute"),
+					subEntries: null,
+				},
+			],
+		});
+		component.load();
+
+		const rows = component.wrapperEl?.querySelectorAll<HTMLTableRowElement>("tbody > tr");
+		expect(rows).toHaveLength(3);
+		expect(rows?.item(0).dataset.groupTone).toBe("odd");
+		expect(rows?.item(1).dataset.groupTone).toBe("odd");
+		expect(rows?.item(2).dataset.groupTone).toBe("even");
+		expect(rows?.item(2).dataset.groupPosition).toBeUndefined();
+	});
+
+	it("terminates one expanded outline before the next expanded parent", () => {
+		const part = (id: number) => ({
+			id,
+			name: `Part ${id}`,
+			startTime: moment().subtract(1, "minute"),
+			endTime: moment(),
+			subEntries: null,
+		});
+		timekeep.setState({
+			entries: [
+				{
+					id: 1,
+					name: "First",
+					startTime: null,
+					endTime: null,
+					subEntries: [part(2)],
+				},
+				{
+					id: 3,
+					name: "Second",
+					startTime: null,
+					endTime: null,
+					subEntries: [part(4)],
+				},
+			],
+		});
+		component.load();
+
+		const rows = component.wrapperEl?.querySelectorAll<HTMLTableRowElement>("tbody > tr");
+		expect(Array.from(rows ?? []).map((row) => row.dataset.groupPosition)).toEqual([
+			"start",
+			"end",
+			"start",
+			"end",
+		]);
+		expect(rows?.item(1).dataset.groupTone).toBe("odd");
+		expect(rows?.item(2).dataset.groupTone).toBe("even");
 	});
 
 	it("disabling the limitTableSize setting should set maxHeight and overflowY", () => {
@@ -97,7 +383,7 @@ describe("TimesheetTable", () => {
 							id: 2,
 							name: "Test",
 							startTime: moment(start),
-							endTime: moment(start),
+							endTime: moment(start).add(1, "minute"),
 							subEntries: null,
 						},
 					],

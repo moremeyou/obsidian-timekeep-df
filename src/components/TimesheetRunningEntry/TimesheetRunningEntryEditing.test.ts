@@ -36,6 +36,42 @@ describe("TimesheetRunningEntryEditing", () => {
 			onFinishedEditing
 		);
 		component.load();
+		expect(component.wrapperEl?.querySelector("label")?.textContent).toBe("Edit:");
+		expect(
+			component.wrapperEl?.querySelector(".timekeep-df-name-wrapper")?.children
+		).toHaveLength(2);
+	});
+
+	it("uses unique fork-scoped input IDs with matching labels", () => {
+		const first = new TimesheetRunningEntryEditing(
+			containerEl,
+			timekeep,
+			settings,
+			"First",
+			onFinishedEditing
+		);
+		const second = new TimesheetRunningEntryEditing(
+			containerEl,
+			timekeep,
+			settings,
+			"Second",
+			onFinishedEditing
+		);
+
+		first.load();
+		second.load();
+
+		const inputs = Array.from(
+			containerEl.querySelectorAll<HTMLInputElement>(".timekeep-df-name")
+		);
+		const labels = Array.from(containerEl.querySelectorAll<HTMLLabelElement>("label"));
+		expect(inputs).toHaveLength(2);
+		expect(new Set(inputs.map((input) => input.id)).size).toBe(2);
+		expect(inputs.every((input) => /^timekeep-df-running-name-\d+$/.test(input.id))).toBe(true);
+		expect(labels.map((label) => label.htmlFor)).toEqual(inputs.map((input) => input.id));
+
+		first.unload();
+		second.unload();
 	});
 
 	it("should save nothing if the running entry doesn't exist", () => {
@@ -89,7 +125,7 @@ describe("TimesheetRunningEntryEditing", () => {
 
 		const formEl = component.wrapperEl!;
 
-		const nameInputEl = formEl.querySelector(".timekeep-name");
+		const nameInputEl = formEl.querySelector(".timekeep-df-name");
 		expect(nameInputEl).not.toBeNull();
 		(nameInputEl as HTMLInputElement).value = "New Name";
 

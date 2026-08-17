@@ -21,7 +21,7 @@ describe("createObsidianIcon", () => {
 
 		expect(wrapper).toBeInstanceOf(HTMLDivElement);
 		expect(wrapper.classList.length).toBe(1);
-		expect(wrapper.classList.contains("timekeep-icon-wrapper")).toBe(true);
+		expect(wrapper.classList.contains("timekeep-df-icon-wrapper")).toBe(true);
 	});
 
 	it("should call setIcon with wrapper and icon name", () => {

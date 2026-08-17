@@ -7,12 +7,66 @@ import { createStore } from "@/store";
 import { createCodeBlock } from "@/utils/codeblock";
 
 import { TimekeepAutocomplete } from "./autocomplete";
-import { TimekeepRegistry } from "./registry";
+import { TimekeepEntryItemType, TimekeepRegistry } from "./registry";
 
 import { Timekeep } from "@/timekeep/schema";
 
 describe("TimekeepAutocomplete", () => {
 	describe("autocomplete enabled", () => {
+		it("does not retain registry callbacks across settings changes or unload", () => {
+			const vault = new MockVault();
+			const file = vault.addFile("test.timekeep-df", "");
+			const settings = createStore({ ...defaultSettings });
+			const registry = new TimekeepRegistry(vault.asVault(), settings);
+			registry.entries.setState([
+				{
+					type: TimekeepEntryItemType.FILE,
+					file,
+					timekeep: {
+						entries: [
+							{
+								id: 1,
+								name: "Test",
+								startTime: moment("2020-01-01T00:00:00Z"),
+								endTime: null,
+								subEntries: null,
+							},
+						],
+					},
+				},
+			]);
+
+			const autocomplete = new TimekeepAutocomplete(registry, settings);
+			autocomplete.load();
+			expect(autocomplete.names.getState()).toEqual(["Test"]);
+
+			const namesListener = vi.fn();
+			autocomplete.names.subscribe(namesListener);
+
+			settings.setState({ ...settings.getState(), autocompleteEnabled: false });
+			expect(autocomplete.names.getState()).toEqual([]);
+			namesListener.mockClear();
+			registry.entries.setState(registry.entries.getState());
+			expect(namesListener).not.toHaveBeenCalled();
+			expect(autocomplete.names.getState()).toEqual([]);
+
+			settings.setState({ ...settings.getState(), autocompleteEnabled: true });
+			expect(autocomplete.names.getState()).toEqual(["Test"]);
+			settings.setState({
+				...settings.getState(),
+				statusBarEnabled: !settings.getState().statusBarEnabled,
+			});
+			namesListener.mockClear();
+			registry.entries.setState(registry.entries.getState());
+			expect(namesListener).toHaveBeenCalledOnce();
+
+			autocomplete.unload();
+			namesListener.mockClear();
+			registry.entries.setState([]);
+			expect(namesListener).not.toHaveBeenCalled();
+			expect(autocomplete.names.getState()).toEqual(["Test"]);
+		});
+
 		it("empty vault should have no names", async () => {
 			const vault = new MockVault();
 			const settings = createStore({ ...defaultSettings });
@@ -30,7 +84,7 @@ describe("TimekeepAutocomplete", () => {
 		it("populated vault should have names", async () => {
 			const vault = new MockVault();
 			vault.addFile(
-				"test.timekeep",
+				"test.timekeep-df",
 				JSON.stringify({
 					entries: [
 						{
@@ -59,7 +113,7 @@ describe("TimekeepAutocomplete", () => {
 		it("new files should cause an update to the available names", async () => {
 			const vault = new MockVault();
 			vault.addFile(
-				"test.timekeep",
+				"test.timekeep-df",
 				JSON.stringify({
 					entries: [
 						{
@@ -88,7 +142,7 @@ describe("TimekeepAutocomplete", () => {
 			autocomplete.names.subscribe(changeListener);
 
 			vault.addFile(
-				"test2.timekeep",
+				"test2.timekeep-df",
 				JSON.stringify({
 					entries: [
 						{
@@ -111,7 +165,7 @@ describe("TimekeepAutocomplete", () => {
 		it("removing files should cause an update to the available names", async () => {
 			const vault = new MockVault();
 			vault.addFile(
-				"test.timekeep",
+				"test.timekeep-df",
 				JSON.stringify({
 					entries: [
 						{
@@ -126,7 +180,7 @@ describe("TimekeepAutocomplete", () => {
 			);
 
 			vault.addFile(
-				"test2.timekeep",
+				"test2.timekeep-df",
 				JSON.stringify({
 					entries: [
 						{
@@ -154,7 +208,7 @@ describe("TimekeepAutocomplete", () => {
 			const changeListener = vi.fn(() => {});
 			autocomplete.names.subscribe(changeListener);
 
-			vault.removeFile("test2.timekeep");
+			vault.removeFile("test2.timekeep-df");
 
 			await registry.waitTasks();
 
@@ -165,7 +219,7 @@ describe("TimekeepAutocomplete", () => {
 		it("populated vault should have names excluding ignored names", async () => {
 			const vault = new MockVault();
 			vault.addFile(
-				"test.timekeep",
+				"test.timekeep-df",
 				JSON.stringify({
 					entries: [
 						{
@@ -198,6 +252,13 @@ describe("TimekeepAutocomplete", () => {
 						},
 						{
 							id: 5,
+							name: "Activity 2",
+							startTime: moment("2020-01-01T00:00:00Z"),
+							endTime: null,
+							subEntries: null,
+						},
+						{
+							id: 6,
 							name: "",
 							startTime: moment("2020-01-01T00:00:00Z"),
 							endTime: null,
@@ -229,7 +290,7 @@ describe("TimekeepAutocomplete", () => {
 		it("populated vault with only ignored names should have no names", async () => {
 			const vault = new MockVault();
 			vault.addFile(
-				"test.timekeep",
+				"test.timekeep-df",
 				JSON.stringify({
 					entries: [
 						{
@@ -241,7 +302,7 @@ describe("TimekeepAutocomplete", () => {
 						},
 						{
 							id: 2,
-							name: "Block 2",
+							name: "Activity 2",
 							startTime: moment("2020-01-01T00:00:00Z"),
 							endTime: null,
 							subEntries: null,
@@ -288,7 +349,7 @@ describe("TimekeepAutocomplete", () => {
 		it("populated vault should have no names", async () => {
 			const vault = new MockVault();
 			vault.addFile(
-				"test.timekeep",
+				"test.timekeep-df",
 				JSON.stringify({
 					entries: [
 						{

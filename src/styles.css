@@ -1,25 +1,35 @@
 /* Main container around the timekeep codeblock content */
-.timekeep-container {
-	--timekeep-running-row-color: var(--color-base-30);
+.timekeep-df-container {
+	--timekeep-df-running-row-color: var(--color-base-30);
+	--timekeep-df-compact-control-height: 2rem;
+	--timekeep-df-compact-control-font-size: var(--font-ui-small);
 
 	width: 100%;
 	display: flex;
 	flex-flow: column;
-	border: 1px solid var(--color-base-30);
+}
+
+/* Horizontally scroll the item table when its stable columns cannot fit. */
+.timekeep-df-table-wrapper {
+	width: 100%;
+	min-width: 0;
+	overflow-x: auto;
+	overscroll-behavior-inline: contain;
 }
 
 /* <table/> for the timekeep table */
-.timekeep-table {
+.timekeep-df-table {
 	width: 100%;
+	min-width: 40rem;
 }
 
-.timekeep-table--fixed-size {
+.timekeep-df-table--fixed-size {
 	max-height: 600px;
 	overflow-y: auto;
 }
 
 /* <thead/> for the timekeep table */
-.timekeep-table-head {
+.timekeep-df-table-head {
 	background-color: var(--color-base-30);
 	position: sticky;
 	top: -1px;
@@ -27,244 +37,1110 @@
 }
 
 /* <tr/> row within the timekeep table */
-.timekeep-row {
+.timekeep-df-row {
 	width: 100%;
 }
 
-/* underling for timekeep group rows */
-.timekeep-row[data-sub-entries="true"] {
-	border-bottom: 2px solid var(--color-base-40);
-}
-
 /* left error indicator line for invalid entries */
-.timekeep-row[data-invalid="true"] {
+.timekeep-df-row[data-invalid="true"] {
 	border-left: 2px solid var(--color-red);
 }
 
 /* alternating row highlight color */
-.timekeep-row:nth-child(even) {
+.timekeep-df-row:nth-child(even) {
 	background-color: var(--color-base-20);
 }
 
 /* alternating row highlight hover color */
-.timekeep-row:nth-child(even):hover {
+.timekeep-df-row:nth-child(even):hover {
 	background-color: var(--color-base-20);
 }
 
 /* row running color */
-.timekeep-row[data-running="true"],
-.timekeep-row:nth-child(even)[data-running="true"],
-.timekeep-row:nth-child(odd)[data-running="true"] {
-	background-color: var(--timekeep-running-row-color);
+.timekeep-df-row[data-running="true"],
+.timekeep-df-row:nth-child(even)[data-running="true"],
+.timekeep-df-row:nth-child(odd)[data-running="true"] {
+	background-color: var(--timekeep-df-running-row-color);
+}
+
+/* expanded groups use the parent row's base tone across every descendant row */
+.timekeep-df-row[data-group-tone="odd"]:not(:hover),
+.timekeep-df-row[data-group-tone="odd"]:not(:hover) > td {
+	background-color: var(--table-row-odd-background, transparent) !important;
+}
+
+.timekeep-df-row[data-group-tone="even"]:not(:hover),
+.timekeep-df-row[data-group-tone="even"]:not(:hover) > td {
+	background-color: var(--table-row-even-background, var(--color-base-20)) !important;
+}
+
+/* visually enclose the complete expanded parent/child row area */
+.timekeep-df-row[data-group-position] > * {
+	box-shadow: none;
+	border-radius: 0;
+}
+
+.timekeep-df-row[data-group-position] > :first-child {
+	border-left: 1px solid var(--background-modifier-border-hover);
+}
+
+.timekeep-df-row[data-group-position] > :last-child {
+	border-right: 1px solid var(--background-modifier-border-hover);
+}
+
+.timekeep-df-row[data-group-position="start"] > * {
+	border-top: 1px solid var(--background-modifier-border-hover);
+}
+
+.timekeep-df-row[data-group-position="end"] > * {
+	border-bottom: 1px solid var(--background-modifier-border-hover);
+}
+
+/* calendar view navigation above each tracker */
+.timekeep-df-view-controls {
+	display: grid;
+	grid-template-columns: auto auto auto minmax(8rem, 1fr) auto;
+	gap: 0.375rem;
+	align-items: center;
+	padding: 0.5rem;
+}
+
+.timekeep-df-view-control {
+	display: inline-flex;
+	align-items: center;
+	justify-content: center;
+	min-height: var(--timekeep-df-compact-control-height);
+	font-size: var(--timekeep-df-compact-control-font-size);
+}
+
+.timekeep-df-view-label {
+	min-width: 0;
+	text-align: center;
+}
+
+.timekeep-df-view-mode {
+	min-width: 6.5rem;
+	font-size: var(--timekeep-df-compact-control-font-size);
+}
+
+@media (max-width: 520px) {
+	.timekeep-df-view-controls {
+		grid-template-columns: auto auto auto minmax(0, 1fr);
+	}
+
+	.timekeep-df-view-mode {
+		width: max-content;
+		min-width: 0;
+		justify-self: end;
+	}
+
+	.timekeep-df-view-label {
+		grid-column: 1 / -1;
+		grid-row: 2;
+	}
 }
 
 /* collapse row icon */
-.timekeep-collapse-icon {
+.timekeep-df-collapse-icon {
 	margin-left: 0.5rem;
 	cursor: pointer;
 	vertical-align: middle;
 }
 
 /* row folder indicator icon */
-.timekeep-folder-icon {
+.timekeep-df-folder-icon {
 	margin-right: 0.5rem;
 	cursor: pointer;
 	vertical-align: middle;
 }
 
 /* <form/> for a timekeep row editing content */
-.timekeep-editing {
-	display: flex;
-	flex-flow: column;
-	gap: 0.5rem;
-	padding: 0.5rem;
-	border: 1px solid var(--color-base-40);
-	margin: 0.25rem 0;
+.timekeep-df-editing {
+	display: grid;
+	grid-template-columns: repeat(2, minmax(0, 1fr));
+	gap: 0.75rem;
+	width: 100%;
+	min-width: 0;
+	max-width: 100%;
+	padding: 0.75rem;
+	margin: 0;
+	border: 0;
+	box-sizing: border-box;
 }
 
-/* container for the timekeep row editing actions */
-.timekeep-editing-actions {
-	display: flex;
-	flex-flow: row;
+.timekeep-df-input-label {
+	display: grid;
+	grid-column: 1 / -1;
+	gap: 0.375rem;
+	min-width: 0;
+	font-size: var(--font-ui-small);
+}
+
+/* Single-line editing toolbar: primary actions left, time adjustments right. */
+.timekeep-df-editing-footer {
+	display: grid;
+	grid-column: 1 / -1;
+	grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr);
+	align-items: center;
 	gap: 0.5rem;
-	margin-top: 0.25rem;
-	margin-bottom: 0.5rem;
+	min-width: 0;
+	margin: 0;
+}
+
+.timekeep-df-editing-actions,
+.timekeep-df-editing-adjustments,
+.timekeep-df-editing-destructive {
+	display: flex;
+	flex: 0 0 auto;
+	flex-flow: row nowrap;
+	gap: 0.5rem;
+}
+
+.timekeep-df-editing-adjustments {
+	grid-column: 2;
+	justify-self: center;
+}
+
+.timekeep-df-editing-adjustments[hidden] {
+	display: none;
+}
+
+.timekeep-df-editing-destructive {
+	grid-column: 3;
+	justify-self: end;
+}
+
+.timekeep-df-editing-actions .timekeep-df-action,
+.timekeep-df-editing-adjustments .timekeep-df-action,
+.timekeep-df-editing-destructive .timekeep-df-action,
+.timekeep-df-confirm-modal-button {
+	min-height: var(--timekeep-df-compact-control-height);
+	padding: 0 0.625rem;
+	font-size: var(--timekeep-df-compact-control-font-size);
+	line-height: 1;
 }
 
 /* input within the timekeep editing row */
-.timekeep-input {
+.timekeep-df-input {
 	width: 100%;
-	margin-top: 0.5rem;
+	height: var(--timekeep-df-compact-control-height);
+	min-height: var(--timekeep-df-compact-control-height);
+	margin: 0;
+	padding: 0 0.625rem;
+	font-size: var(--timekeep-df-compact-control-font-size);
+	box-sizing: border-box;
+}
+
+/* date and time editor within the timekeep editing row */
+.timekeep-df-timestamp-editor {
+	display: grid;
+	gap: 0.35rem;
+	min-width: 0;
+}
+
+.timekeep-df-timestamp-editor[hidden] {
+	display: none;
+}
+
+.timekeep-df-timestamp-title {
+	font-weight: var(--font-semibold);
+}
+
+.timekeep-df-timestamp-fields {
+	display: grid;
+	grid-template-columns: minmax(0, 1fr) minmax(0, 8rem);
+	gap: 0.625rem;
+	align-items: end;
+}
+
+.timekeep-df-timestamp-field {
+	display: grid;
+	gap: 0.375rem;
+	min-width: 0;
+	color: var(--text-muted);
+	font-size: var(--font-ui-small);
+}
+
+.timekeep-df-date-input,
+.timekeep-df-native-time-input {
+	height: var(--timekeep-df-compact-control-height);
+	min-height: var(--timekeep-df-compact-control-height);
+	max-height: var(--timekeep-df-compact-control-height);
+	padding-inline: 0.625rem;
+	padding-block: 0;
+	font-size: var(--timekeep-df-compact-control-font-size);
+	background-color: var(--background-primary);
+	border: 1px solid var(--background-modifier-border);
+	border-radius: 0.375rem;
+	box-shadow: none;
+	box-sizing: border-box;
+}
+
+.timekeep-df-editing input.timekeep-df-input,
+.timekeep-df-editing input.timekeep-df-date-input,
+.timekeep-df-editing input.timekeep-df-native-time-input {
+	height: var(--timekeep-df-compact-control-height) !important;
+	min-height: var(--timekeep-df-compact-control-height) !important;
+	max-height: var(--timekeep-df-compact-control-height) !important;
+	padding-block: 0 !important;
+}
+
+.timekeep-df-date-input,
+.timekeep-df-native-time-input {
+	width: 100%;
+	min-width: 0;
+	max-width: 100%;
+}
+
+.timekeep-df-date-input:focus,
+.timekeep-df-native-time-input:focus {
+	border-color: color-mix(
+		in srgb,
+		var(--interactive-accent) 72%,
+		var(--background-modifier-border)
+	);
+	box-shadow: 0 0 0 2px color-mix(in srgb, var(--interactive-accent) 18%, transparent);
+	outline: none;
+}
+
+.timekeep-df-date-input,
+.timekeep-df-native-time-input {
+	line-height: var(--timekeep-df-compact-control-height);
+	-webkit-appearance: auto;
+	appearance: auto;
+}
+
+@media (max-width: 700px) {
+	.timekeep-df-table-wrapper:has(.timekeep-df-editing) {
+		overflow-x: hidden;
+	}
+
+	.timekeep-df-table:has(.timekeep-df-editing) {
+		width: 100%;
+		min-width: 0;
+		table-layout: fixed;
+	}
+
+	.timekeep-df-row:has(.timekeep-df-editing),
+	.timekeep-df-row:has(.timekeep-df-editing) > td {
+		width: 100%;
+		max-width: 100%;
+		border: 0 !important;
+		box-shadow: none !important;
+	}
+
+	.timekeep-df-table .timekeep-df-editing {
+		grid-template-columns: minmax(0, 1fr);
+		gap: 0.625rem;
+		padding: 0.625rem;
+	}
+
+	.timekeep-df-table .timekeep-df-input-label,
+	.timekeep-df-table .timekeep-df-editing-footer {
+		grid-column: 1;
+	}
+
+	.timekeep-df-table .timekeep-df-timestamp-fields {
+		grid-template-columns: minmax(0, 1fr) minmax(0, 7.5rem);
+		gap: 0.5rem;
+	}
+
+	.timekeep-df-table .timekeep-df-editing-footer {
+		overflow-x: auto;
+		overflow-y: hidden;
+		overscroll-behavior-inline: contain;
+		scrollbar-width: thin;
+	}
+}
+
+@media (max-width: 340px) {
+	.timekeep-df-table .timekeep-df-timestamp-fields {
+		grid-template-columns: minmax(0, 1fr);
+	}
+}
+
+/* Mobile/tablet row editing is detached from the horizontally scrolling table. */
+.modal.timekeep-df-compact-modal {
+	width: min(360px, 92vw);
+}
+
+.timekeep-df-modal-icon-button {
+	display: grid;
+	place-items: center;
+	box-sizing: border-box;
+	flex: 0 0 34px;
+	width: 34px;
+	min-width: 34px;
+	max-width: 34px;
+	height: 34px;
+	min-height: 34px;
+	max-height: 34px;
+	padding: 0 !important;
+	border-radius: 50% !important;
+	box-shadow: none !important;
+	line-height: 1;
+}
+
+.timekeep-df-modal-icon-button .timekeep-df-icon-wrapper {
+	display: grid;
+	place-items: center;
+	width: 18px;
+	height: 18px;
+}
+
+.timekeep-df-modal-icon-button .svg-icon,
+.timekeep-df-modal-icon-button .timekeep-df-modal-button-icon {
+	display: block;
+	width: 18px;
+	height: 18px;
+}
+
+.modal.timekeep-df-compact-modal .modal-close-button {
+	box-sizing: border-box;
+	width: 34px;
+	min-width: 34px;
+	max-width: 34px;
+	height: 34px;
+	min-height: 34px;
+	max-height: 34px;
+	border-radius: 50% !important;
+	box-shadow: none !important;
+}
+
+.timekeep-df-row-edit-modal .modal-content,
+.timekeep-df-row-edit-modal-content {
+	min-width: 0;
+}
+
+.timekeep-df-row-edit-modal .timekeep-df-editing {
+	display: grid;
+	grid-template-columns: repeat(2, minmax(0, 1fr));
+	gap: 14px 10px;
+	width: 100%;
+	min-width: 0;
+	max-width: 100%;
+	padding: 0;
+	border: 0;
+}
+
+.timekeep-df-row-edit-modal .timekeep-df-input-label {
+	grid-column: 1 / -1;
+	gap: 6px;
+	color: var(--text-muted);
+	font-size: var(--font-ui-small);
+}
+
+.timekeep-df-row-edit-modal .timekeep-df-timestamp-editor {
+	gap: 6px;
+}
+
+.timekeep-df-row-edit-modal .timekeep-df-timestamp-title {
+	color: var(--text-muted);
+	font-size: var(--font-ui-smaller);
+	font-weight: var(--font-semibold);
+	text-transform: uppercase;
+	letter-spacing: 0.04em;
+}
+
+.timekeep-df-row-edit-modal .timekeep-df-timestamp-fields {
+	grid-template-columns: minmax(0, 1fr) 128px;
+	gap: 10px;
+	align-items: end;
+}
+
+.timekeep-df-row-edit-modal .timekeep-df-timestamp-field {
+	gap: 6px;
+}
+
+.timekeep-df-row-edit-modal input.timekeep-df-input,
+.timekeep-df-row-edit-modal input.timekeep-df-date-input,
+.timekeep-df-row-edit-modal input.timekeep-df-native-time-input {
+	width: 100%;
+	min-width: 0;
+	max-width: 100%;
+	height: 34px !important;
+	min-height: 34px !important;
+	max-height: 34px !important;
+	padding: 0 10px !important;
+	font-size: var(--font-ui-small);
+	line-height: 34px;
+	box-sizing: border-box;
+}
+
+.timekeep-df-row-edit-modal .timekeep-df-editing-footer {
+	display: grid;
+	grid-column: 1 / -1;
+	grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr);
+	align-items: center;
+	gap: 8px;
+	min-width: 0;
+	margin-top: 4px;
+	overflow: visible;
+}
+
+.timekeep-df-row-edit-modal .timekeep-df-editing-actions,
+.timekeep-df-row-edit-modal .timekeep-df-editing-adjustments,
+.timekeep-df-row-edit-modal .timekeep-df-editing-destructive {
+	display: flex;
+	flex: 0 0 auto;
+	flex-flow: row nowrap;
+	gap: 8px;
+}
+
+.timekeep-df-row-edit-modal .timekeep-df-editing-adjustments {
+	grid-column: 2;
+	justify-self: center;
+}
+
+.timekeep-df-row-edit-modal .timekeep-df-editing-adjustments[hidden] {
+	display: none;
+}
+
+.timekeep-df-row-edit-modal .timekeep-df-editing-destructive {
+	grid-column: 3;
+	justify-self: end;
+}
+
+.timekeep-df-row-edit-modal .timekeep-df-action {
+	height: 34px;
+	min-height: 34px;
+	max-height: 34px;
+	min-width: 0;
+	padding: 0 10px;
+	font-size: var(--font-ui-small);
+	line-height: 1;
+	white-space: nowrap;
+}
+
+.timekeep-df-row-edit-modal .timekeep-df-editing-actions [data-action="cancel"] {
+	display: none;
+}
+
+@media (hover: none), (pointer: coarse) {
+	.modal.timekeep-df-compact-modal {
+		width: min(340px, 94vw);
+	}
+
+	.timekeep-df-row-edit-modal .timekeep-df-timestamp-fields {
+		grid-template-columns: minmax(0, 1fr) 112px;
+		gap: 8px;
+	}
+
+	.timekeep-df-row-edit-modal input.timekeep-df-input,
+	.timekeep-df-row-edit-modal input.timekeep-df-date-input,
+	.timekeep-df-row-edit-modal input.timekeep-df-native-time-input {
+		height: 36px !important;
+		min-height: 36px !important;
+		max-height: 36px !important;
+		line-height: 36px;
+		padding: 0 9px !important;
+		border-radius: 8px;
+		-webkit-appearance: none;
+		appearance: none;
+	}
+}
+
+.timekeep-df-phone-modal .timekeep-df-editing {
+	grid-template-columns: minmax(0, 1fr);
+}
+
+.timekeep-df-phone-modal .timekeep-df-input-label,
+.timekeep-df-phone-modal .timekeep-df-editing-footer {
+	grid-column: 1;
+}
+
+.timekeep-df-phone-modal .timekeep-df-action {
+	padding-inline: 9px;
+	font-size: 11px;
+}
+
+.modal.timekeep-df-compact-modal.timekeep-df-phone-modal .modal-close-button {
+	width: 30px;
+	min-width: 30px;
+	max-width: 30px;
+	height: 30px;
+	min-height: 30px;
+	max-height: 30px;
+}
+
+.modal.timekeep-df-compact-modal.timekeep-df-phone-modal .modal-close-button .svg-icon {
+	width: 16px;
+	height: 16px;
+}
+
+@media (hover: none) and (pointer: coarse) and (min-width: 600px) {
+	.modal.timekeep-df-compact-modal {
+		width: min(720px, 92vw);
+	}
+
+	.timekeep-df-row-edit-modal .timekeep-df-timestamp-fields {
+		grid-template-columns: minmax(0, 180px) minmax(0, 128px);
+	}
+
+	.timekeep-df-row-edit-modal .timekeep-df-date-input {
+		max-width: 180px;
+	}
+
+	.timekeep-df-row-edit-modal .timekeep-df-native-time-input {
+		width: 128px;
+	}
+}
+
+@media (hover: none) and (pointer: coarse) and (max-width: 340px) {
+	.timekeep-df-row-edit-modal .timekeep-df-timestamp-fields {
+		grid-template-columns: minmax(0, 1fr);
+	}
+}
+
+/* Compact, explicit delete confirmation: Cancel replaces the native close X. */
+.timekeep-df-confirm-modal {
+	--timekeep-df-compact-control-height: 2rem;
+	--timekeep-df-compact-control-font-size: var(--font-ui-small);
+}
+
+.timekeep-df-confirm-modal .modal-close-button {
+	display: none;
+}
+
+.timekeep-df-confirm-modal .modal-content {
+	display: grid;
+	gap: 0.75rem;
+}
+
+.timekeep-df-confirm-modal .setting-item {
+	padding: 0;
+	border: 0;
+}
+
+.timekeep-df-confirm-modal .setting-item-control {
+	display: flex;
+	gap: 0.5rem;
+	justify-content: flex-end;
+}
+
+@media (max-width: 520px) {
+	.timekeep-df-confirm-modal {
+		--timekeep-df-compact-control-height: 1.7rem;
+
+		font-size: 85%;
+	}
+
+	.timekeep-df-confirm-modal-button {
+		font-size: 1em;
+	}
+
+	.timekeep-df-confirm-modal .setting-item-control {
+		display: grid;
+		grid-template-columns: repeat(2, minmax(0, 1fr));
+	}
 }
 
 /* <td/> column within a timekeep row */
-.timekeep-col {
+.timekeep-df-col {
 	--table-cell-vertical-alignment: middle;
 }
 
 /* column for the timekeep row name */
-.timekeep-col--name {
-	width: 30%;
+.timekeep-df-head--name,
+.timekeep-df-col--name {
+	width: auto;
+	min-width: 12rem;
 	overflow: hidden;
 	overflow-wrap: anywhere;
 }
 
-/* column for the timekeep row timestamp */
-.timekeep-col--time {
-	width: 20%;
+@media (max-width: 520px) {
+	.timekeep-df-container {
+		--timekeep-df-compact-control-height: 1.7rem;
+
+		font-size: 85%;
+	}
+
+	.timekeep-df-head--name,
+	.timekeep-df-col--name {
+		min-width: 10.2rem;
+	}
+
+	.timekeep-df-time,
+	.timekeep-df-action,
+	.timekeep-df-current-activity__name,
+	.timekeep-df-timer-value,
+	.timekeep-df-current-activity__elapsed-value {
+		font-size: 85%;
+	}
+
+	button.timekeep-df-icon-button {
+		flex-basis: 1.9125rem;
+		width: 1.9125rem;
+		min-width: 1.9125rem;
+		height: 1.9125rem;
+		min-height: 1.9125rem;
+		max-height: 1.9125rem;
+	}
+
+	button.timekeep-df-icon-button > .timekeep-df-icon-wrapper,
+	button.timekeep-df-icon-button .timekeep-df-button-icon {
+		--icon-size: 0.95625rem;
+
+		width: 0.95625rem;
+		height: 0.95625rem;
+	}
 }
 
-/* text styling for the actual start / end timestamps within .timekeep-col--time  */
-.timekeep-time {
+/* metric columns shrink to their widest content and keep a stable numeric rhythm */
+.timekeep-df-head--time,
+.timekeep-df-head--duration,
+.timekeep-df-head--percent,
+.timekeep-df-col--time,
+.timekeep-df-col--duration,
+.timekeep-df-col--percent {
+	width: 1%;
+	padding-right: 10px !important;
+	white-space: nowrap;
+	font-variant-numeric: tabular-nums;
+}
+
+/* text styling for the actual start / end timestamps within .timekeep-df-col--time  */
+.timekeep-df-time {
 	font-size: 0.8rem;
 }
 
-/* column for the timekeep row duration */
-.timekeep-col--duration {
-	width: 10%;
-}
-
-/* column for the timekeep row actions */
-.timekeep-col--actions {
-	width: 10%;
+/* actions remain content-sized without the metric-column right buffer */
+.timekeep-df-head--actions,
+.timekeep-df-col--actions {
+	width: 1%;
+	white-space: nowrap;
 	position: relative;
+	vertical-align: middle !important;
 }
 
 /* container for the timekeep row actions items */
-.timekeep-actions-wrapper {
-	display: flex;
-	flex-flow: row;
+.timekeep-df-actions-wrapper {
+	display: grid;
+	grid-auto-flow: column;
 	gap: 0.5rem;
-	flex: auto;
-	align-items: center;
+	place-items: center;
 	justify-content: center;
 	width: 100%;
-	height: 100%;
+	min-height: 2.25rem;
 }
 
 /* action button on a timekeep row */
-.timekeep-action {
+.timekeep-df-action {
 	padding: 0.5rem;
 	font-size: 0.8rem;
 }
 
-/* container for the two timekeep timers at the top */
-.timekeep-timers {
-	display: flex;
-	flex-flow: row;
-	align-items: center;
-	justify-content: center;
+/* Table controls own their chrome instead of inheriting platform-specific button resets. */
+.timekeep-df-table .timekeep-df-actions-wrapper > button.timekeep-df-icon-button {
+	display: inline-grid !important;
+	place-items: center;
+	margin: 0;
+	padding: 0 !important;
+	background-color: var(--interactive-normal) !important;
+	border: 1px solid var(--background-modifier-border) !important;
+	border-radius: 0.375rem !important;
+	box-shadow: none !important;
+	line-height: 1;
+	vertical-align: middle;
+}
+
+.timekeep-df-table
+	.timekeep-df-actions-wrapper
+	> button.timekeep-df-icon-button
+	.timekeep-df-icon-wrapper,
+.timekeep-df-table
+	.timekeep-df-actions-wrapper
+	> button.timekeep-df-icon-button
+	.timekeep-df-button-icon {
+	display: block;
+	margin: 0;
+}
+
+.timekeep-df-table .timekeep-df-actions-wrapper > button.timekeep-df-icon-button:hover {
+	background-color: var(--interactive-hover) !important;
+	border-color: var(--background-modifier-border-hover) !important;
+}
+
+/* Historical ranges are read-only for timer-changing controls. */
+.timekeep-df-container button.timekeep-df-icon-button:disabled {
+	opacity: 0.35;
+	cursor: not-allowed;
+	filter: grayscale(1);
+}
+
+/* Primary top area: current work first, selected-period total second. */
+.timekeep-df-focus-panel {
+	display: grid;
+	grid-template-columns: minmax(0, 1fr) minmax(5.25rem, 7.35rem);
+	gap: 0.75rem;
+	align-items: stretch;
+	padding: 0.75rem;
+}
+
+/* container for the selected-period total */
+.timekeep-df-timers {
+	display: grid;
+	grid-template-rows: repeat(2, auto);
+	align-content: start;
+	align-items: start;
 	width: 100%;
-	flex-wrap: wrap;
+	aspect-ratio: 1;
+	overflow: hidden;
+	background: var(--background-secondary);
+	border-radius: var(--radius-m);
 	white-space: nowrap;
+	cursor: pointer;
+}
+
+.timekeep-df-timers:focus-visible {
+	outline: 2px solid var(--interactive-accent);
+	outline-offset: 2px;
 }
 
 /* timer container */
-.timekeep-timer {
+.timekeep-df-timer {
 	display: flex;
 	flex-flow: column;
-	gap: 0rem;
-	justify-content: center;
-	/* align-items: center; */
-	padding: 1rem;
-	flex: auto;
-	border-right: 1px solid var(--color-base-30);
-	border-bottom: 1px solid var(--color-base-30);
+	gap: 0.25rem;
+	justify-content: flex-start;
+	width: 100%;
+	padding: 0.875rem 1rem;
+	background: transparent;
+}
+
+.timekeep-df-timers[data-capacity-state="within"] {
+	background: color-mix(in srgb, var(--color-green) 24%, var(--background-secondary));
+}
+
+.timekeep-df-timers[data-capacity-state="over"] {
+	background: color-mix(in srgb, var(--color-red) 24%, var(--background-secondary));
 }
 
 /* timer container hidden styling (required otherwise it won't be hidden when not in use) */
-.timekeep-timer[hidden],
-.timekeep-merger-loading[hidden] {
+.timekeep-df-timer[hidden],
+.timekeep-df-merger-loading[hidden] {
 	display: none;
 }
 
-.timekeep-merger-loading {
+.timekeep-df-merger-loading {
 	margin-bottom: 1rem;
 	opacity: 0.7;
 }
 
-.timekeep-merger-loading--loaded {
+.timekeep-df-merger-loading--loaded {
 	opacity: 1;
 }
 
 /* timer primary value text */
-.timekeep-timer-value {
-	font-size: 2.5rem;
-	font-weight: bolder;
+.timekeep-df-timer-value {
+	font-size: 1.35rem;
+	font-weight: var(--font-bold);
 	line-height: 1;
-	margin-bottom: 0.5rem;
+	font-variant-numeric: tabular-nums;
 }
 
 /* timer secondary value text */
-.timekeep-timer-value-small {
-	font-size: 0.9rem;
-	font-weight: bold;
+.timekeep-df-timer-value-small {
+	font-size: var(--font-ui-small);
+	color: var(--text-muted);
+}
+
+.timekeep-df-timer-label {
+	order: -1;
+	font-size: var(--font-ui-smaller);
+	font-weight: var(--font-semibold);
+	color: var(--text-muted);
+	text-transform: uppercase;
+	letter-spacing: 0.04em;
+}
+
+/* Two compact, balanced timer rows fit inside the square desktop/tablet card. */
+@media (min-width: 521px) {
+	.timekeep-df-timers {
+		grid-template-rows: repeat(2, minmax(0, 1fr));
+		align-content: stretch;
+		align-items: stretch;
+	}
+
+	.timekeep-df-timer {
+		justify-content: center;
+		min-height: 0;
+		padding: 0.375rem 0.75rem;
+		box-sizing: border-box;
+	}
+}
+
+/* Live Activity focus card. */
+.timekeep-df-current-activity {
+	display: grid;
+	grid-template-columns: minmax(0, 1fr) auto;
+	gap: 1rem;
+	align-items: start;
+	min-width: 0;
+	padding: 0.625rem 0.75rem;
+	background: var(--background-secondary);
+	border-radius: var(--radius-m);
+}
+
+.timekeep-df-current-activity__identity {
+	display: grid;
+	gap: 0.3rem;
+	min-width: 0;
+}
+
+.timekeep-df-current-activity__eyebrow,
+.timekeep-df-current-activity__meta-label {
+	font-size: var(--font-ui-smaller);
+	font-weight: var(--font-semibold);
+	color: var(--text-muted);
+	text-transform: uppercase;
+	letter-spacing: 0.04em;
+}
+
+.timekeep-df-current-activity__name {
+	min-width: 0;
+	overflow: hidden;
+	font-size: 1.35rem;
+	font-weight: var(--font-bold);
+	line-height: 1.15;
+	text-overflow: ellipsis;
+	white-space: nowrap;
+}
+
+.timekeep-df-current-activity__block {
+	display: flex;
+	gap: 0.45rem;
+	align-items: baseline;
+	min-width: 0;
+	font-size: var(--font-ui-small);
+	color: var(--text-muted);
+}
+
+.timekeep-df-current-activity__block[hidden] {
+	display: none;
+}
+
+.timekeep-df-current-activity__block-path {
+	min-width: 0;
+	overflow: hidden;
+	color: var(--text-normal);
+	text-overflow: ellipsis;
+	white-space: nowrap;
+}
+
+.timekeep-df-current-activity--empty {
+	place-items: center start;
+}
+
+.timekeep-df-current-activity__empty-message {
+	grid-column: 1 / -1;
+	font-size: 2.25rem;
+	font-weight: var(--font-bold);
+	line-height: 1;
+}
+
+.timekeep-df-current-activity__actions {
+	display: grid;
+	place-items: center;
+	align-self: stretch;
+	justify-self: end;
+	width: 6rem;
+	min-height: 6rem;
+}
+
+.timekeep-df-current-activity__actions > button.timekeep-df-start.timekeep-df-icon-button {
+	display: grid;
+	place-items: center;
+	align-self: center;
+	flex-basis: 6rem;
+	width: 6rem;
+	min-width: 6rem;
+	height: 6rem;
+	min-height: 6rem;
+	max-height: 6rem;
+	margin: 0;
+	padding: 0;
+	background-color: var(--background-modifier-hover) !important;
+	border: 0 !important;
+	border-radius: 0.625rem !important;
+	box-shadow: none;
+}
+
+.timekeep-df-current-activity__actions > button.timekeep-df-start.timekeep-df-icon-button:hover {
+	background-color: var(--interactive-hover) !important;
+}
+
+.timekeep-df-current-activity__actions button.timekeep-df-icon-button > .timekeep-df-icon-wrapper,
+.timekeep-df-current-activity__actions button.timekeep-df-icon-button .timekeep-df-button-icon {
+	--icon-size: 3rem;
+
+	width: 3rem;
+	height: 3rem;
+}
+
+@media (max-width: 520px) {
+	.timekeep-df-focus-panel {
+		grid-template-columns: minmax(0, 1fr);
+	}
+
+	.timekeep-df-timers {
+		grid-template-rows: none;
+		grid-template-columns: repeat(2, minmax(0, 1fr));
+		aspect-ratio: auto;
+	}
+
+	.timekeep-df-timer {
+		align-items: flex-start;
+	}
+}
+
+@media (max-width: 420px) {
+	.timekeep-df-current-activity__name {
+		font-size: 1.15rem;
+	}
+
+	.timekeep-df-current-activity__empty-message {
+		font-size: 1.9125rem;
+	}
 }
 
 /* start / edit button for the timekeep */
-.timekeep-start {
-	align-self: center;
-	font-size: 2rem;
-	max-height: none;
-	height: auto;
-	padding: 1rem;
+.timekeep-df-start {
+	align-self: start;
+	margin: 0;
 }
 
 /* container for the start timekeep form */
-.timekeep-start-area {
+.timekeep-df-start-area {
+	display: grid;
+	grid-template-columns: minmax(0, 1fr) auto;
+	align-items: start;
+	column-gap: 0.5rem;
+	row-gap: 0.375rem;
+	padding: 0.375rem 1rem 1rem;
+}
+
+.timekeep-df-focus-panel .timekeep-df-start-area {
+	grid-template-columns: minmax(0, 1fr) auto auto;
 	align-items: center;
-	display: flex;
-	gap: 1rem;
-	padding: 1rem;
-	border-bottom: 1px solid var(--color-base-30);
+	padding: 0.875rem 1rem;
+	background: var(--background-secondary);
+	border-radius: var(--radius-m);
 }
 
-/* note text warning about starting stopping the running entry */
-.timekeep-start-note {
-	font-size: 0.8rem;
-	color: #777777;
-	margin-left: 0.5rem;
-}
-
-/* label for the path to the running entry */
-.timekeep-path-to-entry {
-	display: inline-flex;
+.timekeep-df-focus-panel .timekeep-df-start-area .timekeep-df-name-wrapper {
+	display: grid;
+	grid-template-columns: max-content minmax(0, 1fr);
 	gap: 0.5rem;
+	align-items: center;
+	height: var(--timekeep-df-compact-control-height);
+	overflow: hidden;
+}
+
+.timekeep-df-focus-panel .timekeep-df-name-wrapper > label {
+	display: flex;
+	align-items: center;
+	height: var(--timekeep-df-compact-control-height);
+	margin: 0;
+	line-height: 1;
+	white-space: nowrap;
+}
+
+.timekeep-df-focus-panel .timekeep-df-name-wrapper > input.timekeep-df-name {
+	width: 100%;
+	min-width: 0;
+	max-width: 100%;
+}
+
+.timekeep-df-focus-panel .timekeep-df-start-area > button.timekeep-df-start {
+	align-self: center;
 }
 
 /* container for the timekeep name input */
-.timekeep-name-container {
+.timekeep-df-name-container {
 	display: flex;
+	flex: 1 1 auto;
 	position: relative;
+	width: 100%;
+	height: var(--timekeep-df-compact-control-height);
+	min-width: 0;
+}
+
+/* Keep the Add Activity field visible under tablet themes that flatten native inputs. */
+.timekeep-df-utility-card .timekeep-df-name-container {
+	background-color: var(--background-modifier-form-field, var(--background-primary));
+	border: 1px solid var(--background-modifier-border-hover);
+	border-radius: var(--input-radius, 5px);
+	box-shadow: none;
+	box-sizing: border-box;
+}
+
+.timekeep-df-utility-card .timekeep-df-name-container:focus-within {
+	border-color: var(--interactive-accent);
+	box-shadow: 0 0 0 2px color-mix(in srgb, var(--interactive-accent) 18%, transparent);
 }
 
 /* timekeep name input */
-.timekeep-name {
-	padding: 0.5rem;
+.timekeep-df-name {
 	flex: auto;
+	width: 100%;
+	height: var(--timekeep-df-compact-control-height);
+	min-height: var(--timekeep-df-compact-control-height);
+	margin: 0;
+	padding: 0 0.625rem;
+	font-size: var(--timekeep-df-compact-control-font-size);
+	line-height: 1;
+	background-color: var(--background-modifier-form-field, var(--background-primary));
+	border: 1px solid var(--background-modifier-border);
+	border-radius: var(--input-radius, 5px);
+	box-shadow: none;
+	box-sizing: border-box;
+}
+
+.timekeep-df-utility-card .timekeep-df-start-area input.timekeep-df-name {
+	height: 100% !important;
+	min-height: 0 !important;
+	max-height: none !important;
+	background: transparent !important;
+	border: 0 !important;
+	border-radius: 0 !important;
+	box-shadow: none !important;
+	outline: 0 !important;
+}
+
+/* Obsidian touch themes can impose a larger text-input minimum height. */
+.timekeep-df-start-area input.timekeep-df-name {
+	height: var(--timekeep-df-compact-control-height) !important;
+	min-height: var(--timekeep-df-compact-control-height) !important;
+	max-height: var(--timekeep-df-compact-control-height) !important;
+	padding-block: 0 !important;
 }
 
 /* suggestions box for name suggestions */
-.timekeep-suggestions {
+.timekeep-df-suggestions {
 	position: absolute;
 	top: 100%;
 	left: 0;
 	z-index: 1000;
 
 	width: 100%;
-	max-height: 100px;
+	max-height: min(24rem, 50vh);
 	background-color: var(--color-base-20);
-	border: 1px solid var(--color-base-30);
-	overflow-y: scroll;
+	overflow-y: auto;
 	overflow-x: hidden;
 	scrollbar-gutter: stable;
 
 	padding: 0.5rem;
+	border: 1px solid var(--background-modifier-border);
+	border-radius: 0;
+	box-shadow: var(--shadow-s);
 	list-style: none;
+	box-sizing: border-box;
 }
 
 /* name suggestion option */
-.timekeep-suggestion {
+.timekeep-df-suggestion {
 	height: calc((var(--font-ui-small) * var(--line-height-normal)) + 0.5rem);
 	width: 100%;
 	overflow: hidden;
@@ -276,52 +1152,165 @@
 }
 
 /* currently selected name suggestion option */
-.timekeep-suggestion[aria-selected="true"] {
+.timekeep-df-suggestion[aria-selected="true"] {
 	background-color: var(--color-base-40);
 }
 
-/* container for export actions*/
-.timekeep-actions {
+/* two-column add / export utility area below the item table */
+.timekeep-df-utility-grid {
+	display: grid;
+	grid-template-columns: repeat(2, minmax(0, 1fr));
+	width: calc(100% - 1.5rem);
+	margin: 0.75rem;
+	overflow: visible;
+	background: var(--background-secondary);
+	border-radius: var(--radius-m);
+	box-sizing: border-box;
+}
+
+.timekeep-df-utility-heading {
+	min-width: 0;
+	padding: 1rem 1rem 0.25rem;
+	color: var(--text-muted);
+	font-size: var(--font-ui-smaller);
+	font-weight: var(--font-semibold);
+	text-transform: uppercase;
+	letter-spacing: 0.04em;
+}
+
+.timekeep-df-utility-cell {
+	min-width: 0;
+}
+
+/* Keep the Add Activity popup above the neighboring export controls. */
+.timekeep-df-utility-cell--add {
+	position: relative;
+	z-index: 1;
+}
+
+.timekeep-df-utility-mobile-export-label {
+	display: none;
+}
+
+/* container for export actions */
+.timekeep-df-actions {
 	display: flex;
 	flex-flow: row;
-	flex-wrap: wrap;
-	gap: 1rem;
-	align-items: center;
-	padding: 1rem;
-}
-
-/* active running entry container */
-.timekeep-active-entry {
-	display: flex;
-	flex-flow: column;
-	gap: 0.25rem;
-}
-
-/* active running entry details container */
-.timekeep-active-entry__details {
-	display: flex;
-	flex-wrap: wrap;
+	flex-wrap: nowrap;
 	gap: 0.5rem;
-	font-size: 0.8rem;
+	align-items: center;
+	padding: 0.375rem 1rem 1rem;
+	overflow-x: auto;
+}
+
+.timekeep-df-export-button {
+	flex: 0 0 auto;
+	height: var(--timekeep-df-compact-control-height);
+	min-height: var(--timekeep-df-compact-control-height);
+	padding: 0 0.625rem;
+	font-size: var(--timekeep-df-compact-control-font-size);
+	line-height: 1;
+	box-sizing: border-box;
+	white-space: nowrap;
+}
+
+@media (max-width: 520px) {
+	.timekeep-df-utility-grid {
+		grid-template-columns: minmax(0, 1fr);
+	}
+
+	.timekeep-df-utility-heading--export {
+		display: none;
+	}
+
+	.timekeep-df-utility-cell--export {
+		display: flex;
+		align-items: center;
+		gap: 0.5rem;
+		margin: 0 1rem;
+		border-top: 1px solid var(--color-base-30);
+	}
+
+	.timekeep-df-utility-mobile-export-label {
+		display: inline;
+		flex: 0 0 auto;
+		color: var(--text-muted);
+		font-size: var(--font-ui-smaller);
+		font-weight: var(--font-semibold);
+		text-transform: uppercase;
+		letter-spacing: 0.04em;
+	}
+
+	.timekeep-df-actions {
+		min-width: 0;
+		padding: 1rem 0;
+	}
 }
 
 /* wrapper container for the start timekeep name input and label */
-.timekeep-name-wrapper {
+.timekeep-df-name-wrapper {
 	display: flex;
-	flex-flow: column;
-	flex: auto;
-	gap: 0.5rem;
+	flex-flow: row;
+	flex: 1 1 auto;
+	width: 100%;
+	min-width: 0;
 	overflow: visible;
-	overflow-wrap: anywhere;
 }
 
 /* styling for button icons */
-.timekeep-button-icon {
+.timekeep-df-button-icon {
 	--icon-size: 1em;
 }
 
+/* consistent geometry for icon-only controls across desktop and touch devices */
+button.timekeep-df-icon-button {
+	-webkit-appearance: none;
+	appearance: none;
+	display: inline-flex;
+	flex: 0 0 2.25rem;
+	align-items: center;
+	justify-content: center;
+	width: 2.25rem;
+	min-width: 2.25rem;
+	height: 2.25rem;
+	min-height: 2.25rem;
+	max-height: 2.25rem;
+	padding: 0;
+	font-size: var(--font-ui-medium);
+	line-height: 1;
+	box-sizing: border-box;
+}
+
+button.timekeep-df-icon-button > .timekeep-df-icon-wrapper {
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	width: 1.125rem;
+	height: 1.125rem;
+}
+
+button.timekeep-df-icon-button .timekeep-df-button-icon {
+	--icon-size: 1.125rem;
+
+	display: block;
+	width: 1.125rem;
+	height: 1.125rem;
+	margin: 0;
+}
+
+/* Add Activity controls match the compact Range / Today control geometry. */
+button.timekeep-df-start.timekeep-df-icon-button {
+	flex-basis: var(--timekeep-df-compact-control-height);
+	width: var(--timekeep-df-compact-control-height);
+	min-width: var(--timekeep-df-compact-control-height);
+	height: var(--timekeep-df-compact-control-height);
+	min-height: var(--timekeep-df-compact-control-height);
+	max-height: var(--timekeep-df-compact-control-height);
+	font-size: var(--timekeep-df-compact-control-font-size);
+}
+
 /* styling for button icons with text after */
-.timekeep-text-button-icon {
+.timekeep-df-text-button-icon {
 	--icon-size: 1em;
 
 	margin-right: 0.25rem;
@@ -329,12 +1318,12 @@
 }
 
 /* container for the timekeep save error container */
-.timekeep-error {
+.timekeep-df-error {
 	padding: 2rem;
 }
 
 /* container for the merge modal selection */
-.timekeep-merge-select-container {
+.timekeep-df-merge-select-container {
 	display: none;
 	flex-direction: row;
 	align-items: center;
@@ -345,12 +1334,12 @@
 }
 
 /* container for the merge modal selection when there is results  */
-.timekeep-merge-select-container--visible {
+.timekeep-df-merge-select-container--visible {
 	display: flex;
 }
 
 /* container for the list of mergeable timekeeps */
-.timekeep-merge-list-container {
+.timekeep-df-merge-list-container {
 	max-height: 400px;
 	overflow-y: auto;
 	margin-top: 0.25rem;
@@ -358,12 +1347,12 @@
 }
 
 /* search input for the merger modal */
-.timekeep-merge-search-input {
+.timekeep-df-merge-search-input {
 	width: 100%;
 }
 
 /* footer container for the merge modal */
-.timekeep-merge-footer {
+.timekeep-df-merge-footer {
 	display: flex;
 	flex-flow: row;
 	gap: 1rem;
@@ -371,7 +1360,7 @@
 }
 
 /* mergeable timekeep within the merge modal list */
-.timekeep-merge-item {
+.timekeep-df-merge-item {
 	display: flex;
 	align-items: center;
 	padding: 0.5rem;
@@ -379,12 +1368,12 @@
 }
 
 /* checkbox for a merge item */
-.timekeep-merge-item-checkbox {
+.timekeep-df-merge-item-checkbox {
 	margin-right: 0.5rem;
 }
 
 /* label for a merge item (its name) */
-.timekeep-merge-item-label {
+.timekeep-df-merge-item-label {
 	flex-grow: 1;
 
 	display: flex;
@@ -392,32 +1381,32 @@
 }
 
 /* file path for a timekeep merge item */
-.timekeep-merge-item-path {
+.timekeep-df-merge-item-path {
 	opacity: 0.7;
 }
 
 /* input for choosing a file name */
-.timekeep-pick-file-name-input {
+.timekeep-df-pick-file-name-input {
 	width: 100%;
 	margin-bottom: 1rem;
 }
 
 /* obsidian status bar container for timekeep items */
-.timekeep-status-bar {
+.timekeep-df-status-bar {
 	display: flex;
 	gap: 0.5rem;
 	align-items: center;
 }
 
 /* status bar item for a timekeep */
-.timekeep-status-item {
+.timekeep-df-status-item {
 	display: flex;
 	align-items: center;
 	gap: 0.5rem;
 }
 
 /* running timekeep status bar item name text  */
-.timekeep-status-item__content {
+.timekeep-df-status-item__content {
 	display: flex;
 	align-items: center;
 	gap: 0.25rem;
@@ -425,7 +1414,7 @@
 }
 
 /* stop button for timekeep status bar item */
-.timekeep-button-icon.timekeep-status-item__button {
+.timekeep-df-button-icon.timekeep-df-status-item__button {
 	cursor: pointer;
 
 	/* Override the default button size for the smaller available space */
@@ -433,7 +1422,7 @@
 }
 
 /* container for file based timekeeps */
-.timekeep-file {
+.timekeep-df-file {
 	display: flex;
 	gap: 1rem;
 	flex-flow: column;
@@ -444,9 +1433,170 @@
 }
 
 /* wrapper container for obsidian icons */
-.timekeep-icon-wrapper {
+.timekeep-df-icon-wrapper {
 	display: inline-block;
 	line-height: 1;
 	padding: 0px;
 	margin: 0px;
+}
+
+/* Mobile-only 15% scale reduction, applied after component-specific geometry. */
+@media (max-width: 520px) {
+	.timekeep-df-container button,
+	.timekeep-df-container input,
+	.timekeep-df-container select,
+	.timekeep-df-input-label,
+	.timekeep-df-timestamp-field,
+	.timekeep-df-current-activity__eyebrow,
+	.timekeep-df-current-activity__meta-label,
+	.timekeep-df-timer-label,
+	.timekeep-df-utility-heading {
+		font-size: 1em;
+	}
+
+	.timekeep-df-time,
+	.timekeep-df-action {
+		font-size: 0.68rem;
+	}
+
+	.timekeep-df-current-activity__name,
+	.timekeep-df-timer-value {
+		font-size: 1.1475rem;
+	}
+
+	button.timekeep-df-icon-button {
+		flex-basis: 1.9125rem;
+		width: 1.9125rem;
+		min-width: 1.9125rem;
+		height: 1.9125rem;
+		min-height: 1.9125rem;
+		max-height: 1.9125rem;
+	}
+
+	button.timekeep-df-icon-button > .timekeep-df-icon-wrapper,
+	button.timekeep-df-icon-button .timekeep-df-button-icon {
+		--icon-size: 0.95625rem;
+
+		width: 0.95625rem;
+		height: 0.95625rem;
+	}
+
+	.timekeep-df-current-activity__actions > button.timekeep-df-start.timekeep-df-icon-button {
+		flex-basis: 4.5rem;
+		width: 4.5rem;
+		min-width: 4.5rem;
+		height: 4.5rem;
+		min-height: 4.5rem;
+		max-height: 4.5rem;
+	}
+
+	.timekeep-df-current-activity__actions {
+		width: 4.5rem;
+		min-height: 4.5rem;
+	}
+
+	.timekeep-df-current-activity__actions
+		button.timekeep-df-icon-button
+		> .timekeep-df-icon-wrapper,
+	.timekeep-df-current-activity__actions button.timekeep-df-icon-button .timekeep-df-button-icon {
+		--icon-size: 2.25rem;
+
+		width: 2.25rem;
+		height: 2.25rem;
+	}
+}
+
+/* Keep the prominent live control self-contained against Obsidian's touch button rules. */
+@media (hover: none) and (min-width: 521px), (pointer: coarse) and (min-width: 521px) {
+	.timekeep-df-utility-card
+		.timekeep-df-start-area
+		> button.timekeep-df-start.timekeep-df-icon-button,
+	.timekeep-df-utility-card button.timekeep-df-export-button {
+		-webkit-appearance: none !important;
+		appearance: none !important;
+		align-items: center !important;
+		justify-content: center !important;
+		background: var(--background-modifier-hover) !important;
+		border: 0 !important;
+		border-radius: var(--button-radius, 5px) !important;
+		box-shadow: none !important;
+	}
+
+	.timekeep-df-utility-card
+		.timekeep-df-start-area
+		> button.timekeep-df-start.timekeep-df-icon-button {
+		display: grid !important;
+		place-items: center !important;
+		margin: 0 !important;
+		padding: 0 !important;
+	}
+
+	.timekeep-df-utility-card button.timekeep-df-export-button {
+		display: inline-flex !important;
+	}
+
+	.timekeep-df-current-activity__actions {
+		display: grid !important;
+		place-items: center !important;
+		align-self: center !important;
+		justify-self: end !important;
+		width: 5.25rem !important;
+		min-width: 5.25rem !important;
+		height: 5.25rem !important;
+		min-height: 5.25rem !important;
+		max-height: 5.25rem !important;
+	}
+
+	.timekeep-df-current-activity__actions > button.timekeep-df-start.timekeep-df-icon-button {
+		-webkit-appearance: none !important;
+		appearance: none !important;
+		position: static !important;
+		inset: auto !important;
+		display: grid !important;
+		place-items: center !important;
+		align-self: center !important;
+		justify-self: center !important;
+		flex: 0 0 5.25rem !important;
+		width: 5.25rem !important;
+		min-width: 5.25rem !important;
+		height: 5.25rem !important;
+		min-height: 5.25rem !important;
+		max-height: 5.25rem !important;
+		margin: 0 !important;
+		padding: 0 !important;
+		background: var(--background-modifier-hover) !important;
+		border: 0 !important;
+		border-radius: 0.625rem !important;
+		box-shadow: none !important;
+		line-height: 0 !important;
+		transform: none !important;
+	}
+
+	.timekeep-df-current-activity__actions
+		> button.timekeep-df-start.timekeep-df-icon-button
+		> .timekeep-df-icon-wrapper,
+	.timekeep-df-current-activity__actions
+		> button.timekeep-df-start.timekeep-df-icon-button
+		.timekeep-df-button-icon {
+		--icon-size: 2.625rem;
+
+		display: grid !important;
+		place-items: center !important;
+		width: 2.625rem !important;
+		height: 2.625rem !important;
+		margin: 0 !important;
+		padding: 0 !important;
+		transform: none !important;
+	}
+
+	.timekeep-df-timers {
+		grid-template-rows: repeat(2, auto);
+		gap: 0.125rem;
+		align-content: center;
+	}
+
+	.timekeep-df-timer {
+		justify-content: flex-start;
+		padding: 0.125rem 0.75rem;
+	}
 }

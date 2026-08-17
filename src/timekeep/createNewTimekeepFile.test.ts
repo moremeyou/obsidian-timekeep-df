@@ -6,7 +6,7 @@ import { MockVault } from "@/__mocks__/obsidian";
 import { createNewTimekeepFile } from "./createNewTimekeepFile";
 
 describe("createNewTimekeepFile", () => {
-	it("should use Untitled.timekeep when the file name is not in use", async () => {
+	it("should use Untitled.timekeep-df when the file name is not in use", async () => {
 		const vault = new MockVault();
 		const openFile = vi.fn();
 		const app = {
@@ -22,7 +22,7 @@ describe("createNewTimekeepFile", () => {
 		await createNewTimekeepFile(app, folder);
 
 		const files = vault.getFiles();
-		const file = files.find((file) => file.name === "Untitled.timekeep");
+		const file = files.find((file) => file.name === "Untitled.timekeep-df");
 		expect(file).toBeDefined();
 	});
 
@@ -39,16 +39,16 @@ describe("createNewTimekeepFile", () => {
 		} as any as App;
 
 		const folder = vault.addFolder("test");
-		vault.addFile("test/Untitled.timekeep", "");
+		vault.addFile("test/Untitled.timekeep-df", "");
 
 		for (let i = 1; i <= 10; i++) {
-			vault.addFile(`test/Untitled ${i}.timekeep`, "");
+			vault.addFile(`test/Untitled ${i}.timekeep-df`, "");
 		}
 
 		await createNewTimekeepFile(app, folder);
 
 		const files = vault.getFiles();
-		const file = files.find((file) => file.name === "Untitled 11.timekeep");
+		const file = files.find((file) => file.name === "Untitled 11.timekeep-df");
 		expect(file).toBeDefined();
 	});
 });

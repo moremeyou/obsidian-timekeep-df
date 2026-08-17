@@ -1,3 +1,5 @@
+import { TimekeepViewMode } from "@/timekeep/view";
+
 export enum PdfExportBehavior {
 	// Don't do anything after exporting
 	NONE = "NONE",
@@ -44,6 +46,11 @@ export enum UnstartedOrder {
 	LAST = "LAST",
 }
 
+export enum ClockFormat {
+	TWELVE_HOUR = "TWELVE_HOUR",
+	TWENTY_FOUR_HOUR = "TWENTY_FOUR_HOUR",
+}
+
 export interface TimekeepSettings {
 	csvDelimiter: string;
 	csvTitle: boolean;
@@ -59,7 +66,15 @@ export interface TimekeepSettings {
 
 	/**@deprecated use {@link sortOrder} instead */
 	reverseSegmentOrder?: boolean;
+	clockFormat: ClockFormat;
 	timestampFormat: string;
+	totalDailyWorkingHours: number;
+	totalDaysPerWeek: number;
+	automaticBreaksEnabled: boolean;
+	automaticBreakName: string;
+	workingHoursStart: string;
+	workingHoursEnd: string;
+	defaultViewMode: TimekeepViewMode;
 	/**@deprecated use {@link secondaryDurationFormat} instead */
 	showDecimalHours?: boolean;
 	primaryDurationFormat: DurationFormat;
@@ -88,8 +103,16 @@ export const defaultSettings: TimekeepSettings = {
 	pdfDateFormat: "DD/MM/YYYY",
 	pdfRowDateFormat: "DD/MM/YYYY HH:mm",
 	pdfFontFamily: FontFamily.ROBOTO,
-	pdfMobileExportsFolder: "TimekeepExports",
-	timestampFormat: "YY-MM-DD HH:mm:ss",
+	pdfMobileExportsFolder: "TimekeepDFExports",
+	clockFormat: ClockFormat.TWENTY_FOUR_HOUR,
+	timestampFormat: "YY-MM-DD",
+	totalDailyWorkingHours: 8,
+	totalDaysPerWeek: 5,
+	automaticBreaksEnabled: false,
+	automaticBreakName: "Break",
+	workingHoursStart: "09:00",
+	workingHoursEnd: "17:00",
+	defaultViewMode: TimekeepViewMode.DAY,
 	editableTimestampFormat: "YYYY-MM-DD HH:mm:ss",
 	csvTitle: true,
 	csvDelimiter: ",",
@@ -112,7 +135,46 @@ export const defaultSettings: TimekeepSettings = {
 	autocompleteEnabled: true,
 };
 
+function isValidNativeTime(value: string): boolean {
+	return /^([01]\d|2[0-3]):[0-5]\d$/.test(value);
+}
+
 export function legacySettingsCompatibility(settings: TimekeepSettings): void {
+	if (
+		Object.prototype.hasOwnProperty.call(settings, "workingHoursStart") &&
+		!isValidNativeTime(settings.workingHoursStart)
+	) {
+		settings.workingHoursStart = defaultSettings.workingHoursStart;
+	}
+	if (
+		Object.prototype.hasOwnProperty.call(settings, "workingHoursEnd") &&
+		!isValidNativeTime(settings.workingHoursEnd)
+	) {
+		settings.workingHoursEnd = defaultSettings.workingHoursEnd;
+	}
+	if (
+		Object.prototype.hasOwnProperty.call(settings, "automaticBreakName") &&
+		settings.automaticBreakName.trim().length === 0
+	) {
+		settings.automaticBreakName = defaultSettings.automaticBreakName;
+	}
+
+	if (
+		Object.prototype.hasOwnProperty.call(settings, "defaultViewMode") &&
+		!Object.values(TimekeepViewMode).includes(settings.defaultViewMode)
+	) {
+		settings.defaultViewMode = defaultSettings.defaultViewMode;
+	}
+
+	// Timestamp display formats previously included the time. Timekeep DF now
+	// owns the clock portion so completed timestamps never expose seconds.
+	if (typeof settings.timestampFormat === "string") {
+		settings.timestampFormat = settings.timestampFormat
+			.replace(/\s+(?:H{1,2}|h{1,2}|k{1,2})[^[]*$/, "")
+			.trim();
+		if (!settings.timestampFormat) settings.timestampFormat = defaultSettings.timestampFormat;
+	}
+
 	// Compatibility with old reverse segment order
 	if (Object.prototype.hasOwnProperty.call(settings, "reverseSegmentOrder")) {
 		settings.sortOrder = settings.reverseSegmentOrder

@@ -1,14 +1,18 @@
 import moment from "moment";
 import { expect, it, test, describe } from "vitest";
 
-import { DurationFormat, defaultSettings, TimekeepSettings } from "@/settings";
+import { ClockFormat, DurationFormat, defaultSettings, TimekeepSettings } from "@/settings";
 
 import {
 	formatPdfDate,
 	formatDuration,
 	formatTimestamp,
+	formatRowTime,
+	formatPercentOfDay,
 	formatPdfRowDate,
 	formatDurationLong,
+	formatDurationClock,
+	formatDurationLongWithoutSeconds,
 	formatDurationShort,
 	formatDurationDecimal,
 	parseEditableTimestamp,
@@ -18,14 +22,59 @@ import {
 describe("formatTimestamp", () => {
 	it("should format time", () => {
 		const input = moment("2024-03-31T02:34:45.413Z").utc();
-		const expected = "24-03-31 02:34:45";
+		const expected = "24-03-31 02:34";
 
-		const settings: TimekeepSettings = defaultSettings;
-		settings.timestampFormat = "YY-MM-DD HH:mm:ss";
+		const settings: TimekeepSettings = { ...defaultSettings, timestampFormat: "YY-MM-DD" };
 
 		const output = formatTimestamp(input, settings);
 
 		expect(output).toBe(expected);
+	});
+
+	it("formats completed timestamps in 12-hour mode without seconds", () => {
+		const input = moment("2024-03-31T14:34:45.413Z").utc();
+		const settings = { ...defaultSettings, clockFormat: ClockFormat.TWELVE_HOUR };
+
+		expect(formatTimestamp(input, settings)).toBe("24-03-31 2:34 PM");
+	});
+
+	it("omits seconds from active block timestamps too", () => {
+		const input = moment("2024-03-31T14:34:45.413Z").utc();
+		const settings = { ...defaultSettings, clockFormat: ClockFormat.TWELVE_HOUR };
+
+		expect(formatTimestamp(input, settings)).toBe("24-03-31 2:34 PM");
+	});
+});
+
+describe("formatRowTime", () => {
+	it("omits the date and respects 24-hour mode", () => {
+		const input = moment("2024-03-31T14:34:45");
+		expect(formatRowTime(input, defaultSettings)).toBe("14:34");
+	});
+
+	it("omits the date and respects 12-hour mode", () => {
+		const input = moment("2024-03-31T14:34:45");
+		const settings = { ...defaultSettings, clockFormat: ClockFormat.TWELVE_HOUR };
+		expect(formatRowTime(input, settings)).toBe("2:34 PM");
+	});
+
+	it("omits seconds for active rows too", () => {
+		const input = moment("2024-03-31T14:34:45");
+		expect(formatRowTime(input, defaultSettings)).toBe("14:34");
+
+		const settings = { ...defaultSettings, clockFormat: ClockFormat.TWELVE_HOUR };
+		expect(formatRowTime(input, settings)).toBe("2:34 PM");
+	});
+});
+
+describe("formatPercentOfDay", () => {
+	test.each([
+		[0, 8, "0.0%"],
+		[1, 8, "0.1%"],
+		[2 * 60 * 60 * 1000, 8, "25.0%"],
+		[8 * 60 * 60 * 1000 + 1, 8, "100.1%"],
+	])('formats duration "%s" against "%s" hours as "%s"', (duration, hours, expected) => {
+		expect(formatPercentOfDay(duration, hours)).toBe(expected);
 	});
 });
 
@@ -70,6 +119,30 @@ describe("formatDurationLong", () => {
 		const output = formatDurationLong(input);
 
 		expect(output).toBe(expected);
+	});
+});
+
+describe("formatDurationClock", () => {
+	test.each([
+		[0, "00:00:00"],
+		[999, "00:00:00"],
+		[1000, "00:00:01"],
+		[3_661_000, "01:01:01"],
+		[90_061_000, "25:01:01"],
+		[Number.NaN, "00:00:00"],
+	])('for duration "%s" should use digital clock format "%s"', (input, expected) => {
+		expect(formatDurationClock(input)).toBe(expected);
+	});
+});
+
+describe("formatDurationLongWithoutSeconds", () => {
+	test.each([
+		[12_000, "0m"],
+		[90_000, "1m"],
+		[3_661_000, "1h 1m"],
+		[90_061_000, "25h 1m"],
+	])('for duration "%s" should hide seconds as "%s"', (input, expected) => {
+		expect(formatDurationLongWithoutSeconds(input)).toBe(expected);
 	});
 });
 

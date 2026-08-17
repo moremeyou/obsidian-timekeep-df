@@ -13,10 +13,13 @@ import { Timesheet } from "@/components/Timesheet";
 import { TimesheetLoadError } from "@/components/TimesheetLoadError";
 import { TimesheetSaveError } from "@/components/TimesheetSaveError";
 
+import type { HistoricalActivityDraft } from "@/timekeep/draft";
 import type { LoadResult } from "@/timekeep/parser";
 import { defaultTimekeep, stripTimekeepRuntimeData, type Timekeep } from "@/timekeep/schema";
+import { createTimekeepViewState, type TimekeepViewState } from "@/timekeep/view";
 
 import { TimekeepAutocomplete } from "@/service/autocomplete";
+import { TimekeepRegistry } from "@/service/registry";
 
 export default class TimekeepView extends ContentComponent<
 	Timesheet | TimesheetLoadError | TimesheetSaveError | EmptyComponent
@@ -29,6 +32,10 @@ export default class TimekeepView extends ContentComponent<
 	customOutputFormats: Store<Record<string, CustomOutputFormat>>;
 	/** Autocomplete */
 	autocomplete: TimekeepAutocomplete;
+	registry: TimekeepRegistry | undefined;
+	trackerKey: (() => string) | undefined;
+	fallbackViewState: Store<TimekeepViewState>;
+	fallbackHistoricalDraft: Store<HistoricalActivityDraft | null>;
 
 	/** Loading result for the timekeep data */
 	loadResult: Store<LoadResult | null>;
@@ -50,7 +57,9 @@ export default class TimekeepView extends ContentComponent<
 		customOutputFormats: Store<Record<string, CustomOutputFormat>>,
 		autocomplete: TimekeepAutocomplete,
 		loadResult: Store<LoadResult | null>,
-		saveAdapter: TimesheetSaveAdapter
+		saveAdapter: TimesheetSaveAdapter,
+		registry?: TimekeepRegistry,
+		trackerKey?: () => string
 	) {
 		super(containerEl);
 
@@ -63,6 +72,12 @@ export default class TimekeepView extends ContentComponent<
 		this.settings = settings;
 		this.customOutputFormats = customOutputFormats;
 		this.autocomplete = autocomplete;
+		this.registry = registry;
+		this.trackerKey = trackerKey;
+		this.fallbackViewState = createStore(
+			createTimekeepViewState(settings.getState().defaultViewMode)
+		);
+		this.fallbackHistoricalDraft = createStore<HistoricalActivityDraft | null>(null);
 
 		this.saveAdapter = saveAdapter;
 	}
@@ -101,6 +116,7 @@ export default class TimekeepView extends ContentComponent<
 
 			this.register(this.timekeep.subscribe(this.onSave.bind(this)));
 
+			const trackerKey = this.registry && this.trackerKey ? this.trackerKey() : null;
 			this.setContent(
 				new Timesheet(
 					this.containerEl,
@@ -108,7 +124,11 @@ export default class TimekeepView extends ContentComponent<
 					this.timekeep,
 					this.settings,
 					this.customOutputFormats,
-					this.autocomplete
+					this.autocomplete,
+					trackerKey ? this.registry?.getViewState(trackerKey) : this.fallbackViewState,
+					trackerKey
+						? this.registry?.getHistoricalDraft(trackerKey)
+						: this.fallbackHistoricalDraft
 				)
 			);
 		} else {
@@ -129,14 +149,14 @@ export default class TimekeepView extends ContentComponent<
 				this.saveError.setState(false);
 			}
 		} catch (e) {
-			console.error("Failed to save timekeep", e);
+			console.error("Timekeep DF failed to save", e);
 
 			try {
 				const fileName = await this.saveFallback(timekeep);
-				new Notice(`Failed to save timekeep, backup saved to: ${fileName}`);
+				new Notice(`Timekeep DF: save failed; backup saved to ${fileName}`);
 			} catch (e) {
-				console.error("Couldn't save timekeep fallback", e);
-				new Notice("Failed to save timekeep and unable to save fallback file");
+				console.error("Timekeep DF couldn't save a fallback", e);
+				new Notice("Timekeep DF: save failed and no backup file could be created");
 			}
 
 			this.saveError.setState(true);
@@ -156,7 +176,7 @@ export default class TimekeepView extends ContentComponent<
 	 */
 	async saveFallback(timekeep: Timekeep) {
 		// Fallback in case of write failure, attempt to write to another file
-		const backupFileName = `timekeep-write-backup-${moment().format("YYYY-MM-DD HH-mm-ss")}.json`;
+		const backupFileName = `timekeep-df-write-backup-${moment().format("YYYY-MM-DD HH-mm-ss")}.json`;
 
 		// Write to the backup file
 		await this.app.vault.create(

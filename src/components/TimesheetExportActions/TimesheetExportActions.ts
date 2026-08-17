@@ -12,6 +12,11 @@ import { assert } from "@/utils/assert";
 import { DomComponent } from "@/components/DomComponent";
 
 import { stripTimekeepRuntimeData, Timekeep } from "@/timekeep/schema";
+import {
+	createTimekeepViewSnapshot,
+	getTimekeepViewWindow,
+	type TimekeepViewState,
+} from "@/timekeep/view";
 
 /**
  * Export actions section component
@@ -25,6 +30,8 @@ export class TimesheetExportActions extends DomComponent {
 	settings: Store<TimekeepSettings>;
 	/** Additional custom output formats */
 	customOutputFormats: Store<Record<string, CustomOutputFormat>>;
+	/** Selected calendar window; omitted only for legacy/API component construction. */
+	viewState: Store<TimekeepViewState> | undefined;
 
 	/** Current loaded collection of custom output format buttons */
 	#customOutputFormatButtons: HTMLButtonElement[] = [];
@@ -34,7 +41,8 @@ export class TimesheetExportActions extends DomComponent {
 		app: App,
 		timekeep: Store<Timekeep>,
 		settings: Store<TimekeepSettings>,
-		customOutputFormats: Store<Record<string, CustomOutputFormat>>
+		customOutputFormats: Store<Record<string, CustomOutputFormat>>,
+		viewState?: Store<TimekeepViewState>
 	) {
 		super(containerEl);
 
@@ -42,44 +50,55 @@ export class TimesheetExportActions extends DomComponent {
 		this.timekeep = timekeep;
 		this.settings = settings;
 		this.customOutputFormats = customOutputFormats;
+		this.viewState = viewState;
+	}
+
+	getExportTimekeep(currentTime: moment.Moment): Timekeep {
+		const timekeep = this.timekeep.getState();
+		if (!this.viewState) return timekeep;
+		return createTimekeepViewSnapshot(
+			timekeep,
+			currentTime,
+			getTimekeepViewWindow(this.viewState.getState())
+		);
 	}
 
 	onload(): void {
 		super.onload();
 
 		const actionsEl = this.containerEl.createDiv({
-			cls: "timekeep-actions",
+			cls: "timekeep-df-actions",
 		});
 
 		this.wrapperEl = actionsEl;
 
 		const copyMarkdownButton = actionsEl.createEl("button", {
-			cls: "timekeep-export-button",
-			text: "Copy Markdown",
+			cls: "timekeep-df-export-button",
+			text: "MD",
 			attr: {
 				"data-format": "markdown",
 			},
 		});
 
 		const copyCSVButton = actionsEl.createEl("button", {
-			cls: "timekeep-export-button",
-			text: "Copy CSV",
+			cls: "timekeep-df-export-button",
+			text: "CSV",
 			attr: {
 				"data-format": "csv",
 			},
 		});
 
 		const copyJSONButton = actionsEl.createEl("button", {
-			cls: "timekeep-export-button",
-			text: "Copy JSON",
+			cls: "timekeep-df-export-button",
+			text: "JSON",
 			attr: {
 				"data-format": "json",
 			},
 		});
 
 		const savePdfButton = actionsEl.createEl("button", {
-			cls: "timekeep-export-button",
-			text: "Save PDF",
+			cls: "timekeep-df-export-button",
+			text: "PDF",
 			attr: {
 				"data-format": "pdf",
 			},
@@ -111,7 +130,7 @@ export class TimesheetExportActions extends DomComponent {
 
 		for (const [key, outputFormat] of Object.entries(outputFormats)) {
 			const customFormatButton = this.wrapperEl.createEl("button", {
-				cls: ["timekeep-export-button", "timekeep-export-button__custom"],
+				cls: ["timekeep-df-export-button", "timekeep-df-export-button__custom"],
 				text: outputFormat.getButtonLabel(),
 				attr: {
 					"data-custom-format": key,
@@ -119,10 +138,10 @@ export class TimesheetExportActions extends DomComponent {
 			});
 
 			this.registerDomEvent(customFormatButton, "click", () => {
-				const timekeep = this.timekeep.getState();
 				const settings = this.settings.getState();
 
 				const currentTime = moment();
+				const timekeep = this.getExportTimekeep(currentTime);
 				outputFormat.onExport(timekeep, settings, currentTime);
 			});
 
@@ -131,40 +150,40 @@ export class TimesheetExportActions extends DomComponent {
 	}
 
 	async onCopyMarkdown() {
-		const timekeep = this.timekeep.getState();
 		const settings = this.settings.getState();
 
 		const currentTime = moment();
+		const timekeep = this.getExportTimekeep(currentTime);
 		const output = createMarkdownTable(timekeep, settings, currentTime);
 
 		try {
 			await navigator.clipboard.writeText(output);
-			new Notice("Copied markdown to clipboard", 1500);
+			new Notice("Timekeep DF: copied markdown to clipboard", 1500);
 		} catch (error) {
 			console.error("Failed to copy export", error);
-			new Notice("Failed to copy to clipboard", 1500);
+			new Notice("Timekeep DF: failed to copy to clipboard", 1500);
 		}
 	}
 
 	async onCopyCSV() {
-		const timekeep = this.timekeep.getState();
 		const settings = this.settings.getState();
 
 		const currentTime = moment();
+		const timekeep = this.getExportTimekeep(currentTime);
 		const output = createCSV(timekeep, settings, currentTime);
 
 		try {
 			await navigator.clipboard.writeText(output);
-			new Notice("Copied CSV to clipboard", 1500);
+			new Notice("Timekeep DF: copied CSV to clipboard", 1500);
 		} catch (error) {
 			console.error("Failed to copy export", error);
-			new Notice("Failed to copy to clipboard", 1500);
+			new Notice("Timekeep DF: failed to copy to clipboard", 1500);
 		}
 	}
 
 	async onCopyJSON() {
-		const timekeep = this.timekeep.getState();
 		const settings = this.settings.getState();
+		const timekeep = this.getExportTimekeep(moment());
 
 		const output = JSON.stringify(
 			stripTimekeepRuntimeData(timekeep),
@@ -174,22 +193,22 @@ export class TimesheetExportActions extends DomComponent {
 
 		try {
 			await navigator.clipboard.writeText(output);
-			new Notice("Copied JSON to clipboard", 1500);
+			new Notice("Timekeep DF: copied JSON to clipboard", 1500);
 		} catch (error) {
 			console.error("Failed to copy export", error);
-			new Notice("Failed to copy to clipboard", 1500);
+			new Notice("Timekeep DF: failed to copy to clipboard", 1500);
 		}
 	}
 
 	async onSavePDF() {
-		const timekeep = this.timekeep.getState();
 		const settings = this.settings.getState();
+		const timekeep = this.getExportTimekeep(moment());
 
 		try {
 			await exportPdf(this.app, timekeep, settings);
 		} catch (error) {
 			console.error("Failed to export to PDF", error);
-			new Notice("Failed to export to PDF", 1500);
+			new Notice("Timekeep DF: failed to export to PDF", 1500);
 		}
 	}
 }

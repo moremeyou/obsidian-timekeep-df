@@ -48,22 +48,22 @@ export class TimesheetStatusBarItem extends DomComponent {
 		super.onload();
 
 		const entry = this.entry;
-		const wrapperEl = this.containerEl.createDiv({ cls: "timekeep-status-item" });
+		const wrapperEl = this.containerEl.createDiv({ cls: "timekeep-df-status-item" });
 		this.wrapperEl = wrapperEl;
 
 		const stopIcon = createObsidianIcon(wrapperEl, "stop-circle", [
-			"timekeep-status-item__button",
-			"timekeep-button-icon",
+			"timekeep-df-status-item__button",
+			"timekeep-df-button-icon",
 		]);
-		stopIcon.title = "Stop Entry";
+		stopIcon.title = "Stop Timekeep DF entry";
 
 		const contentEl = wrapperEl.createDiv({
-			cls: "timekeep-status-item__content",
-			title: "Open File",
+			cls: "timekeep-df-status-item__content",
+			title: "Open Timekeep DF file",
 		});
 
 		contentEl.createSpan({
-			cls: "timekeep-status-item__name",
+			cls: "timekeep-df-status-item__name",
 			text: this.getFolderPath() + entry.name + ":",
 			title: this.getDisplayTitle(),
 		});

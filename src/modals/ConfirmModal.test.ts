@@ -19,6 +19,7 @@ describe("ConfirmModal", () => {
 
 	it("should open without error", () => {
 		expect(() => component.open()).not.toThrow();
+		expect(component.modalEl.classList.contains("timekeep-df-confirm-modal")).toBe(true);
 	});
 
 	it("clicking Ok should call onChoice with true", () => {

@@ -20,19 +20,20 @@ export class ConfirmModal extends Modal {
 	}
 
 	onOpen(): void {
+		this.modalEl.addClass("timekeep-df-confirm-modal");
 		this.contentEl.createEl("p", { text: this.message });
 
 		new Setting(this.contentEl)
 			.addButton((btn) => {
 				btn.buttonEl.setAttribute("data-action", "ok");
-				btn.setClass("timekeep-confirm-modal-button")
+				btn.setClass("timekeep-df-confirm-modal-button")
 					.setButtonText("Ok")
 					.setCta()
 					.onClick(this.onOk.bind(this));
 			})
 			.addButton((btn) => {
 				btn.buttonEl.setAttribute("data-action", "cancel");
-				btn.setClass("timekeep-confirm-modal-button")
+				btn.setClass("timekeep-df-confirm-modal-button")
 					.setButtonText("Cancel")
 					.onClick(this.onCancel.bind(this));
 			});

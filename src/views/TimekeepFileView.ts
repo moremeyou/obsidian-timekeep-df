@@ -10,6 +10,7 @@ import TimekeepView from "./TimekeepView";
 import { load, LoadResult } from "@/timekeep/parser";
 
 import { TimekeepAutocomplete } from "@/service/autocomplete";
+import { TimekeepRegistry } from "@/service/registry";
 
 export default class TimekeepFileView extends EditableFileView {
 	/** Access to the timekeep settings */
@@ -18,6 +19,7 @@ export default class TimekeepFileView extends EditableFileView {
 	customOutputFormats: Store<Record<string, CustomOutputFormat>>;
 	/** Autocomplete */
 	autocomplete: TimekeepAutocomplete;
+	registry: TimekeepRegistry;
 
 	/** Container wrapper element */
 	wrapperEl: HTMLElement | undefined;
@@ -34,7 +36,8 @@ export default class TimekeepFileView extends EditableFileView {
 		leaf: WorkspaceLeaf,
 		settings: Store<TimekeepSettings>,
 		customOutputFormats: Store<Record<string, CustomOutputFormat>>,
-		autocomplete: TimekeepAutocomplete
+		autocomplete: TimekeepAutocomplete,
+		registry: TimekeepRegistry
 	) {
 		super(leaf);
 
@@ -42,6 +45,7 @@ export default class TimekeepFileView extends EditableFileView {
 		this.settings = settings;
 		this.customOutputFormats = customOutputFormats;
 		this.autocomplete = autocomplete;
+		this.registry = registry;
 
 		this.saveAdapter = new TimesheetFileSaveAdapter(this.app.vault, this.file);
 	}
@@ -49,7 +53,7 @@ export default class TimekeepFileView extends EditableFileView {
 	onload(): void {
 		super.onload();
 
-		const wrapperEl = this.contentEl.createDiv({ cls: "timekeep-file" });
+		const wrapperEl = this.contentEl.createDiv({ cls: "timekeep-df-file" });
 		this.wrapperEl = wrapperEl;
 
 		this.timesheet = new TimekeepView(
@@ -59,13 +63,15 @@ export default class TimekeepFileView extends EditableFileView {
 			this.customOutputFormats,
 			this.autocomplete,
 			this.loadResult,
-			this.saveAdapter
+			this.saveAdapter,
+			this.registry,
+			() => `file:${this.saveAdapter.file?.path ?? "unloaded"}`
 		);
 		this.addChild(this.timesheet);
 	}
 
 	getViewType(): string {
-		return "timekeep";
+		return "timekeep-df";
 	}
 
 	getDisplayText(): string {
@@ -73,10 +79,13 @@ export default class TimekeepFileView extends EditableFileView {
 			return this.file.basename;
 		}
 
-		return "Timekeep";
+		return "Timekeep DF";
 	}
 
 	async onLoadFile(file: TFile): Promise<void> {
+		if (file.extension !== "timekeep-df") {
+			throw new Error(`Refusing to open a non-DF standalone file: ${file.path}`);
+		}
 		await super.onLoadFile(file);
 
 		this.saveAdapter.file = file;

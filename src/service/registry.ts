@@ -1,6 +1,6 @@
 import type { EventRef, TAbstractFile, Vault, Workspace, WorkspaceLeaf } from "obsidian";
 
-import moment from "moment";
+import moment, { type Moment } from "moment";
 import { EditableFileView, Component, MarkdownView, TFile, requireApiVersion } from "obsidian";
 import { limitFunction } from "p-limit";
 
@@ -9,6 +9,11 @@ import type { Store } from "@/store";
 
 import { createStore } from "@/store";
 
+import {
+	endAutomaticBreakAtWorkingHoursEnd,
+	stopTimekeepWithAutomaticBreak,
+} from "@/timekeep/automaticBreaks";
+import type { HistoricalActivityDraft } from "@/timekeep/draft";
 import {
 	extractTimekeepCodeblocksWithPosition,
 	load,
@@ -19,7 +24,7 @@ import {
 import { getRunningEntry } from "@/timekeep/queries";
 import type { TimeEntry, Timekeep } from "@/timekeep/schema";
 import { stripTimekeepRuntimeData } from "@/timekeep/schema";
-import { stopTimekeep } from "@/timekeep/update";
+import { createTimekeepViewState, type TimekeepViewState } from "@/timekeep/view";
 
 /** Entry within the timekeep registry */
 export type TimekeepRegistryEntry = TimekeepRegistryEntryFile | TimekeepRegistryEntryMarkdown;
@@ -76,6 +81,10 @@ export class TimekeepRegistry extends Component {
 
 	/** Store for entries within the registry */
 	entries: Store<TimekeepRegistryEntry[]>;
+	/** Per-tracker UI view state retained for the current plugin session. */
+	viewStates: Map<string, Store<TimekeepViewState>>;
+	/** Per-tracker transient edit request retained across Obsidian rerenders. */
+	historicalDrafts: Map<string, Store<HistoricalActivityDraft | null>>;
 
 	/** Settings access */
 	settings: Store<TimekeepSettings>;
@@ -96,10 +105,32 @@ export class TimekeepRegistry extends Component {
 		super();
 		this.#vault = vault;
 		this.entries = createStore<TimekeepRegistryEntry[]>([]);
+		this.viewStates = new Map();
+		this.historicalDrafts = new Map();
 		this.settings = settings;
 		this.tasks = [];
 		this.events = [];
 		this.enabled = settings.getState().registryEnabled;
+	}
+
+	getViewState(trackerKey: string): Store<TimekeepViewState> {
+		const existing = this.viewStates.get(trackerKey);
+		if (existing) return existing;
+
+		const viewState = createStore(
+			createTimekeepViewState(this.settings.getState().defaultViewMode)
+		);
+		this.viewStates.set(trackerKey, viewState);
+		return viewState;
+	}
+
+	getHistoricalDraft(trackerKey: string): Store<HistoricalActivityDraft | null> {
+		const existing = this.historicalDrafts.get(trackerKey);
+		if (existing) return existing;
+
+		const historicalDraft = createStore<HistoricalActivityDraft | null>(null);
+		this.historicalDrafts.set(trackerKey, historicalDraft);
+		return historicalDraft;
 	}
 
 	onload() {
@@ -113,10 +144,7 @@ export class TimekeepRegistry extends Component {
 		const settings = this.settings.getState();
 		this.enabled = settings.registryEnabled;
 
-		// Unsubscribe from existing events
-		for (const eventRef of this.events) {
-			this.#vault.offref(eventRef);
-		}
+		this.detachVaultEvents();
 
 		if (!this.enabled) return;
 
@@ -131,6 +159,19 @@ export class TimekeepRegistry extends Component {
 
 		// Load the registry from the vault
 		this.registerTask("loadFromVault", this.loadFromVault());
+	}
+
+	onunload(): void {
+		this.enabled = false;
+		this.detachVaultEvents();
+		super.onunload();
+	}
+
+	private detachVaultEvents(): void {
+		for (const eventRef of this.events) {
+			this.#vault.offref(eventRef);
+		}
+		this.events = [];
 	}
 
 	registerTask(name: string, task: Promise<void>) {
@@ -211,6 +252,7 @@ export class TimekeepRegistry extends Component {
 			true,
 			settings.registryConcurrencyLimit
 		);
+		if (!this.enabled) return;
 		this.entries.setState(entries);
 	}
 
@@ -222,6 +264,7 @@ export class TimekeepRegistry extends Component {
 	 */
 	async updateFromFile(file: TFile) {
 		const entry = await TimekeepRegistry.getFileRegistryEntry(this.#vault, file, true);
+		if (!this.enabled) return;
 
 		this.entries.setState((entries) => {
 			const filteredEntries: TimekeepRegistryEntry[] = entries.filter(
@@ -239,6 +282,12 @@ export class TimekeepRegistry extends Component {
 		// Ensure the file still exists
 		const file = ref.file;
 		if (file === null) throw new Error("File no longer exists");
+		if (ref.type === TimekeepEntryItemType.FILE && file.extension !== "timekeep-df") {
+			throw new Error(`Refusing to modify a non-DF standalone file: ${file.path}`);
+		}
+		if (ref.type === TimekeepEntryItemType.MARKDOWN && file.extension !== "md") {
+			throw new Error(`Refusing to modify a non-Markdown DF block: ${file.path}`);
+		}
 
 		// Replace the stored timekeep block with the new one
 		await this.#vault.process(file, (data) => {
@@ -262,7 +311,11 @@ export class TimekeepRegistry extends Component {
 
 					const currentTime = moment();
 					const initialTimekeep = targetTimekeep.timekeep;
-					const updatedTimekeep = stopTimekeep(initialTimekeep, currentTime);
+					const updatedTimekeep = stopTimekeepWithAutomaticBreak(
+						initialTimekeep,
+						currentTime,
+						this.settings.getState()
+					);
 
 					return replaceTimekeepCodeblock(
 						updatedTimekeep,
@@ -283,7 +336,11 @@ export class TimekeepRegistry extends Component {
 
 					const currentTime = moment();
 					const initialTimekeep = loadResult.timekeep;
-					const updatedTimekeep = stopTimekeep(initialTimekeep, currentTime);
+					const updatedTimekeep = stopTimekeepWithAutomaticBreak(
+						initialTimekeep,
+						currentTime,
+						this.settings.getState()
+					);
 
 					const stripped = stripTimekeepRuntimeData(updatedTimekeep);
 					const serialized = JSON.stringify(stripped);
@@ -297,6 +354,69 @@ export class TimekeepRegistry extends Component {
 				/* v8 ignore stop -- @preserve */
 			}
 		});
+	}
+
+	/** End an expired automatic Break at its configured workday boundary. */
+	async tryEndAutomaticBreak(
+		ref: TimekeepRegistryItemRef,
+		currentTime: Moment = moment()
+	): Promise<boolean> {
+		const file = ref.file;
+		if (file === null) throw new Error("File no longer exists");
+		if (ref.type === TimekeepEntryItemType.FILE && file.extension !== "timekeep-df") {
+			throw new Error(`Refusing to modify a non-DF standalone file: ${file.path}`);
+		}
+		if (ref.type === TimekeepEntryItemType.MARKDOWN && file.extension !== "md") {
+			throw new Error(`Refusing to modify a non-Markdown DF block: ${file.path}`);
+		}
+
+		let changed = false;
+		await this.#vault.process(file, (data) => {
+			switch (ref.type) {
+				case TimekeepEntryItemType.MARKDOWN: {
+					const targetTimekeep = extractTimekeepCodeblocksWithPosition(data).find(
+						(target) =>
+							target.startLine === ref.position.startLine &&
+							target.endLine === ref.position.endLine
+					);
+					if (!targetTimekeep) return data;
+
+					const updated = endAutomaticBreakAtWorkingHoursEnd(
+						targetTimekeep.timekeep,
+						currentTime,
+						this.settings.getState()
+					);
+					if (updated === targetTimekeep.timekeep) return data;
+					changed = true;
+					return replaceTimekeepCodeblock(
+						updated,
+						data,
+						targetTimekeep.startLine,
+						targetTimekeep.endLine
+					);
+				}
+
+				case TimekeepEntryItemType.FILE: {
+					const loadResult = load(data);
+					if (!loadResult.success) return data;
+					const updated = endAutomaticBreakAtWorkingHoursEnd(
+						loadResult.timekeep,
+						currentTime,
+						this.settings.getState()
+					);
+					if (updated === loadResult.timekeep) return data;
+					changed = true;
+					return JSON.stringify(stripTimekeepRuntimeData(updated));
+				}
+
+				/* v8 ignore start -- @preserve */
+				default:
+					throw new Error("unknown entry type");
+				/* v8 ignore stop -- @preserve */
+			}
+		});
+
+		return changed;
 	}
 
 	/**
@@ -314,7 +434,7 @@ export class TimekeepRegistry extends Component {
 	): Promise<TimekeepRegistryEntry[]> {
 		const timekeepFiles = vault
 			.getFiles()
-			.filter((file) => file.extension === "timekeep" || file.extension === "md");
+			.filter((file) => file.extension === "timekeep-df" || file.extension === "md");
 
 		// Concurrency limited parallel file processing
 		const processFile = limitFunction(
@@ -345,6 +465,10 @@ export class TimekeepRegistry extends Component {
 		file: TFile,
 		cached: boolean = true
 	): Promise<TimekeepRegistryEntry | null> {
+		if (file.extension !== "md" && file.extension !== "timekeep-df") {
+			return null;
+		}
+
 		let content: string;
 		if (cached) {
 			content = await vault.cachedRead(file);
@@ -365,7 +489,7 @@ export class TimekeepRegistry extends Component {
 			};
 		}
 
-		if (file.extension === "timekeep") {
+		if (file.extension === "timekeep-df") {
 			const loadResult = load(content);
 			if (!loadResult.success) {
 				return null;
@@ -391,7 +515,7 @@ export class TimekeepRegistry extends Component {
 	 * @returns The existing leaf if found
 	 */
 	private static getExistingRefLeaf(workspace: Workspace, ref: TimekeepRegistryItemRef) {
-		const leavesType = ref.type === TimekeepEntryItemType.FILE ? "timekeep" : "markdown";
+		const leavesType = ref.type === TimekeepEntryItemType.FILE ? "timekeep-df" : "markdown";
 		const leaves = workspace.getLeavesOfType(leavesType);
 
 		for (const leaf of leaves) {

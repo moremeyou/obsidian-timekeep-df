@@ -3,13 +3,15 @@ import moment from "moment";
 import type { TimekeepSettings } from "@/settings";
 import type { Store } from "@/store";
 
+import { createStore } from "@/store";
 import { assert } from "@/utils/assert";
-import { formatDuration } from "@/utils/time";
+import { formatDuration, formatDurationClock } from "@/utils/time";
 
 import { TimesheetTimer } from "./TimesheetTimer";
 
 import { DomComponent } from "@/components/DomComponent";
 
+import { endAutomaticBreakAtWorkingHoursEnd } from "@/timekeep/automaticBreaks";
 import {
 	getEntryDuration,
 	getRunningEntry,
@@ -17,6 +19,13 @@ import {
 	isKeepRunning,
 } from "@/timekeep/queries";
 import type { Timekeep } from "@/timekeep/schema";
+import {
+	createTimekeepViewState,
+	getTimekeepViewCapacityHours,
+	getTimekeepViewWindow,
+	TimekeepViewMode,
+	type TimekeepViewState,
+} from "@/timekeep/view";
 
 /**
  * Component for rendering the two live updating timers at the top of the
@@ -27,11 +36,12 @@ export class TimesheetCounters extends DomComponent {
 	timekeep: Store<Timekeep>;
 	/** Access to the timekeep settings */
 	settings: Store<TimekeepSettings>;
+	viewState: Store<TimekeepViewState>;
 
-	/** Timer for the current entry */
-	currentTimer: TimesheetTimer | undefined;
-	/** Timer for the total time */
+	/** Timer for the selected calendar period total. */
 	totalTimer: TimesheetTimer | undefined;
+	/** Live duration for the currently running Activity or Block. */
+	durationTimer: TimesheetTimer | undefined;
 
 	/** Currently tracked background interval for content */
 	currentContentInterval: number | undefined;
@@ -39,32 +49,40 @@ export class TimesheetCounters extends DomComponent {
 	constructor(
 		containerEl: HTMLElement,
 		settings: Store<TimekeepSettings>,
-		timekeep: Store<Timekeep>
+		timekeep: Store<Timekeep>,
+		viewState?: Store<TimekeepViewState>
 	) {
 		super(containerEl);
 
 		this.settings = settings;
 		this.timekeep = timekeep;
+		this.viewState =
+			viewState ?? createStore(createTimekeepViewState(settings.getState().defaultViewMode));
 	}
 
 	onload(): void {
 		super.onload();
 
 		const wrapperEl = this.containerEl.createDiv({
-			cls: "timekeep-timers",
+			cls: "timekeep-df-timers",
 		});
+		wrapperEl.role = "button";
+		wrapperEl.tabIndex = 0;
 		this.wrapperEl = wrapperEl;
+		this.registerDomEvent(wrapperEl, "click", this.onToggleBreaksInTotal.bind(this));
+		this.registerDomEvent(wrapperEl, "keydown", this.onToggleKeyDown.bind(this));
 
-		this.currentTimer = new TimesheetTimer(wrapperEl, "Current");
-		this.totalTimer = new TimesheetTimer(wrapperEl, "Total");
+		this.durationTimer = new TimesheetTimer(wrapperEl, "Duration");
+		this.totalTimer = new TimesheetTimer(wrapperEl, "Day total");
 
-		this.addChild(this.currentTimer);
+		this.addChild(this.durationTimer);
 		this.addChild(this.totalTimer);
 
 		const onUpdate = this.onUpdate.bind(this);
 
 		this.register(this.timekeep.subscribe(onUpdate));
 		this.register(this.settings.subscribe(onUpdate));
+		this.register(this.viewState.subscribe(onUpdate));
 
 		onUpdate();
 	}
@@ -96,25 +114,81 @@ export class TimesheetCounters extends DomComponent {
 	 * Updates the values of the timers using the current elapsed time
 	 */
 	updateTimers() {
-		assert(this.currentTimer && this.totalTimer, "Timers must be defined for updateTimers");
+		assert(
+			this.durationTimer && this.totalTimer && this.wrapperEl,
+			"Counter elements must be defined for updateTimers"
+		);
 
 		const timekeep = this.timekeep.getState();
 		const settings = this.settings.getState();
 
 		const currentTime = moment();
-		const total = getTotalDuration(timekeep.entries, currentTime);
+		const cappedTimekeep = endAutomaticBreakAtWorkingHoursEnd(timekeep, currentTime, settings);
+		if (cappedTimekeep !== timekeep) {
+			this.timekeep.setState(cappedTimekeep);
+			return;
+		}
 		const runningEntry = getRunningEntry(timekeep.entries);
-		const current = runningEntry ? getEntryDuration(runningEntry, currentTime) : 0;
-
-		this.currentTimer.setHidden(runningEntry === null);
-		this.currentTimer.setValues(
-			formatDuration(settings.primaryDurationFormat, current),
-			formatDuration(settings.secondaryDurationFormat, current)
+		this.durationTimer.setValues(
+			formatDurationClock(runningEntry ? getEntryDuration(runningEntry, currentTime) : 0),
+			""
 		);
+		const state = this.viewState.getState();
+		const window = getTimekeepViewWindow(state);
+		const includeBreaks = state.includeBreaksInTotal !== false;
+		const breakDisplayName = settings.automaticBreakName.trim() || "Break";
+		const breakName = breakDisplayName.toLocaleLowerCase();
+		const totalEntries = includeBreaks
+			? timekeep.entries
+			: timekeep.entries.filter(
+					(entry) => entry.name.trim().toLocaleLowerCase() !== breakName
+				);
+		const total = getTotalDuration(totalEntries, currentTime, window);
+		const viewModeLabel: Record<TimekeepViewMode, string> = {
+			[TimekeepViewMode.DAY]: "Day total",
+			[TimekeepViewMode.WEEK]: "Week total",
+			[TimekeepViewMode.MONTH]: "Month total",
+			[TimekeepViewMode.QUARTER]: "Quarter total",
+			[TimekeepViewMode.YEAR]: "Year total",
+		};
 
+		const totalLabel = viewModeLabel[state.mode];
+		this.totalTimer.setLabel(totalLabel);
 		this.totalTimer.setValues(
-			formatDuration(settings.primaryDurationFormat, total),
-			formatDuration(settings.secondaryDurationFormat, total)
+			total <= 0 ? "0.0h" : formatDuration(settings.primaryDurationFormat, total),
+			""
 		);
+		const toggleDescription = includeBreaks
+			? `${totalLabel} includes ${breakDisplayName}. Tap to exclude it.`
+			: `${totalLabel} excludes ${breakDisplayName}. Tap to include it.`;
+		this.wrapperEl.setAttribute("aria-label", toggleDescription);
+		this.wrapperEl.setAttribute("aria-pressed", String(!includeBreaks));
+		this.wrapperEl.setAttribute("data-breaks-included", String(includeBreaks));
+		this.wrapperEl.title = toggleDescription;
+		const capacityMS =
+			getTimekeepViewCapacityHours(
+				this.viewState.getState(),
+				settings.totalDailyWorkingHours,
+				settings.totalDaysPerWeek
+			) *
+			60 *
+			60 *
+			1000;
+		const capacityState = total <= 0 ? "empty" : total > capacityMS ? "over" : "within";
+		this.totalTimer.setCapacityState(capacityState);
+		this.wrapperEl.setAttribute("data-capacity-state", capacityState);
+	}
+
+	onToggleBreaksInTotal() {
+		this.viewState.setState((state) => ({
+			...state,
+			includeBreaksInTotal: state.includeBreaksInTotal === false,
+		}));
+	}
+
+	onToggleKeyDown(event: KeyboardEvent) {
+		if (event.key !== "Enter" && event.key !== " ") return;
+		event.preventDefault();
+		this.onToggleBreaksInTotal();
 	}
 }

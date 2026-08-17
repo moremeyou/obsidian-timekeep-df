@@ -12,11 +12,11 @@ export async function createNewTimekeepFile(app: App, folder: TFolder) {
 	const isNameTaken = (name: string) =>
 		folder.children.find((child) => child.name === name) !== undefined;
 
-	let name = "Untitled.timekeep";
+	let name = "Untitled.timekeep-df";
 	let index = 1;
 
 	while (isNameTaken(name)) {
-		name = `Untitled ${index}.timekeep`;
+		name = `Untitled ${index}.timekeep-df`;
 		index += 1;
 	}
 

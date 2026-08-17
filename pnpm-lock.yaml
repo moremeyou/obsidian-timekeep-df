@@ -6,7 +6,7 @@ settings:
 
 patchedDependencies:
   pdfmake:
-    hash: 6d54e252a007864832feb784df02f056f9ea1b527c0d79fc05b23b31db3c6e73
+    hash: 688a7fa4b80efcc913dfc36a8d9e92cc9083e23b8dc391c7c9af039b88a7c6f9
     path: patches/pdfmake.patch
 
 importers:
@@ -24,7 +24,7 @@ importers:
         version: 7.3.1
       pdfmake:
         specifier: ^0.3.11
-        version: 0.3.11(patch_hash=6d54e252a007864832feb784df02f056f9ea1b527c0d79fc05b23b31db3c6e73)
+        version: 0.3.11(patch_hash=688a7fa4b80efcc913dfc36a8d9e92cc9083e23b8dc391c7c9af039b88a7c6f9)
       valibot:
         specifier: ^1.4.2
         version: 1.4.2(typescript@6.0.2)
@@ -1676,7 +1676,7 @@ snapshots:
       linebreak: 1.1.0
       png-js: 1.1.0
 
-  pdfmake@0.3.11(patch_hash=6d54e252a007864832feb784df02f056f9ea1b527c0d79fc05b23b31db3c6e73):
+  pdfmake@0.3.11(patch_hash=688a7fa4b80efcc913dfc36a8d9e92cc9083e23b8dc391c7c9af039b88a7c6f9):
     dependencies:
       linebreak: 1.1.0
       pdfkit: 0.19.1

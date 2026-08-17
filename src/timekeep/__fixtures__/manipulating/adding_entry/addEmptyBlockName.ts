@@ -24,7 +24,7 @@ export const expected: TimeEntry[] = [
 	},
 	{
 		id: 2,
-		name: "Block 2",
+		name: "Activity 2",
 		startTime: currentTime,
 		endTime: null,
 		subEntries: null,

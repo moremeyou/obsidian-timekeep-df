@@ -14,6 +14,7 @@ import { createStore, Store } from "@/store";
 import { TimesheetExportActions } from "./TimesheetExportActions";
 
 import { defaultTimekeep, stripTimekeepRuntimeData, Timekeep } from "@/timekeep/schema";
+import { TimekeepViewMode } from "@/timekeep/view";
 
 describe("TimesheetExportActions", () => {
 	let container: HTMLElement;
@@ -52,6 +53,11 @@ describe("TimesheetExportActions", () => {
 		);
 
 		expect(() => component.load()).not.toThrow();
+		expect(
+			Array.from(container.querySelectorAll<HTMLButtonElement>("[data-format]")).map(
+				(button) => button.textContent
+			)
+		).toEqual(["MD", "CSV", "JSON", "PDF"]);
 	});
 
 	it("changing the custom output formats should create new buttons", () => {
@@ -76,7 +82,7 @@ describe("TimesheetExportActions", () => {
 		});
 
 		const button = container.querySelector(
-			'.timekeep-export-button__custom[data-custom-format="custom"]'
+			'.timekeep-df-export-button__custom[data-custom-format="custom"]'
 		);
 		expect(button).toBeInstanceOf(HTMLButtonElement);
 	});
@@ -104,7 +110,7 @@ describe("TimesheetExportActions", () => {
 
 		const removeChild = vi.spyOn(component.wrapperEl!, "removeChild");
 		const button = container.querySelector(
-			'.timekeep-export-button__custom[data-custom-format="custom"]'
+			'.timekeep-df-export-button__custom[data-custom-format="custom"]'
 		);
 		expect(button).toBeInstanceOf(HTMLButtonElement);
 
@@ -121,12 +127,12 @@ describe("TimesheetExportActions", () => {
 		expect(removeChild).toHaveBeenCalled();
 
 		const oldButton = container.querySelector(
-			'.timekeep-export-button__custom[data-custom-format="custom"]'
+			'.timekeep-df-export-button__custom[data-custom-format="custom"]'
 		);
 		expect(oldButton).toBeNull();
 
 		const newButton = container.querySelector(
-			'.timekeep-export-button__custom[data-custom-format="custom_v2"]'
+			'.timekeep-df-export-button__custom[data-custom-format="custom_v2"]'
 		);
 		expect(newButton).toBeInstanceOf(HTMLButtonElement);
 	});
@@ -160,7 +166,7 @@ describe("TimesheetExportActions", () => {
 		});
 
 		const button = container.querySelector(
-			'.timekeep-export-button__custom[data-custom-format="custom"]'
+			'.timekeep-df-export-button__custom[data-custom-format="custom"]'
 		);
 		expect(button).toBeInstanceOf(HTMLButtonElement);
 
@@ -206,7 +212,9 @@ describe("TimesheetExportActions", () => {
 		const onCopyMarkdown = vi.spyOn(component, "onCopyMarkdown");
 		component.load();
 
-		const button = container.querySelector('.timekeep-export-button[data-format="markdown"]');
+		const button = container.querySelector(
+			'.timekeep-df-export-button[data-format="markdown"]'
+		);
 		expect(button).toBeInstanceOf(HTMLButtonElement);
 
 		const event = new MouseEvent("click", { bubbles: true, cancelable: true });
@@ -251,7 +259,10 @@ describe("TimesheetExportActions", () => {
 		await component.onCopyMarkdown();
 
 		expect(writeText).toHaveBeenCalledExactlyOnceWith(markdown);
-		expect(MockNotice).toHaveBeenLastCalledWith("Copied markdown to clipboard", 1500);
+		expect(MockNotice).toHaveBeenLastCalledWith(
+			"Timekeep DF: copied markdown to clipboard",
+			1500
+		);
 	});
 
 	it("onCopyMarkdown should show a notice on error", async () => {
@@ -270,7 +281,10 @@ describe("TimesheetExportActions", () => {
 
 		await component.onCopyMarkdown();
 
-		expect(MockNotice).toHaveBeenLastCalledWith("Failed to copy to clipboard", 1500);
+		expect(MockNotice).toHaveBeenLastCalledWith(
+			"Timekeep DF: failed to copy to clipboard",
+			1500
+		);
 		expect(consoleError).toHaveBeenCalled();
 	});
 
@@ -305,7 +319,7 @@ describe("TimesheetExportActions", () => {
 		await component.onCopyCSV();
 
 		expect(writeText).toHaveBeenCalledExactlyOnceWith(csv);
-		expect(MockNotice).toHaveBeenLastCalledWith("Copied CSV to clipboard", 1500);
+		expect(MockNotice).toHaveBeenLastCalledWith("Timekeep DF: copied CSV to clipboard", 1500);
 	});
 
 	it("onCopyCSV should show a notice on error", async () => {
@@ -324,7 +338,10 @@ describe("TimesheetExportActions", () => {
 
 		await component.onCopyCSV();
 
-		expect(MockNotice).toHaveBeenLastCalledWith("Failed to copy to clipboard", 1500);
+		expect(MockNotice).toHaveBeenLastCalledWith(
+			"Timekeep DF: failed to copy to clipboard",
+			1500
+		);
 		expect(consoleError).toHaveBeenCalled();
 	});
 
@@ -366,7 +383,7 @@ describe("TimesheetExportActions", () => {
 		await component.onCopyJSON();
 
 		expect(writeText).toHaveBeenCalledExactlyOnceWith(json);
-		expect(MockNotice).toHaveBeenLastCalledWith("Copied JSON to clipboard", 1500);
+		expect(MockNotice).toHaveBeenLastCalledWith("Timekeep DF: copied JSON to clipboard", 1500);
 	});
 	it("onCopyJSON should copy the timekeep exported data as formatted JSON when formatCopiedJSON is enabled", async () => {
 		const systemTime = moment();
@@ -408,7 +425,7 @@ describe("TimesheetExportActions", () => {
 		await component.onCopyJSON();
 
 		expect(writeText).toHaveBeenCalledExactlyOnceWith(json);
-		expect(MockNotice).toHaveBeenLastCalledWith("Copied JSON to clipboard", 1500);
+		expect(MockNotice).toHaveBeenLastCalledWith("Timekeep DF: copied JSON to clipboard", 1500);
 	});
 
 	it("onCopyJSON should show a notice on error", async () => {
@@ -427,7 +444,10 @@ describe("TimesheetExportActions", () => {
 
 		await component.onCopyJSON();
 
-		expect(MockNotice).toHaveBeenLastCalledWith("Failed to copy to clipboard", 1500);
+		expect(MockNotice).toHaveBeenLastCalledWith(
+			"Timekeep DF: failed to copy to clipboard",
+			1500
+		);
 		expect(consoleError).toHaveBeenCalled();
 	});
 
@@ -464,6 +484,161 @@ describe("TimesheetExportActions", () => {
 		expect(exportPdfSpy).toHaveBeenCalledOnce();
 	});
 
+	it("applies the selected view snapshot to Markdown, CSV, JSON, PDF, and custom exports", async () => {
+		vi.useFakeTimers();
+		const currentTime = moment("2026-08-12T12:00:00");
+		vi.setSystemTime(currentTime.toDate());
+		timekeep.setState({
+			entries: [
+				{
+					id: 1,
+					name: "Outside",
+					startTime: moment("2026-08-11T09:00:00"),
+					endTime: moment("2026-08-11T10:00:00"),
+					subEntries: null,
+				},
+				{
+					id: 2,
+					name: "Crosses midnight",
+					startTime: moment("2026-08-11T23:00:00"),
+					endTime: moment("2026-08-12T02:00:00"),
+					subEntries: null,
+				},
+			],
+		});
+		const viewState = createStore({
+			mode: TimekeepViewMode.DAY,
+			anchorDate: "2026-08-12",
+			followCurrent: true,
+		});
+		const onCustomExport = vi.fn();
+		customOutputFormats.setState({
+			custom: {
+				getButtonLabel: () => "Custom",
+				onExport: onCustomExport,
+			},
+		});
+		const component = new TimesheetExportActions(
+			container,
+			app,
+			timekeep,
+			settings,
+			customOutputFormats,
+			viewState
+		);
+		component.load();
+
+		await component.onCopyMarkdown();
+		const markdownOutput = writeText.mock.calls.at(-1)?.[0];
+		expect(markdownOutput).not.toContain("Outside");
+		expect(markdownOutput).toContain("Crosses midnight");
+		expect(markdownOutput).toContain("26-08-12 00:00");
+
+		await component.onCopyCSV();
+		const csvOutput = writeText.mock.calls.at(-1)?.[0];
+		expect(csvOutput).not.toContain("Outside");
+		expect(csvOutput).toContain("Crosses midnight,26-08-12 00:00,26-08-12 02:00");
+
+		await component.onCopyJSON();
+		const jsonOutput = JSON.parse(writeText.mock.calls.at(-1)?.[0] ?? "{}");
+		expect(jsonOutput.entries).toHaveLength(1);
+		expect(jsonOutput.entries[0].name).toBe("Crosses midnight");
+		expect(jsonOutput.entries[0].startTime).toBe(
+			component.getExportTimekeep(currentTime).entries[0].startTime?.toJSON()
+		);
+
+		const exportPdfSpy = vi.spyOn(exportPdf, "exportPdf").mockResolvedValue(undefined);
+		await component.onSavePDF();
+		const pdfTimekeep = exportPdfSpy.mock.calls.at(-1)?.[1];
+		expect(pdfTimekeep?.entries).toHaveLength(1);
+		expect(pdfTimekeep?.entries[0].startTime?.format("YYYY-MM-DD HH:mm")).toBe(
+			"2026-08-12 00:00"
+		);
+
+		container.querySelector<HTMLButtonElement>('[data-custom-format="custom"]')?.click();
+		const customTimekeep = onCustomExport.mock.calls.at(-1)?.[0];
+		expect(customTimekeep.entries).toHaveLength(1);
+		expect(customTimekeep.entries[0].startTime.format("YYYY-MM-DD HH:mm")).toBe(
+			"2026-08-12 00:00"
+		);
+
+		component.unload();
+		vi.useRealTimers();
+	});
+
+	it("applies a Quarter snapshot to Markdown, CSV, JSON, PDF, and custom exports", async () => {
+		vi.useFakeTimers();
+		const currentTime = moment("2026-08-12T12:00:00");
+		vi.setSystemTime(currentTime.toDate());
+		timekeep.setState({
+			entries: [
+				{
+					id: 1,
+					name: "Previous quarter",
+					startTime: moment("2026-06-30T09:00:00"),
+					endTime: moment("2026-06-30T10:00:00"),
+					subEntries: null,
+				},
+				{
+					id: 2,
+					name: "Current quarter",
+					startTime: moment("2026-07-01T09:00:00"),
+					endTime: moment("2026-07-01T10:00:00"),
+					subEntries: null,
+				},
+			],
+		});
+		const viewState = createStore({
+			mode: TimekeepViewMode.QUARTER,
+			anchorDate: "2026-08-12",
+			followCurrent: true,
+		});
+		const onCustomExport = vi.fn();
+		customOutputFormats.setState({
+			custom: {
+				getButtonLabel: () => "Custom",
+				onExport: onCustomExport,
+			},
+		});
+		const component = new TimesheetExportActions(
+			container,
+			app,
+			timekeep,
+			settings,
+			customOutputFormats,
+			viewState
+		);
+		component.load();
+
+		await component.onCopyMarkdown();
+		expect(writeText.mock.calls.at(-1)?.[0]).toContain("Current quarter");
+		expect(writeText.mock.calls.at(-1)?.[0]).not.toContain("Previous quarter");
+
+		await component.onCopyCSV();
+		expect(writeText.mock.calls.at(-1)?.[0]).toContain("Current quarter");
+		expect(writeText.mock.calls.at(-1)?.[0]).not.toContain("Previous quarter");
+
+		await component.onCopyJSON();
+		const jsonOutput = JSON.parse(writeText.mock.calls.at(-1)?.[0] ?? "{}");
+		expect(jsonOutput.entries.map((entry: { name: string }) => entry.name)).toEqual([
+			"Current quarter",
+		]);
+
+		const exportPdfSpy = vi.spyOn(exportPdf, "exportPdf").mockResolvedValue(undefined);
+		await component.onSavePDF();
+		expect(exportPdfSpy.mock.calls.at(-1)?.[1].entries.map((entry) => entry.name)).toEqual([
+			"Current quarter",
+		]);
+
+		container.querySelector<HTMLButtonElement>('[data-custom-format="custom"]')?.click();
+		expect(onCustomExport.mock.calls.at(-1)?.[0].entries.map((entry) => entry.name)).toEqual([
+			"Current quarter",
+		]);
+
+		component.unload();
+		vi.useRealTimers();
+	});
+
 	it("onSavePDF should show a notice on error", async () => {
 		const exportPdfSpy = vi
 			.spyOn(exportPdf, "exportPdf")
@@ -482,7 +657,7 @@ describe("TimesheetExportActions", () => {
 
 		await component.onSavePDF();
 
-		expect(MockNotice).toHaveBeenLastCalledWith("Failed to export to PDF", 1500);
+		expect(MockNotice).toHaveBeenLastCalledWith("Timekeep DF: failed to export to PDF", 1500);
 		expect(consoleError).toHaveBeenCalled();
 		expect(exportPdfSpy).toHaveBeenCalled();
 	});

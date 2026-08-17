@@ -22,6 +22,17 @@ export function createEntry(name: string, startTime: Moment): TimeEntry {
 	};
 }
 
+/** Create a named Activity without starting a timer. */
+export function createUnstartedEntry(name: string): TimeEntry {
+	return {
+		id: timekeepId.next(),
+		name,
+		startTime: null,
+		endTime: null,
+		subEntries: null,
+	};
+}
+
 /**
  * Extends the provided list of entries with a new entry
  * of the provided name
@@ -36,10 +47,15 @@ export function withEntry(entries: TimeEntry[], name: string, startTime: Moment)
 	return [...entries, createEntry(entryName, startTime)];
 }
 
+/** Append an Activity without starting or stopping any timer. */
+export function withUnstartedEntry(entries: TimeEntry[], name: string): TimeEntry[] {
+	return [...entries, createUnstartedEntry(getEntryName(name, entries))];
+}
+
 /**
  * Get the name for a new entry
  *
- * If the name is empty "Block {N}" will be used where {N} is the number
+ * If the name is empty "Activity {N}" will be used where {N} is the number
  * of entries + 1
  *
  * @param name User provided name
@@ -49,7 +65,7 @@ export function withEntry(entries: TimeEntry[], name: string, startTime: Moment)
 function getEntryName(name: string, entries: TimeEntry[]) {
 	// Assign a name automatically if not provided
 	if (isEmptyString(name)) {
-		name = `Block ${entries.length + 1}`;
+		name = `Activity ${entries.length + 1}`;
 	}
 
 	return name;
@@ -66,7 +82,7 @@ function getEntryName(name: string, entries: TimeEntry[]) {
  */
 export function withSubEntry(parent: TimeEntry, name: string, startTime: Moment): TimeEntry {
 	const groupEntry = makeGroupEntry(parent);
-	const entryName = getSubEntryName(name, groupEntry);
+	const entryName = getSubEntryName(name, groupEntry, startTime);
 	const newEntry = createEntry(entryName, startTime);
 
 	return {
@@ -78,17 +94,20 @@ export function withSubEntry(parent: TimeEntry, name: string, startTime: Moment)
 /**
  * Get the name for a new sub entry
  *
- * If the name is empty "Part {N}" will be used where {N} is the number
- * of entries in the group + 1
+ * If the name is empty "Block {N}" will be used where {N} is the number
+ * of sibling entries started on the same local calendar day + 1
  *
  * @param name The user provided name
  * @param groupEntry The outer group entry
  * @returns The new entry name
  */
-function getSubEntryName(name: string, groupEntry: TimeEntryGroup) {
+function getSubEntryName(name: string, groupEntry: TimeEntryGroup, startTime: Moment) {
 	// Assign a name automatically if not provided
 	if (isEmptyString(name)) {
-		return `Part ${groupEntry.subEntries.length + 1}`;
+		const blocksStartedThatDay = groupEntry.subEntries.filter(
+			(entry) => entry.startTime !== null && entry.startTime.isSame(startTime, "day")
+		).length;
+		return `Block ${blocksStartedThatDay + 1}`;
 	}
 
 	return name;
@@ -100,7 +119,7 @@ function getSubEntryName(name: string, groupEntry: TimeEntryGroup) {
  *
  * If the entry is not a group, the entry will be converted to a
  * group, the start and end times from the entry will be moved into
- * the group as its first entry titled "Part 1".
+ * the group as its first entry titled "Block 1".
  *
  * @param entry The entry to create a group from
  * @returns The group entry
@@ -113,7 +132,8 @@ function makeGroupEntry(entry: TimeEntry): TimeEntryGroup {
 	return {
 		id: timekeepId.next(),
 		name: entry.name,
-		subEntries: [{ ...entry, name: "Part 1" }],
+		collapsed: true,
+		subEntries: [{ ...entry, name: "Block 1" }],
 		startTime: null,
 		endTime: null,
 	};

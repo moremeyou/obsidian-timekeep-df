@@ -50,13 +50,47 @@ describe("TimesheetNameInput", () => {
 		expect(() => component.load()).not.toThrow();
 	});
 
+	it("uses unique fork-scoped IDs and valid ARIA references across instances", () => {
+		autocomplete.names.setState(["Test", "Test 2"]);
+		const secondContainer = createMockContainer();
+		const second = new TimesheetNameInput(secondContainer, autocomplete);
+
+		component.load();
+		second.load();
+
+		const inputs = [containerEl, secondContainer].map(
+			(container) => container.querySelector<HTMLInputElement>(".timekeep-df-name")!
+		);
+		const lists = [containerEl, secondContainer].map(
+			(container) => container.querySelector<HTMLElement>(".timekeep-df-suggestions")!
+		);
+
+		expect(new Set(inputs.map((input) => input.id)).size).toBe(2);
+		expect(new Set(lists.map((list) => list.id)).size).toBe(2);
+		for (let i = 0; i < inputs.length; i += 1) {
+			expect(inputs[i].id).toMatch(/^timekeep-df-name-\d+$/);
+			expect(inputs[i].getAttribute("aria-controls")).toBe(lists[i].id);
+
+			inputs[i].value = "Test";
+			inputs[i].dispatchEvent(new Event("input", { bubbles: true }));
+			const option = lists[i].querySelector<HTMLElement>(".timekeep-df-suggestion")!;
+			expect(option.id).toMatch(/^timekeep-df-suggestion-\d+-0$/);
+
+			inputs[i].dispatchEvent(new KeyboardEvent("keydown", { key: "ArrowDown" }));
+			expect(inputs[i].getAttribute("aria-activedescendant")).toBe(option.id);
+			expect(lists[i].querySelector(`#${option.id}`)).toBe(option);
+		}
+
+		second.unload();
+	});
+
 	it("typing should not render suggestions when there is no data", () => {
 		const onDebouncedChange = vi.spyOn(component, "onDebouncedChange");
 		const setSuggestionFocus = vi.spyOn(component, "setSuggestionFocus");
 
 		component.load();
 
-		const inputEl = containerEl.querySelector(".timekeep-name")! as HTMLInputElement;
+		const inputEl = containerEl.querySelector(".timekeep-df-name")! as HTMLInputElement;
 		expect(inputEl).not.toBeNull();
 
 		inputEl.value = "Test";
@@ -70,7 +104,7 @@ describe("TimesheetNameInput", () => {
 		expect(setSuggestionFocus).toHaveBeenCalledExactlyOnceWith(-1);
 
 		// Suggestions should stay empty
-		const suggestions = containerEl.querySelectorAll(".timekeep-suggestion");
+		const suggestions = containerEl.querySelectorAll(".timekeep-df-suggestion");
 		expect(suggestions.length).toBe(0);
 	});
 
@@ -83,7 +117,7 @@ describe("TimesheetNameInput", () => {
 
 		component.load();
 
-		const inputEl = containerEl.querySelector(".timekeep-name")! as HTMLInputElement;
+		const inputEl = containerEl.querySelector(".timekeep-df-name")! as HTMLInputElement;
 		expect(inputEl).not.toBeNull();
 
 		inputEl.value = "Test";
@@ -98,7 +132,7 @@ describe("TimesheetNameInput", () => {
 		expect(setSuggestionFocus).toHaveBeenLastCalledWith(-1);
 
 		// Suggestions should contain both items
-		const suggestions = containerEl.querySelectorAll(".timekeep-suggestion");
+		const suggestions = containerEl.querySelectorAll(".timekeep-df-suggestion");
 		expect(suggestions.length).toBe(2);
 	});
 
@@ -111,7 +145,7 @@ describe("TimesheetNameInput", () => {
 
 		component.load();
 
-		const inputEl = containerEl.querySelector(".timekeep-name")! as HTMLInputElement;
+		const inputEl = containerEl.querySelector(".timekeep-df-name")! as HTMLInputElement;
 		expect(inputEl).not.toBeNull();
 
 		inputEl.value = "Test";
@@ -126,7 +160,7 @@ describe("TimesheetNameInput", () => {
 		expect(setSuggestionFocus).toHaveBeenLastCalledWith(-1);
 
 		// Suggestions should contain just the matching item
-		const suggestions = containerEl.querySelectorAll(".timekeep-suggestion");
+		const suggestions = containerEl.querySelectorAll(".timekeep-df-suggestion");
 		expect(suggestions.length).toBe(1);
 
 		// Item should match
@@ -144,7 +178,7 @@ describe("TimesheetNameInput", () => {
 		]);
 		component.load();
 
-		const inputEl = containerEl.querySelector(".timekeep-name")! as HTMLInputElement;
+		const inputEl = containerEl.querySelector(".timekeep-df-name")! as HTMLInputElement;
 		expect(inputEl).not.toBeNull();
 
 		inputEl.focus();
@@ -153,7 +187,7 @@ describe("TimesheetNameInput", () => {
 		inputEl.dispatchEvent(new Event("input", { bubbles: true }));
 
 		// Suggestions should contain just the matching item
-		const suggestions = containerEl.querySelectorAll(".timekeep-suggestion");
+		const suggestions = containerEl.querySelectorAll(".timekeep-df-suggestion");
 		expect(suggestions.length).toBe(5);
 
 		for (let i = 0; i < suggestions.length; i++) {
@@ -164,9 +198,7 @@ describe("TimesheetNameInput", () => {
 					expect(suggestion.innerHTML).toBe("<mark>Test</mark>");
 					break;
 				case "Before Test After":
-					expect(suggestion.innerHTML).toBe(
-						"Before <mark>Test</mark> After"
-					);
+					expect(suggestion.innerHTML).toBe("Before <mark>Test</mark> After");
 					break;
 				case "Before Test":
 					expect(suggestion.innerHTML).toBe("Before <mark>Test</mark>");
@@ -175,9 +207,7 @@ describe("TimesheetNameInput", () => {
 					expect(suggestion.innerHTML).toBe("<mark>Test</mark> After");
 					break;
 				case "Test After Test":
-					expect(suggestion.innerHTML).toBe(
-						"<mark>Test</mark> After <mark>Test</mark>"
-					);
+					expect(suggestion.innerHTML).toBe("<mark>Test</mark> After <mark>Test</mark>");
 					break;
 				default:
 					throw new Error("unexpected text content");
@@ -193,7 +223,7 @@ describe("TimesheetNameInput", () => {
 			]);
 		component.load();
 
-		const inputEl = containerEl.querySelector(".timekeep-name")! as HTMLInputElement;
+		const inputEl = containerEl.querySelector(".timekeep-df-name")! as HTMLInputElement;
 		expect(inputEl).not.toBeNull();
 
 		inputEl.focus();
@@ -202,7 +232,7 @@ describe("TimesheetNameInput", () => {
 		inputEl.dispatchEvent(new Event("input", { bubbles: true }));
 
 		// Suggestions should contain just the matching item
-		const suggestions = containerEl.querySelectorAll(".timekeep-suggestion");
+		const suggestions = containerEl.querySelectorAll(".timekeep-df-suggestion");
 		expect(suggestions.length).toBe(2);
 		expect(getFilteredSuggestions).toHaveBeenCalled();
 
@@ -223,15 +253,54 @@ describe("TimesheetNameInput", () => {
 		}
 	});
 
-	it("focusing the input should do nothing if theres no suggestions", () => {});
+	it("focusing the empty input should stay closed when there are no suggestions", () => {
+		component.load();
 
-	it("focusing the input should show the suggestions box if there are suggestions", () => {});
+		const inputEl = containerEl.querySelector<HTMLInputElement>(".timekeep-df-name")!;
+		const suggestionsEl = containerEl.querySelector<HTMLElement>(".timekeep-df-suggestions")!;
+		inputEl.dispatchEvent(new FocusEvent("focus"));
+
+		expect(suggestionsEl.hidden).toBe(true);
+		expect(inputEl.getAttribute("aria-expanded")).toBe("false");
+	});
+
+	it("focusing the empty input should immediately show all suggestions", () => {
+		autocomplete.names.setState(["Test", "Other"]);
+		component.load();
+
+		const inputEl = containerEl.querySelector<HTMLInputElement>(".timekeep-df-name")!;
+		const suggestionsEl = containerEl.querySelector<HTMLElement>(".timekeep-df-suggestions")!;
+		inputEl.dispatchEvent(new FocusEvent("focus"));
+
+		expect(suggestionsEl.hidden).toBe(false);
+		expect(inputEl.getAttribute("aria-expanded")).toBe("true");
+		expect(
+			Array.from(suggestionsEl.querySelectorAll(".timekeep-df-suggestion")).map(
+				(suggestion) => suggestion.textContent
+			)
+		).toEqual(["Test", "Other"]);
+	});
+
+	it("tapping an already-focused input reopens the suggestions", () => {
+		autocomplete.names.setState(["Test", "Other"]);
+		component.load();
+
+		const inputEl = containerEl.querySelector<HTMLInputElement>(".timekeep-df-name")!;
+		const suggestionsEl = containerEl.querySelector<HTMLElement>(".timekeep-df-suggestions")!;
+		inputEl.dispatchEvent(new FocusEvent("focus"));
+		inputEl.dispatchEvent(new KeyboardEvent("keydown", { key: "Escape" }));
+		expect(suggestionsEl.hidden).toBe(true);
+
+		inputEl.click();
+		expect(suggestionsEl.hidden).toBe(false);
+		expect(inputEl.getAttribute("aria-expanded")).toBe("true");
+	});
 
 	it("should be able to retrieve the input value", () => {
 		autocomplete.names.setState(["Test", "Test 1"]);
 		component.load();
 
-		const inputEl = containerEl.querySelector(".timekeep-name")! as HTMLInputElement;
+		const inputEl = containerEl.querySelector(".timekeep-df-name")! as HTMLInputElement;
 		expect(inputEl).not.toBeNull();
 
 		inputEl.value = "Test";
@@ -247,7 +316,7 @@ describe("TimesheetNameInput", () => {
 		autocomplete.names.setState(["Test", "Test 1"]);
 		component.load();
 
-		const inputEl = containerEl.querySelector(".timekeep-name")! as HTMLInputElement;
+		const inputEl = containerEl.querySelector(".timekeep-df-name")! as HTMLInputElement;
 		expect(inputEl).not.toBeNull();
 
 		inputEl.value = "Test";
@@ -272,7 +341,7 @@ describe("TimesheetNameInput", () => {
 
 		component.load();
 
-		const inputEl = containerEl.querySelector(".timekeep-name")! as HTMLInputElement;
+		const inputEl = containerEl.querySelector(".timekeep-df-name")! as HTMLInputElement;
 		expect(inputEl).not.toBeNull();
 
 		inputEl.value = "Test";
@@ -302,7 +371,7 @@ describe("TimesheetNameInput", () => {
 
 		component.load();
 
-		const inputEl = containerEl.querySelector(".timekeep-name")! as HTMLInputElement;
+		const inputEl = containerEl.querySelector(".timekeep-df-name")! as HTMLInputElement;
 		expect(inputEl).not.toBeNull();
 
 		inputEl.value = "Test";
@@ -336,7 +405,7 @@ describe("TimesheetNameInput", () => {
 
 		component.load();
 
-		const inputEl = containerEl.querySelector(".timekeep-name")! as HTMLInputElement;
+		const inputEl = containerEl.querySelector(".timekeep-df-name")! as HTMLInputElement;
 		expect(inputEl).not.toBeNull();
 
 		inputEl.value = "Test";
@@ -367,7 +436,7 @@ describe("TimesheetNameInput", () => {
 
 		component.load();
 
-		const inputEl = containerEl.querySelector(".timekeep-name")! as HTMLInputElement;
+		const inputEl = containerEl.querySelector(".timekeep-df-name")! as HTMLInputElement;
 		expect(inputEl).not.toBeNull();
 
 		inputEl.value = "Test";
@@ -392,7 +461,7 @@ describe("TimesheetNameInput", () => {
 
 		component.load();
 
-		const inputEl = containerEl.querySelector(".timekeep-name")! as HTMLInputElement;
+		const inputEl = containerEl.querySelector(".timekeep-df-name")! as HTMLInputElement;
 		expect(inputEl).not.toBeNull();
 
 		inputEl.value = "Test";
@@ -417,7 +486,7 @@ describe("TimesheetNameInput", () => {
 
 		component.load();
 
-		const inputEl = containerEl.querySelector(".timekeep-name")! as HTMLInputElement;
+		const inputEl = containerEl.querySelector(".timekeep-df-name")! as HTMLInputElement;
 		expect(inputEl).not.toBeNull();
 
 		inputEl.value = "Test";
@@ -449,7 +518,7 @@ describe("TimesheetNameInput", () => {
 
 		component.load();
 
-		const inputEl = containerEl.querySelector(".timekeep-name")! as HTMLInputElement;
+		const inputEl = containerEl.querySelector(".timekeep-df-name")! as HTMLInputElement;
 		expect(inputEl).not.toBeNull();
 		inputEl.dispatchEvent(
 			new KeyboardEvent("keydown", { bubbles: true, cancelable: true, key: "Enter" })
@@ -467,7 +536,7 @@ describe("TimesheetNameInput", () => {
 
 		component.load();
 
-		const inputEl = containerEl.querySelector(".timekeep-name")! as HTMLInputElement;
+		const inputEl = containerEl.querySelector(".timekeep-df-name")! as HTMLInputElement;
 		expect(inputEl).not.toBeNull();
 
 		inputEl.value = "Test";
@@ -488,7 +557,7 @@ describe("TimesheetNameInput", () => {
 
 		component.load();
 
-		const inputEl = containerEl.querySelector(".timekeep-name")! as HTMLInputElement;
+		const inputEl = containerEl.querySelector(".timekeep-df-name")! as HTMLInputElement;
 		expect(inputEl).not.toBeNull();
 
 		inputEl.value = "Test";
@@ -511,7 +580,7 @@ describe("TimesheetNameInput", () => {
 
 		component.load();
 
-		const inputEl = containerEl.querySelector(".timekeep-name")! as HTMLInputElement;
+		const inputEl = containerEl.querySelector(".timekeep-df-name")! as HTMLInputElement;
 		expect(inputEl).not.toBeNull();
 
 		inputEl.value = "Test";
@@ -535,7 +604,7 @@ describe("TimesheetNameInput", () => {
 
 		component.load();
 
-		const inputEl = containerEl.querySelector(".timekeep-name")! as HTMLInputElement;
+		const inputEl = containerEl.querySelector(".timekeep-df-name")! as HTMLInputElement;
 		expect(inputEl).not.toBeNull();
 
 		inputEl.value = "Test";
@@ -561,7 +630,7 @@ describe("TimesheetNameInput", () => {
 
 		component.load();
 
-		const inputEl = containerEl.querySelector(".timekeep-name")! as HTMLInputElement;
+		const inputEl = containerEl.querySelector(".timekeep-df-name")! as HTMLInputElement;
 		expect(inputEl).not.toBeNull();
 
 		inputEl.value = "Test";
@@ -592,7 +661,7 @@ describe("TimesheetNameInput", () => {
 		const onClickSuggestions = vi.spyOn(component, "onClickSuggestions");
 		component.load();
 
-		const inputEl = containerEl.querySelector(".timekeep-name")! as HTMLInputElement;
+		const inputEl = containerEl.querySelector(".timekeep-df-name")! as HTMLInputElement;
 		expect(inputEl).not.toBeNull();
 
 		inputEl.focus();
@@ -600,7 +669,7 @@ describe("TimesheetNameInput", () => {
 		inputEl.value = "Test";
 		inputEl.dispatchEvent(new Event("input", { bubbles: true }));
 
-		const suggestions = containerEl.querySelectorAll(".timekeep-suggestion");
+		const suggestions = containerEl.querySelectorAll(".timekeep-df-suggestion");
 		expect(suggestions.length).toBe(5);
 
 		const suggestion = suggestions.item(0);
@@ -622,7 +691,7 @@ describe("TimesheetNameInput", () => {
 		const onSelectSuggestion = vi.spyOn(component, "onSelectSuggestion");
 		component.load();
 
-		const inputEl = containerEl.querySelector(".timekeep-name")! as HTMLInputElement;
+		const inputEl = containerEl.querySelector(".timekeep-df-name")! as HTMLInputElement;
 		expect(inputEl).not.toBeNull();
 
 		inputEl.focus();
@@ -630,7 +699,7 @@ describe("TimesheetNameInput", () => {
 		inputEl.value = "Test";
 		inputEl.dispatchEvent(new Event("input", { bubbles: true }));
 
-		const suggestions = containerEl.querySelector(".timekeep-suggestions");
+		const suggestions = containerEl.querySelector(".timekeep-df-suggestions");
 		expect(suggestions).not.toBeNull();
 		suggestions!.dispatchEvent(
 			new MouseEvent("mousedown", { bubbles: true, cancelable: true })

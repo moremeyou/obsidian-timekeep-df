@@ -1,3 +1,4 @@
+import moment from "moment";
 import { expect, it, describe } from "vitest";
 
 import {
@@ -10,8 +11,11 @@ import {
 	getTotalDuration,
 	getEntriesNames,
 	getStartTime,
+	getEntryTimeBounds,
+	isEntryWithinWindow,
 } from "./queries";
 import { TimeEntry } from "./schema";
+import { getTimekeepViewWindow, TimekeepViewMode } from "./view";
 
 describe("getEntryById", () => {
 	it("find top level entry", async () => {
@@ -191,6 +195,102 @@ describe("getEntryDuration", () => {
 		const output = getEntryDuration(input, endTime);
 
 		expect(output).toBe(durationMs);
+	});
+
+	it("clips a session crossing midnight to the selected day", () => {
+		const entry: TimeEntry = {
+			id: 1,
+			name: "Overnight",
+			startTime: moment("2026-08-11T23:00:00"),
+			endTime: moment("2026-08-12T02:00:00"),
+			subEntries: null,
+		};
+		const window = getTimekeepViewWindow({
+			mode: TimekeepViewMode.DAY,
+			anchorDate: "2026-08-12",
+			followCurrent: false,
+		});
+
+		expect(getEntryDuration(entry, moment("2026-08-12T12:00:00"), window)).toBe(
+			2 * 60 * 60 * 1000
+		);
+		expect(getEntryTimeBounds(entry, moment("2026-08-12T12:00:00"), window)).toEqual({
+			startTime: window.start,
+			endTime: entry.endTime,
+		});
+	});
+
+	it("shows unstarted templates only for the current window", () => {
+		const entry: TimeEntry = {
+			id: 1,
+			name: "Template",
+			startTime: null,
+			endTime: null,
+			subEntries: null,
+		};
+		const window = getTimekeepViewWindow({
+			mode: TimekeepViewMode.DAY,
+			anchorDate: "2026-08-12",
+			followCurrent: true,
+		});
+
+		expect(isEntryWithinWindow(entry, moment("2026-08-12T12:00:00"), window, true)).toBe(true);
+		expect(isEntryWithinWindow(entry, moment("2026-08-12T12:00:00"), window, false)).toBe(
+			false
+		);
+	});
+});
+
+describe("getEntryTimeBounds", () => {
+	it("recursively derives the earliest start and latest completed end", () => {
+		const early = moment("2026-08-11T08:00:00");
+		const late = moment("2026-08-12T17:00:00");
+		const entry: TimeEntry = {
+			id: 1,
+			name: "Group",
+			startTime: null,
+			endTime: null,
+			subEntries: [
+				{
+					id: 2,
+					name: "Nested",
+					startTime: null,
+					endTime: null,
+					subEntries: [
+						{
+							id: 3,
+							name: "Part",
+							startTime: early,
+							endTime: moment(early).add(1, "hour"),
+							subEntries: null,
+						},
+					],
+				},
+				{
+					id: 4,
+					name: "Part",
+					startTime: moment(late).subtract(1, "hour"),
+					endTime: late,
+					subEntries: null,
+				},
+			],
+		};
+
+		expect(getEntryTimeBounds(entry, moment())).toEqual({ startTime: early, endTime: late });
+	});
+
+	it("uses current time as the derived end of a running descendant", () => {
+		const startTime = moment("2026-08-12T09:00:00");
+		const currentTime = moment("2026-08-12T11:30:00");
+		const entry: TimeEntry = {
+			id: 1,
+			name: "Group",
+			startTime: null,
+			endTime: null,
+			subEntries: [{ id: 2, name: "Part", startTime, endTime: null, subEntries: null }],
+		};
+
+		expect(getEntryTimeBounds(entry, currentTime)).toEqual({ startTime, endTime: currentTime });
 	});
 });
 
