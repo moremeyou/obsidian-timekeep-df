@@ -468,6 +468,47 @@ describe("TimesheetRowContent", () => {
 		expect(timekeepState.entries[0]).toEqual(expanded);
 	});
 
+	it("toggles collapse state without discarding Blocks hidden by the selected range", () => {
+		const visibleBlock: TimeEntry = {
+			id: 2,
+			name: "Visible",
+			startTime: moment("2026-08-12T09:00:00"),
+			endTime: moment("2026-08-12T10:00:00"),
+			subEntries: null,
+		};
+		const hiddenBlock: TimeEntry = {
+			id: 3,
+			name: "Hidden",
+			startTime: moment("2026-08-11T09:00:00"),
+			endTime: moment("2026-08-11T10:00:00"),
+			subEntries: null,
+		};
+		const storedEntry: TimeEntry = {
+			id: 1,
+			name: "Activity",
+			startTime: null,
+			endTime: null,
+			subEntries: [hiddenBlock, visibleBlock],
+		};
+		const displayedEntry: TimeEntry = { ...storedEntry, subEntries: [visibleBlock] };
+		timekeep.setState({ entries: [storedEntry] });
+		const component = new TimesheetRowContent(
+			containerEl,
+			app,
+			timekeep,
+			settings,
+			displayedEntry,
+			0,
+			onBeginEditing
+		);
+		component.load();
+
+		component.onToggleCollapsed();
+
+		expect(timekeep.getState().entries[0].collapsed).toBe(true);
+		expect(timekeep.getState().entries[0].subEntries?.map((entry) => entry.id)).toEqual([3, 2]);
+	});
+
 	it("item should be able to be started from clicking the start icon", () => {
 		const entry: TimeEntry = {
 			id: 1,

@@ -102,7 +102,9 @@ export class TimesheetRow extends ContentComponent<
 				this.entry,
 				historicalDraft,
 				this.indent === 0 ? "Edit Activity" : "Edit Block",
-				this.onFinishEditing.bind(this)
+				this.onFinishEditing.bind(this),
+				this.viewState,
+				this.indent === 0
 			);
 			modal.open();
 			if (historicalDraft) {
@@ -118,7 +120,10 @@ export class TimesheetRow extends ContentComponent<
 				this.settings,
 				this.entry,
 				this.onFinishEditing.bind(this),
-				historicalDraft?.entryId === this.entry.id ? historicalDraft : null
+				historicalDraft?.entryId === this.entry.id ? historicalDraft : null,
+				"row",
+				this.viewState,
+				this.indent === 0
 			)
 		);
 		this.applyPresentation();

@@ -5,6 +5,7 @@ import moment, { type Moment } from "moment";
 import type { Store } from "@/store";
 
 import { ClockFormat, type TimekeepSettings } from "@/settings";
+import { createStore } from "@/store";
 import { assert } from "@/utils/assert";
 
 import { createObsidianIcon } from "@/components/obsidianIcon";
@@ -13,8 +14,15 @@ import { ReplaceableComponent } from "@/components/ReplaceableComponent";
 import { ConfirmModal } from "@/modals/ConfirmModal";
 
 import type { HistoricalActivityDraft } from "@/timekeep/draft";
+import { getEntryById } from "@/timekeep/queries";
 import type { TimeEntry, Timekeep } from "@/timekeep/schema";
-import { removeEntry, updateEntry } from "@/timekeep/update";
+import { removeActivityTimeWithinWindow, removeEntry, updateEntry } from "@/timekeep/update";
+import {
+	createTimekeepViewState,
+	formatTimekeepViewLabel,
+	getTimekeepViewWindow,
+	type TimekeepViewState,
+} from "@/timekeep/view";
 
 type TimestampInputName = "start" | "end";
 export type TimesheetRowEditorPresentation = "row" | "modal";
@@ -46,6 +54,8 @@ export class TimesheetRowContentEditing extends ReplaceableComponent {
 	/** Transient context for an unstarted interval opened from a historical range. */
 	historicalDraft: HistoricalActivityDraft | null;
 	presentation: TimesheetRowEditorPresentation;
+	viewState: Store<TimekeepViewState>;
+	isActivity: boolean;
 
 	/** Input for the entry name */
 	#nameInputEl: HTMLInputElement | undefined;
@@ -65,7 +75,9 @@ export class TimesheetRowContentEditing extends ReplaceableComponent {
 		entry: TimeEntry,
 		onFinishEditing: VoidFunction,
 		historicalDraft: HistoricalActivityDraft | null = null,
-		presentation: TimesheetRowEditorPresentation = "row"
+		presentation: TimesheetRowEditorPresentation = "row",
+		viewState?: Store<TimekeepViewState>,
+		isActivity: boolean = entry.subEntries !== null
 	) {
 		super(containerEl);
 
@@ -76,6 +88,9 @@ export class TimesheetRowContentEditing extends ReplaceableComponent {
 		this.entry = entry;
 		this.historicalDraft = historicalDraft;
 		this.presentation = presentation;
+		this.viewState =
+			viewState ?? createStore(createTimekeepViewState(settings.getState().defaultViewMode));
+		this.isActivity = isActivity;
 		this.onFinishEditing = onFinishEditing;
 	}
 
@@ -166,9 +181,23 @@ export class TimesheetRowContentEditing extends ReplaceableComponent {
 		});
 		deleteButton.type = "button";
 		createObsidianIcon(deleteButton, "trash-2", "timekeep-df-text-button-icon");
-		deleteButton.appendText("Delete");
+		deleteButton.appendText(this.isActivity ? "Delete in range" : "Delete");
 
 		this.registerDomEvent(deleteButton, "click", this.onConfirmDelete.bind(this));
+		if (this.isActivity) {
+			const deleteAllButton = destructiveActionsEl.createEl("button", {
+				cls: "timekeep-df-action",
+				attr: { "data-action": "delete-all-history" },
+			});
+			deleteAllButton.type = "button";
+			createObsidianIcon(deleteAllButton, "trash-2", "timekeep-df-text-button-icon");
+			deleteAllButton.appendText("Delete all history");
+			this.registerDomEvent(
+				deleteAllButton,
+				"click",
+				this.onConfirmDeleteAllHistory.bind(this)
+			);
+		}
 
 		const onUpdateState = this.onUpdateState.bind(this);
 		const unsubscribeSettings = this.settings.subscribe(onUpdateState);
@@ -272,11 +301,13 @@ export class TimesheetRowContentEditing extends ReplaceableComponent {
 	}
 
 	onConfirmDelete() {
-		const modal = new ConfirmModal(
-			this.app,
-			"Delete this Activity or Block? This cannot be undone.",
-			this.onConfirmedDelete.bind(this)
-		);
+		const state = this.viewState.getState();
+		const blockCount = this.entry.subEntries?.length ?? 1;
+		const rangeName = `${state.mode.charAt(0)}${state.mode.slice(1).toLowerCase()}`;
+		const message = this.isActivity
+			? `Delete ${blockCount} ${blockCount === 1 ? "Block" : "Blocks"} from ${this.entry.name} in ${formatTimekeepViewLabel(state)}? Time outside this ${rangeName} will be kept. This cannot be undone.`
+			: "Delete this Block? This cannot be undone.";
+		const modal = new ConfirmModal(this.app, message, this.onConfirmedDelete.bind(this));
 		modal.setTitle("Confirm delete");
 		modal.open();
 	}
@@ -289,7 +320,38 @@ export class TimesheetRowContentEditing extends ReplaceableComponent {
 		const entry = this.entry;
 
 		if (this.historicalDraft) this.onFinishEditing();
+		this.timekeep.setState((timekeep) => {
+			const entries = this.isActivity
+				? removeActivityTimeWithinWindow(
+						timekeep.entries,
+						entry.id,
+						moment(),
+						getTimekeepViewWindow(this.viewState.getState())
+					)
+				: removeEntry(timekeep.entries, entry);
+			return { ...timekeep, entries };
+		});
+		if (!this.historicalDraft) this.onFinishEditing();
+	}
+
+	onConfirmDeleteAllHistory() {
+		const storedEntry = getEntryById(this.entry.id, this.timekeep.getState().entries);
+		const blockCount = storedEntry?.subEntries?.length ?? (storedEntry?.startTime ? 1 : 0);
+		const modal = new ConfirmModal(
+			this.app,
+			`Delete ${this.entry.name} and all ${blockCount} ${blockCount === 1 ? "Block" : "Blocks"} across every date? This cannot be undone.`,
+			this.onConfirmedDeleteAllHistory.bind(this)
+		);
+		modal.setTitle("Confirm delete all history");
+		modal.open();
+	}
+
+	onConfirmedDeleteAllHistory(confirmed: boolean) {
+		if (!confirmed) return;
+		const entry = this.entry;
+		if (this.historicalDraft) this.onFinishEditing();
 		this.timekeep.setState((timekeep) => ({
+			...timekeep,
 			entries: removeEntry(timekeep.entries, entry),
 		}));
 		if (!this.historicalDraft) this.onFinishEditing();
@@ -307,43 +369,37 @@ export class TimesheetRowContentEditing extends ReplaceableComponent {
 		const name = this.#nameInputEl.value;
 		const entry = this.entry;
 
-		const newEntry = { ...entry, name };
-
-		// Update the start and end times for non groups
-		if (newEntry.subEntries === null) {
-			if (this.historicalDraft) {
-				const startTimeValue = this.#startTimeEditor.getValue();
-				const endTimeValue = this.#endTimeEditor.getValue();
-				if (
-					startTimeValue.isValid() &&
-					endTimeValue.isValid() &&
-					endTimeValue.isAfter(startTimeValue)
-				) {
-					newEntry.startTime = startTimeValue;
-					newEntry.endTime = endTimeValue;
-				}
-			} else if (entry.startTime !== null) {
-				const startTimeValue = this.#startTimeEditor.getValue();
-				if (startTimeValue.isValid()) {
-					newEntry.startTime = startTimeValue;
-				}
-			}
-
-			if (!this.historicalDraft && entry.endTime !== null) {
-				const endTimeValue = this.#endTimeEditor.getValue();
-				if (endTimeValue.isValid()) {
-					newEntry.endTime = endTimeValue;
-				}
-			}
-		}
-
 		// Clear a historical editor before its data update can rebuild the table.
 		if (this.historicalDraft) this.onFinishEditing();
 
-		// Save the updated entry
-		this.timekeep.setState((timekeep) => ({
-			entries: updateEntry(timekeep.entries, entry.id, newEntry),
-		}));
+		// Save against the complete stored entry, never a range-filtered display copy.
+		this.timekeep.setState((timekeep) => {
+			const storedEntry = getEntryById(entry.id, timekeep.entries) ?? entry;
+			const newEntry = { ...storedEntry, name };
+			if (newEntry.subEntries === null) {
+				if (this.historicalDraft) {
+					const startTimeValue = this.#startTimeEditor!.getValue();
+					const endTimeValue = this.#endTimeEditor!.getValue();
+					if (
+						startTimeValue.isValid() &&
+						endTimeValue.isValid() &&
+						endTimeValue.isAfter(startTimeValue)
+					) {
+						newEntry.startTime = startTimeValue;
+						newEntry.endTime = endTimeValue;
+					}
+				} else if (storedEntry.startTime !== null) {
+					const startTimeValue = this.#startTimeEditor!.getValue();
+					if (startTimeValue.isValid()) newEntry.startTime = startTimeValue;
+				}
+
+				if (!this.historicalDraft && storedEntry.endTime !== null) {
+					const endTimeValue = this.#endTimeEditor!.getValue();
+					if (endTimeValue.isValid()) newEntry.endTime = endTimeValue;
+				}
+			}
+			return { ...timekeep, entries: updateEntry(timekeep.entries, entry.id, newEntry) };
+		});
 
 		if (!this.historicalDraft) this.onFinishEditing();
 	}

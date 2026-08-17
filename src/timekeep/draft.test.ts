@@ -51,6 +51,7 @@ describe("prepareHistoricalActivityDraft", () => {
 		const activity = prepared.entries[0];
 
 		expect(activity.id).toBe(recordedActivity.id);
+		expect(activity.collapsed).toBe(true);
 		expect(activity.subEntries).toHaveLength(2);
 		expect(activity.subEntries?.[0]).toMatchObject({
 			name: "Block 1",

@@ -18,6 +18,7 @@ describe("timekeep calendar views", () => {
 		[TimekeepViewMode.DAY, "2026-08-12", "2026-08-13"],
 		[TimekeepViewMode.WEEK, "2026-08-10", "2026-08-17"],
 		[TimekeepViewMode.MONTH, "2026-08-01", "2026-09-01"],
+		[TimekeepViewMode.QUARTER, "2026-07-01", "2026-10-01"],
 		[TimekeepViewMode.YEAR, "2026-01-01", "2027-01-01"],
 	])("creates an exclusive %s window", (mode, start, end) => {
 		const state = createTimekeepViewState(mode, moment("2026-08-12T14:30:00"));
@@ -34,6 +35,18 @@ describe("timekeep calendar views", () => {
 		expect(shiftTimekeepView(state, -1)).toMatchObject({
 			mode: TimekeepViewMode.MONTH,
 			anchorDate: "2026-02-28",
+			followCurrent: false,
+		});
+	});
+
+	it("moves Quarter views by complete calendar quarters", () => {
+		const state = createTimekeepViewState(
+			TimekeepViewMode.QUARTER,
+			moment("2026-08-12T14:30:00")
+		);
+		expect(shiftTimekeepView(state, -1)).toMatchObject({
+			mode: TimekeepViewMode.QUARTER,
+			anchorDate: "2026-05-12",
 			followCurrent: false,
 		});
 	});
@@ -131,6 +144,57 @@ describe("timekeep calendar views", () => {
 		expect(entries.map((entry) => entry.name)).toEqual(["Just started"]);
 	});
 
+	it("keeps one consolidated Activity while ranges reveal the matching Blocks", () => {
+		const currentTime = moment("2026-08-12T12:00:00");
+		const entries = [
+			{
+				id: 1,
+				name: "Project Management",
+				startTime: null,
+				endTime: null,
+				subEntries: [
+					{
+						id: 2,
+						name: "Block 1",
+						startTime: moment("2026-07-15T09:00:00"),
+						endTime: moment("2026-07-15T10:00:00"),
+						subEntries: null,
+					},
+					{
+						id: 3,
+						name: "Block 1",
+						startTime: moment("2026-08-12T09:00:00"),
+						endTime: moment("2026-08-12T10:00:00"),
+						subEntries: null,
+					},
+				],
+			},
+		];
+		const dayEntries = filterTimekeepViewEntries(
+			entries,
+			currentTime,
+			getTimekeepViewWindow({
+				mode: TimekeepViewMode.DAY,
+				anchorDate: "2026-08-12",
+				followCurrent: true,
+			})
+		);
+		const quarterEntries = filterTimekeepViewEntries(
+			entries,
+			currentTime,
+			getTimekeepViewWindow({
+				mode: TimekeepViewMode.QUARTER,
+				anchorDate: "2026-08-12",
+				followCurrent: true,
+			})
+		);
+
+		expect(dayEntries).toHaveLength(1);
+		expect(dayEntries[0].subEntries).toHaveLength(1);
+		expect(quarterEntries).toHaveLength(1);
+		expect(quarterEntries[0].subEntries).toHaveLength(2);
+	});
+
 	it("labels each selected period", () => {
 		expect(
 			formatTimekeepViewLabel({
@@ -139,6 +203,13 @@ describe("timekeep calendar views", () => {
 				followCurrent: false,
 			})
 		).toBe("10 Aug – 16 Aug 2026");
+		expect(
+			formatTimekeepViewLabel({
+				mode: TimekeepViewMode.QUARTER,
+				anchorDate: "2026-08-12",
+				followCurrent: false,
+			})
+		).toBe("Q3 2026");
 	});
 
 	it("uses configured weekdays to calculate period capacity", () => {
@@ -163,5 +234,12 @@ describe("timekeep calendar views", () => {
 				5
 			)
 		).toBe(168);
+		expect(
+			getTimekeepViewCapacityHours(
+				createTimekeepViewState(TimekeepViewMode.QUARTER, moment("2026-08-12")),
+				8,
+				5
+			)
+		).toBe(528);
 	});
 });

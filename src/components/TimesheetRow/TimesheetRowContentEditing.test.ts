@@ -16,6 +16,7 @@ import { TimesheetRowContentEditing } from "./TimesheetRowContentEditing";
 
 import type { HistoricalActivityDraft } from "@/timekeep/draft";
 import { defaultTimekeep, type TimeEntry, type Timekeep } from "@/timekeep/schema";
+import { TimekeepViewMode } from "@/timekeep/view";
 
 function getInput(containerEl: HTMLElement, name: string): HTMLInputElement {
 	const inputEl = containerEl.querySelector<HTMLInputElement>(`input[name="${name}"]`);
@@ -694,9 +695,9 @@ describe("TimesheetRowContentEditing", () => {
 		const entry: TimeEntry = {
 			id: 1,
 			name: "Test",
-			startTime: null,
-			endTime: null,
-			subEntries: [],
+			startTime: moment("2026-08-12T09:00:00"),
+			endTime: moment("2026-08-12T10:00:00"),
+			subEntries: null,
 		};
 
 		timekeep.setState({ entries: [entry] });
@@ -712,6 +713,7 @@ describe("TimesheetRowContentEditing", () => {
 		const onConfirmDelete = vi.spyOn(component, "onConfirmDelete");
 		const onConfirmedDelete = vi.spyOn(component, "onConfirmedDelete");
 		component.load();
+		expect(containerEl.querySelector('[data-action="delete-all-history"]')).toBeNull();
 
 		const deleteButton = containerEl.querySelector('.timekeep-df-action[data-action="delete"]');
 		expect(deleteButton).not.toBeNull();
@@ -732,6 +734,162 @@ describe("TimesheetRowContentEditing", () => {
 
 		// Timekeep should be empty
 		expect(timekeep.getState()).toEqual({ entries: [] });
+	});
+
+	it("deletes only the visible range from an Activity and explains the scope", () => {
+		vi.useFakeTimers();
+		vi.setSystemTime(moment("2026-08-12T12:00:00").toDate());
+		const outsideBlock: TimeEntry = {
+			id: 2,
+			name: "Block 1",
+			startTime: moment("2026-08-11T09:00:00"),
+			endTime: moment("2026-08-11T10:00:00"),
+			subEntries: null,
+		};
+		const visibleBlock: TimeEntry = {
+			id: 3,
+			name: "Block 1",
+			startTime: moment("2026-08-12T09:00:00"),
+			endTime: moment("2026-08-12T10:00:00"),
+			subEntries: null,
+		};
+		const storedActivity: TimeEntry = {
+			id: 1,
+			name: "Project Management",
+			startTime: null,
+			endTime: null,
+			collapsed: true,
+			subEntries: [outsideBlock, visibleBlock],
+		};
+		const displayedActivity: TimeEntry = {
+			...storedActivity,
+			subEntries: [visibleBlock],
+		};
+		const viewState = createStore({
+			mode: TimekeepViewMode.DAY,
+			anchorDate: "2026-08-12",
+			followCurrent: true,
+		});
+		timekeep.setState({ entries: [storedActivity] });
+		component = new TimesheetRowContentEditing(
+			containerEl,
+			app,
+			timekeep,
+			settings,
+			displayedActivity,
+			onFinishEditing,
+			null,
+			"row",
+			viewState,
+			true
+		);
+		component.load();
+
+		component.onConfirmDelete();
+		const contentEl = document.querySelector<HTMLElement>(".mock-modal-content");
+		expect(contentEl?.textContent).toContain("Delete 1 Block from Project Management");
+		expect(contentEl?.textContent).toContain("Wed, 12 Aug 2026");
+		expect(contentEl?.textContent).toContain("outside this Day will be kept");
+
+		component.onConfirmedDelete(true);
+		expect(timekeep.getState().entries[0].subEntries?.map((entry) => entry.id)).toEqual([2]);
+	});
+
+	it("renames an Activity without discarding Blocks hidden by the selected range", () => {
+		const outsideBlock: TimeEntry = {
+			id: 2,
+			name: "Block 1",
+			startTime: moment("2026-08-11T09:00:00"),
+			endTime: moment("2026-08-11T10:00:00"),
+			subEntries: null,
+		};
+		const visibleBlock: TimeEntry = {
+			id: 3,
+			name: "Block 1",
+			startTime: moment("2026-08-12T09:00:00"),
+			endTime: moment("2026-08-12T10:00:00"),
+			subEntries: null,
+		};
+		const storedActivity: TimeEntry = {
+			id: 1,
+			name: "Old name",
+			startTime: null,
+			endTime: null,
+			collapsed: true,
+			subEntries: [outsideBlock, visibleBlock],
+		};
+		timekeep.setState({ entries: [storedActivity] });
+		component = new TimesheetRowContentEditing(
+			containerEl,
+			app,
+			timekeep,
+			settings,
+			{ ...storedActivity, subEntries: [visibleBlock] },
+			onFinishEditing,
+			null,
+			"row",
+			undefined,
+			true
+		);
+		component.load();
+		getInput(containerEl, "name").value = "New name";
+		submitEditor(containerEl);
+
+		expect(timekeep.getState().entries[0].name).toBe("New name");
+		expect(timekeep.getState().entries[0].subEntries?.map((entry) => entry.id)).toEqual([2, 3]);
+	});
+
+	it("requires a separate explicit action to delete an Activity across every date", () => {
+		const activity: TimeEntry = {
+			id: 1,
+			name: "Project Management",
+			startTime: null,
+			endTime: null,
+			collapsed: true,
+			subEntries: [
+				{
+					id: 2,
+					name: "Block 1",
+					startTime: moment("2026-08-11T09:00:00"),
+					endTime: moment("2026-08-11T10:00:00"),
+					subEntries: null,
+				},
+				{
+					id: 3,
+					name: "Block 1",
+					startTime: moment("2026-08-12T09:00:00"),
+					endTime: moment("2026-08-12T10:00:00"),
+					subEntries: null,
+				},
+			],
+		};
+		timekeep.setState({ entries: [activity] });
+		component = new TimesheetRowContentEditing(
+			containerEl,
+			app,
+			timekeep,
+			settings,
+			activity,
+			onFinishEditing,
+			null,
+			"row",
+			undefined,
+			true
+		);
+		component.load();
+
+		const deleteAll = containerEl.querySelector<HTMLButtonElement>(
+			'[data-action="delete-all-history"]'
+		);
+		expect(deleteAll?.textContent).toContain("Delete all history");
+		deleteAll?.click();
+		const contentEl = document.querySelector<HTMLElement>(".mock-modal-content");
+		expect(contentEl?.textContent).toContain(
+			"Delete Project Management and all 2 Blocks across every date?"
+		);
+
+		component.onConfirmedDeleteAllHistory(true);
+		expect(timekeep.getState().entries).toEqual([]);
 	});
 
 	it("preserves existing timestamps when a date or native time is empty or invalid", () => {

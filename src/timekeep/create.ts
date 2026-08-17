@@ -132,6 +132,7 @@ function makeGroupEntry(entry: TimeEntry): TimeEntryGroup {
 	return {
 		id: timekeepId.next(),
 		name: entry.name,
+		collapsed: true,
 		subEntries: [{ ...entry, name: "Block 1" }],
 		startTime: null,
 		endTime: null,

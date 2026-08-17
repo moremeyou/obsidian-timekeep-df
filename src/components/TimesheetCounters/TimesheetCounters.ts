@@ -129,6 +129,7 @@ export class TimesheetCounters extends DomComponent {
 			[TimekeepViewMode.DAY]: "Day total",
 			[TimekeepViewMode.WEEK]: "Week total",
 			[TimekeepViewMode.MONTH]: "Month total",
+			[TimekeepViewMode.QUARTER]: "Quarter total",
 			[TimekeepViewMode.YEAR]: "Year total",
 		};
 

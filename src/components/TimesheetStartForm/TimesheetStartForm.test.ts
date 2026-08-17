@@ -91,6 +91,37 @@ describe("TimesheetStart", () => {
 		});
 	});
 
+	it("reuses an autocomplete-named Activity in the current range", () => {
+		const currentTime = moment("2026-08-12T12:00:00");
+		vi.setSystemTime(currentTime.toDate());
+		timekeep.setState({
+			entries: [
+				{
+					id: 10,
+					name: "Project Management",
+					startTime: moment("2026-08-11T09:00:00"),
+					endTime: moment("2026-08-11T10:00:00"),
+					subEntries: null,
+				},
+			],
+		});
+		autocomplete.names.setState(["Project Management"]);
+		component = new TimesheetStartForm(containerEl, timekeep, settings, autocomplete);
+		component.load();
+
+		const formEl = component.wrapperEl as HTMLFormElement;
+		formEl.querySelector<HTMLInputElement>(".timekeep-df-name")!.value = "Project Management";
+		formEl.dispatchEvent(new SubmitEvent("submit", { bubbles: true, cancelable: true }));
+
+		const [activity] = timekeep.getState().entries;
+		expect(timekeep.getState().entries).toHaveLength(1);
+		expect(activity.name).toBe("Project Management");
+		expect(activity.subEntries).toHaveLength(2);
+		expect(activity.subEntries?.at(-1)?.startTime?.format("YYYY-MM-DD HH:mm:ss")).toBe(
+			"2026-08-12 12:00:00"
+		);
+	});
+
 	it("adds an unstarted Activity in a historical range without stopping current work", () => {
 		vi.useFakeTimers();
 		const currentTime = moment("2026-08-12T12:00:00");

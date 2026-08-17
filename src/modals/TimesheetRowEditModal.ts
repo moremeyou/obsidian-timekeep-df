@@ -9,6 +9,7 @@ import { TimesheetRowContentEditing } from "@/components/TimesheetRow/TimesheetR
 
 import type { HistoricalActivityDraft } from "@/timekeep/draft";
 import type { TimeEntry, Timekeep } from "@/timekeep/schema";
+import type { TimekeepViewState } from "@/timekeep/view";
 
 /** Mobile/tablet editor detached from the horizontally scrollable table. */
 export class TimesheetRowEditModal extends Modal {
@@ -18,6 +19,8 @@ export class TimesheetRowEditModal extends Modal {
 	historicalDraft: HistoricalActivityDraft | null;
 	onFinish: VoidFunction;
 	title: string;
+	viewState: Store<TimekeepViewState>;
+	isActivity: boolean;
 
 	editor: TimesheetRowContentEditing | undefined;
 	#finished = false;
@@ -29,7 +32,9 @@ export class TimesheetRowEditModal extends Modal {
 		entry: TimeEntry,
 		historicalDraft: HistoricalActivityDraft | null,
 		title: string,
-		onFinish: VoidFunction
+		onFinish: VoidFunction,
+		viewState: Store<TimekeepViewState>,
+		isActivity: boolean
 	) {
 		super(app);
 		this.shouldRestoreSelection = false;
@@ -39,6 +44,8 @@ export class TimesheetRowEditModal extends Modal {
 		this.historicalDraft = historicalDraft;
 		this.title = title;
 		this.onFinish = onFinish;
+		this.viewState = viewState;
+		this.isActivity = isActivity;
 	}
 
 	onOpen(): void {
@@ -55,7 +62,9 @@ export class TimesheetRowEditModal extends Modal {
 			this.entry,
 			this.close.bind(this),
 			this.historicalDraft,
-			"modal"
+			"modal",
+			this.viewState,
+			this.isActivity
 		);
 		this.editor.load();
 	}

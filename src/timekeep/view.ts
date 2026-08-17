@@ -7,6 +7,7 @@ export enum TimekeepViewMode {
 	DAY = "DAY",
 	WEEK = "WEEK",
 	MONTH = "MONTH",
+	QUARTER = "QUARTER",
 	YEAR = "YEAR",
 }
 
@@ -50,6 +51,9 @@ export function getTimekeepViewWindow(state: TimekeepViewState): TimekeepViewWin
 			break;
 		case TimekeepViewMode.MONTH:
 			start = anchor.startOf("month");
+			break;
+		case TimekeepViewMode.QUARTER:
+			start = anchor.startOf("quarter");
 			break;
 		case TimekeepViewMode.YEAR:
 			start = anchor.startOf("year");
@@ -101,6 +105,8 @@ export function formatTimekeepViewLabel(state: TimekeepViewState): string {
 				: `${start.format("D MMM YYYY")} – ${inclusiveEnd.format("D MMM YYYY")}`;
 		case TimekeepViewMode.MONTH:
 			return start.format("MMMM YYYY");
+		case TimekeepViewMode.QUARTER:
+			return start.format("[Q]Q YYYY");
 		case TimekeepViewMode.YEAR:
 			return start.format("YYYY");
 	}

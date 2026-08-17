@@ -13,7 +13,7 @@ import { TimesheetNameInput } from "@/components/TimesheetNameInput";
 import { prepareHistoricalActivityDraft, type HistoricalActivityDraft } from "@/timekeep/draft";
 import { getRunningEntry } from "@/timekeep/queries";
 import type { Timekeep } from "@/timekeep/schema";
-import { startNewEntry } from "@/timekeep/start";
+import { startActivity } from "@/timekeep/start";
 import {
 	createTimekeepViewState,
 	timekeepViewIncludesCurrent,
@@ -139,7 +139,7 @@ export class TimesheetStartForm extends DomComponent {
 		}
 
 		this.timekeep.setState((timekeep) => {
-			const entries = startNewEntry(name, currentTime, timekeep.entries);
+			const entries = startActivity(name, currentTime, timekeep.entries);
 
 			// Reset name input
 			nameInput.resetValue();

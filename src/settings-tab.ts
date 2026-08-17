@@ -84,6 +84,7 @@ export class TimekeepSettingsTab extends PluginSettingTab {
 					[TimekeepViewMode.DAY]: "Day",
 					[TimekeepViewMode.WEEK]: "Week",
 					[TimekeepViewMode.MONTH]: "Month",
+					[TimekeepViewMode.QUARTER]: "Quarter",
 					[TimekeepViewMode.YEAR]: "Year",
 				});
 				t.setValue(settings.defaultViewMode);
@@ -115,7 +116,9 @@ export class TimekeepSettingsTab extends PluginSettingTab {
 
 		new Setting(this.containerEl)
 			.setName("Total days per week")
-			.setDesc("Working weekdays used for Week, Month, and Year percentage capacity.")
+			.setDesc(
+				"Working weekdays used for Week, Month, Quarter, and Year percentage capacity."
+			)
 			.addText((t) => {
 				t.inputEl.type = "number";
 				t.inputEl.min = "1";
