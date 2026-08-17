@@ -23,13 +23,15 @@ This plugin provides a simple and easy way to track time spent on various tasks.
 
 - The primary card makes the current **Activity**, active **Block** path, and live hours/minutes/seconds **Duration** easy to scan.
 - A large, centered Start/Stop control uses consistent icon geometry across desktop, tablet, and mobile.
-- The companion card shows the selected Day, Week, Month, or Year total. It uses the theme’s green state while within capacity and red when over capacity.
+- The companion card shows the selected Day, Week, Month, Quarter, or Year total. It uses the theme’s green state while within capacity and red when over capacity.
 - With no timer running, the focus card says **Get to work!** or **Stop working!** depending on whether the selected period is over its working-hours target.
 - Range navigation, Today, the native range selector, and the formatted date sit above the focus cards.
 
 ### Activity and Block table refinements
 
 - The hierarchy is now consistently named **Activity → Block** throughout the interface. Top-level rows are Activities; their child work sessions are Blocks.
+- Starting an existing Activity automatically adds a new dated Block to that Activity instead of creating another top-level row. Matching ignores surrounding whitespace and letter case, so choosing an autocomplete suggestion or typing the same name consolidates it automatically.
+- Activities never auto-expand. Expand one manually when you want to inspect its Blocks; only Blocks overlapping the selected range are rendered, while the Activity's complete history stays stored.
 - Start/Stop is the leftmost column, followed by Activity, Duration, %, Start, and End; Edit stays at the far right. Numeric and time columns remain stable so changing values do not make the table jitter, while Activity receives the flexible width.
 - Expanded Activities and all of their Blocks share the top-level Activity background and one outline. Adjacent Activities remain visually separate, and hover behavior is unchanged.
 - Activity start/end values are derived from the earliest and latest complete descendant dates and times. A running descendant updates the parent end live.
@@ -37,9 +39,9 @@ This plugin provides a simple and easy way to track time spent on various tasks.
 - Empty rows are hidden in the selected calendar window. An Activity remains visible when any descendant Block has duration in that window.
 - Automatic Block names restart at **Block 1** for each local calendar day; Block names do not need to be globally unique.
 
-### Day, Week, Month, and Year views
+### Day, Week, Month, Quarter, and Year views
 
-- Every tracker has a native Day/Week/Month/Year selector, previous/next navigation, a Today button, and a clear date or date-range label.
+- Every tracker has a native Day/Week/Month/Quarter/Year selector, previous/next navigation, a Today button, and a clear date or date-range label. Quarter windows use calendar quarters and labels such as **Q3 2026**.
 - Navigation cannot move beyond the period containing today. Start/Stop is available only in the current selected period because it represents real-time tracking.
 - Views are non-destructive windows—not midnight resets. They filter and clip calculations without rewriting, splitting, or discarding stored sessions, including sessions that cross a boundary.
 - The registry retains each tracker’s selected view and navigation state for the current Obsidian session without adding parameters to the note or changing the tracker schema.
@@ -47,10 +49,17 @@ This plugin provides a simple and easy way to track time spent on various tasks.
 
 ### Current and historical entry workflows
 
-- In the current period, adding an Activity starts it immediately; every Activity/Block play control toggles to Stop while that row is active.
+- In the current period, adding an Activity starts it immediately. If its trimmed, case-insensitive name matches an existing top-level Activity, Timekeep DF adds a new Block there automatically; autocomplete selection is convenient but is not required for consolidation. Every Activity/Block play control toggles to Stop while that row is active.
 - In a previous period, adding an Activity opens its editor immediately and never starts a live timer. Registry-backed autocomplete reuses the matching Activity instead of creating duplicate top-level names.
 - In a previous period, each Activity’s real-time control becomes **+**. It creates or reopens a correctly numbered child Block and opens the editor immediately.
 - A historical draft with no positive duration stays out of the normal filtered table. Canceling it leaves no visible zero-duration row; saving valid times makes it part of that period.
+
+### Range-aware deletion
+
+- Editing an Activity offers **Delete in range**. It removes only the portions tracked in the selected Day, Week, Month, Quarter, or Year and preserves all time outside that window.
+- If a Block crosses a range boundary, deletion trims or splits it at that boundary so its out-of-range time is retained. The Activity remains as a collapsed group even if the selected range becomes empty.
+- **Delete all history** is the separate destructive action for removing the Activity and all of its Blocks across every date. Its confirmation identifies the Activity and Block count.
+- Deleting an individual Block still removes that whole stored Block.
 
 ### Native, safer editing
 
@@ -79,9 +88,9 @@ Timekeep DF adds these settings under **Settings → Timekeep DF**:
 | Setting | Default | Purpose |
 | --- | --- | --- |
 | Clock format | 24-hour | Selects 12-hour or 24-hour timestamp display and native-picker hints. |
-| Default timesheet view | Day | Chooses the initial Day, Week, Month, or Year window. |
+| Default timesheet view | Day | Chooses the initial Day, Week, Month, Quarter, or Year window. |
 | Total daily working hours | 8 | Calculates the **%** column and Day capacity. |
-| Total days per week | 5 | Scales Week, Month, and Year capacity. |
+| Total days per week | 5 | Scales Week, Month, Quarter, and Year capacity. |
 
 ## ➕ Create a tracker
 
@@ -101,15 +110,19 @@ If you accidentally gave an Activity or Block an incorrect name, or started its 
 
 Start and end timestamps use the platform's native date and time pickers on desktop, tablet, and mobile. Choose **12-hour** or **24-hour** under **Settings → Timekeep DF → Clock format**. Saved edits use minute precision: seconds and milliseconds are zeroed. Seconds remain visible only in the live Duration card.
 
-Expanded Activities visually group their Block rows and derive the Activity's displayed start/end times from the earliest and latest full date/time values across all descendant sessions. Table rows show time only; the complete date and timestamp remain stored.
+Activities remain collapsed until you expand them manually. Expanded Activities visually group their currently visible Block rows and derive the Activity's displayed start/end times from the earliest and latest full date/time values in the selected range. Table rows show time only; complete dates, timestamps, and out-of-range Blocks remain stored.
 
-Each tracker has **Day**, **Week**, **Month**, and **Year** calendar views with previous, next, and Today navigation. Forward navigation stops at the period containing today. Sessions crossing a view boundary are clipped for display and calculation only—the original timestamps are never rewritten. **Default timesheet view** starts at Day. The **%** column uses **Total daily working hours** (8 by default); Week, Month, and Year capacity also uses **Total days per week** (5 by default). The registry retains each tracker's selected view for the current Obsidian session without adding view parameters to the note.
+Each tracker has **Day**, **Week**, **Month**, **Quarter**, and **Year** calendar views with previous, next, and Today navigation. Forward navigation stops at the period containing today. Sessions crossing a view boundary are clipped for display and calculation only—the original timestamps are never rewritten. **Default timesheet view** starts at Day. The **%** column uses **Total daily working hours** (8 by default); Week, Month, Quarter, and Year capacity also uses **Total days per week** (5 by default). The registry retains each tracker's selected view for the current Obsidian session without adding view parameters to the note.
 
-The tracker header prioritizes the current Activity, its active Block path, and a live hours/minutes/seconds elapsed value. The selected Day, Week, Month, or Year total remains visible as secondary context.
+The tracker header prioritizes the current Activity, its active Block path, and a live hours/minutes/seconds elapsed value. The selected Day, Week, Month, Quarter, or Year total remains visible as secondary context.
 
 Each view shows only Activities and Blocks with tracked duration in its selected calendar window. Parent Activities remain visible when a descendant Block has duration. The tracker export buttons—Markdown, CSV, JSON, PDF, and registered custom formats—apply the same filter and clip overlapping sessions to the window; stored tracker data is not modified.
 
 For current periods, the row control starts or stops real-time tracking. For historical periods, that control becomes **+** and opens a new Block in the editor. Adding an Activity in a historical period also opens the editor immediately and never starts a live timer. A historical draft becomes part of the visible window only after it has a valid positive duration.
+
+When you add an Activity whose trimmed name matches an existing Activity without regard to letter case, Timekeep DF reuses that Activity and creates a new Block. Selecting the autocomplete suggestion is the easiest way to guarantee the intended name, but the matching itself happens automatically when the form is submitted. This keeps one Activity-level history while the selected range determines which Blocks appear.
+
+In an Activity editor, **Delete in range** removes only tracked time overlapping the currently selected calendar window. Boundary-crossing Blocks are trimmed or split so time outside the range survives. Use **Delete all history** only when you intend to remove the Activity and every Block across all dates. An individual Block's **Delete** action removes that complete Block.
 
 ![Editing](images/editing.png)
 
@@ -125,16 +138,30 @@ This plugin is heavily inspired by [ObsidianSimpleTimeTracker](https://github.co
 
 Activity and Block start/stop times are stored as timestamps, making it possible for you to start your time tracker, then close Obsidian and have the tracking continue when you open it again.
 
-Below is an example of how this is stored:
+Consolidated Activities are stored once with their dated Blocks nested in `subEntries`. Changing the selected range only filters what is rendered; it does not create a separate Activity or duplicate the stored history. Below is a simplified example:
 
 ```json
 {
     "entries": [
         {
             "name": "Example Activity",
-            "startTime": "2024-03-17T06:32:36.118Z",
-            "endTime": "2024-03-17T06:32:37.012Z",
-            "subEntries": null
+            "startTime": null,
+            "endTime": null,
+            "collapsed": true,
+            "subEntries": [
+                {
+                    "name": "Block 1",
+                    "startTime": "2026-08-14T08:00:00.000Z",
+                    "endTime": "2026-08-14T09:30:00.000Z",
+                    "subEntries": null
+                },
+                {
+                    "name": "Block 1",
+                    "startTime": "2026-08-15T10:00:00.000Z",
+                    "endTime": "2026-08-15T11:00:00.000Z",
+                    "subEntries": null
+                }
+            ]
         }
     ]
 }
@@ -170,7 +197,7 @@ Example Activity,24-03-17 19:32,24-03-17 19:32,0s
 
 ### JSON
 
-The JSON export format simply copies the JSON stored inside the timekeep:
+Like the other export formats, JSON exports a non-mutating snapshot of the selected Day, Week, Month, Quarter, or Year. It includes only visible range data and clips boundary-crossing Blocks in the exported snapshot without changing the stored tracker:
 
 ```json
 {"entries":[{"name":"Example Activity","startTime":"2024-03-17T06:32:36.118Z","endTime":"2024-03-17T06:32:37.012Z","subEntries":null}]}
