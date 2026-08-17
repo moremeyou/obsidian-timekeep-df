@@ -15,6 +15,8 @@ export type TimekeepViewState = {
 	mode: TimekeepViewMode;
 	anchorDate: string;
 	followCurrent: boolean;
+	/** Session-only choice for whether the range counter includes Break Activities. */
+	includeBreaksInTotal?: boolean;
 };
 
 export type TimekeepViewWindow = {
@@ -30,6 +32,7 @@ export function createTimekeepViewState(
 		mode,
 		anchorDate: currentTime.format("YYYY-MM-DD"),
 		followCurrent: true,
+		includeBreaksInTotal: true,
 	};
 }
 

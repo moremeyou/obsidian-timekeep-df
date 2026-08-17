@@ -354,6 +354,43 @@ describe("TimekeepRegistry", () => {
 			expect(newContent).not.toBe(content);
 		});
 
+		it("starts the configured Break when the status-bar stop occurs during work hours", async () => {
+			vi.useFakeTimers();
+			vi.setSystemTime(new Date("2026-08-17T12:00:00"));
+			const inputTimekeep: Timekeep = {
+				entries: [
+					{
+						id: 1,
+						name: "Project",
+						startTime: moment("2026-08-17T10:00:00"),
+						endTime: null,
+						subEntries: null,
+					},
+				],
+			};
+			const vault = new MockVault();
+			const file = vault.addFile(
+				"a.timekeep-df",
+				JSON.stringify(stripTimekeepRuntimeData(inputTimekeep))
+			);
+			const settings = createStore({
+				...defaultSettings,
+				automaticBreaksEnabled: true,
+				workingHoursStart: "09:00",
+				workingHoursEnd: "17:00",
+			});
+			const registry = new TimekeepRegistry(vault.asVault(), settings);
+
+			await registry.tryStopEntry({ type: TimekeepEntryItemType.FILE, file });
+			const updated = await TimekeepRegistry.getFileRegistryEntry(vault.asVault(), file);
+			expect(updated?.type).toBe(TimekeepEntryItemType.FILE);
+			if (updated?.type === TimekeepEntryItemType.FILE) {
+				expect(updated.timekeep.entries.at(-1)?.name).toBe("Break");
+				expect(updated.timekeep.entries.at(-1)?.endTime).toBeNull();
+			}
+			vi.useRealTimers();
+		});
+
 		it("does not modify .timekeep-df file if the file is no longer valid", async () => {
 			const spy = vi.spyOn(console, "error").mockImplementation(() => {});
 			const inputTimekeep: Timekeep = {
@@ -397,6 +434,48 @@ describe("TimekeepRegistry", () => {
 					file: null as any,
 				})
 			).rejects.toThrow();
+		});
+	});
+
+	describe("tryEndAutomaticBreak", () => {
+		it("writes an expired Break with the configured end time", async () => {
+			const inputTimekeep: Timekeep = {
+				entries: [
+					{
+						id: 1,
+						name: "Break",
+						startTime: moment("2026-08-17T16:30:00"),
+						endTime: null,
+						subEntries: null,
+					},
+				],
+			};
+			const vault = new MockVault();
+			const file = vault.addFile(
+				"a.timekeep-df",
+				JSON.stringify(stripTimekeepRuntimeData(inputTimekeep))
+			);
+			const registry = new TimekeepRegistry(
+				vault.asVault(),
+				createStore({
+					...defaultSettings,
+					automaticBreaksEnabled: true,
+					workingHoursStart: "09:00",
+					workingHoursEnd: "17:00",
+				})
+			);
+
+			const changed = await registry.tryEndAutomaticBreak(
+				{ type: TimekeepEntryItemType.FILE, file },
+				moment("2026-08-17T18:00:00")
+			);
+			const updated = await TimekeepRegistry.getFileRegistryEntry(vault.asVault(), file);
+			expect(changed).toBe(true);
+			if (updated?.type === TimekeepEntryItemType.FILE) {
+				expect(updated.timekeep.entries[0].endTime?.format("YYYY-MM-DD HH:mm")).toBe(
+					"2026-08-17 17:00"
+				);
+			}
 		});
 	});
 

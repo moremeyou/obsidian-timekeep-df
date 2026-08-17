@@ -15,6 +15,7 @@ import { TimesheetEntryDuration } from "@/components/TimesheetEntryDuration";
 import { TimesheetEntryName } from "@/components/TimesheetEntryName";
 import { TimesheetEntryPercent } from "@/components/TimesheetEntryPercent";
 
+import { stopTimekeepWithAutomaticBreak } from "@/timekeep/automaticBreaks";
 import { prepareHistoricalBlockDraft, type HistoricalActivityDraft } from "@/timekeep/draft";
 import {
 	getEntryById,
@@ -24,7 +25,7 @@ import {
 } from "@/timekeep/queries";
 import type { TimeEntry, Timekeep } from "@/timekeep/schema";
 import { startNewNestedEntry } from "@/timekeep/start";
-import { setEntryCollapsed, stopTimekeep, updateEntry } from "@/timekeep/update";
+import { setEntryCollapsed, updateEntry } from "@/timekeep/update";
 import {
 	createTimekeepViewState,
 	getTimekeepViewWindow,
@@ -304,6 +305,8 @@ export class TimesheetRowContent extends ReplaceableComponent {
 
 	onClickStop() {
 		if (!timekeepViewIncludesCurrent(this.viewState.getState(), moment())) return;
-		this.timekeep.setState((timekeep) => stopTimekeep(timekeep, moment()));
+		this.timekeep.setState((timekeep) =>
+			stopTimekeepWithAutomaticBreak(timekeep, moment(), this.settings.getState())
+		);
 	}
 }

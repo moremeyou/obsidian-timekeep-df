@@ -253,9 +253,48 @@ describe("TimesheetNameInput", () => {
 		}
 	});
 
-	it("focusing the input should do nothing if theres no suggestions", () => {});
+	it("focusing the empty input should stay closed when there are no suggestions", () => {
+		component.load();
 
-	it("focusing the input should show the suggestions box if there are suggestions", () => {});
+		const inputEl = containerEl.querySelector<HTMLInputElement>(".timekeep-df-name")!;
+		const suggestionsEl = containerEl.querySelector<HTMLElement>(".timekeep-df-suggestions")!;
+		inputEl.dispatchEvent(new FocusEvent("focus"));
+
+		expect(suggestionsEl.hidden).toBe(true);
+		expect(inputEl.getAttribute("aria-expanded")).toBe("false");
+	});
+
+	it("focusing the empty input should immediately show all suggestions", () => {
+		autocomplete.names.setState(["Test", "Other"]);
+		component.load();
+
+		const inputEl = containerEl.querySelector<HTMLInputElement>(".timekeep-df-name")!;
+		const suggestionsEl = containerEl.querySelector<HTMLElement>(".timekeep-df-suggestions")!;
+		inputEl.dispatchEvent(new FocusEvent("focus"));
+
+		expect(suggestionsEl.hidden).toBe(false);
+		expect(inputEl.getAttribute("aria-expanded")).toBe("true");
+		expect(
+			Array.from(suggestionsEl.querySelectorAll(".timekeep-df-suggestion")).map(
+				(suggestion) => suggestion.textContent
+			)
+		).toEqual(["Test", "Other"]);
+	});
+
+	it("tapping an already-focused input reopens the suggestions", () => {
+		autocomplete.names.setState(["Test", "Other"]);
+		component.load();
+
+		const inputEl = containerEl.querySelector<HTMLInputElement>(".timekeep-df-name")!;
+		const suggestionsEl = containerEl.querySelector<HTMLElement>(".timekeep-df-suggestions")!;
+		inputEl.dispatchEvent(new FocusEvent("focus"));
+		inputEl.dispatchEvent(new KeyboardEvent("keydown", { key: "Escape" }));
+		expect(suggestionsEl.hidden).toBe(true);
+
+		inputEl.click();
+		expect(suggestionsEl.hidden).toBe(false);
+		expect(inputEl.getAttribute("aria-expanded")).toBe("true");
+	});
 
 	it("should be able to retrieve the input value", () => {
 		autocomplete.names.setState(["Test", "Test 1"]);

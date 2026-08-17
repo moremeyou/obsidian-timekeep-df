@@ -5,12 +5,13 @@ import type { Store } from "@/store";
 
 import { createStore } from "@/store";
 import { assert } from "@/utils/assert";
-import { formatDuration, formatDurationLong } from "@/utils/time";
+import { formatDuration, formatDurationClock } from "@/utils/time";
 
 import { TimesheetTimer } from "./TimesheetTimer";
 
 import { DomComponent } from "@/components/DomComponent";
 
+import { endAutomaticBreakAtWorkingHoursEnd } from "@/timekeep/automaticBreaks";
 import {
 	getEntryDuration,
 	getRunningEntry,
@@ -65,7 +66,11 @@ export class TimesheetCounters extends DomComponent {
 		const wrapperEl = this.containerEl.createDiv({
 			cls: "timekeep-df-timers",
 		});
+		wrapperEl.role = "button";
+		wrapperEl.tabIndex = 0;
 		this.wrapperEl = wrapperEl;
+		this.registerDomEvent(wrapperEl, "click", this.onToggleBreaksInTotal.bind(this));
+		this.registerDomEvent(wrapperEl, "keydown", this.onToggleKeyDown.bind(this));
 
 		this.durationTimer = new TimesheetTimer(wrapperEl, "Duration");
 		this.totalTimer = new TimesheetTimer(wrapperEl, "Day total");
@@ -118,13 +123,27 @@ export class TimesheetCounters extends DomComponent {
 		const settings = this.settings.getState();
 
 		const currentTime = moment();
+		const cappedTimekeep = endAutomaticBreakAtWorkingHoursEnd(timekeep, currentTime, settings);
+		if (cappedTimekeep !== timekeep) {
+			this.timekeep.setState(cappedTimekeep);
+			return;
+		}
 		const runningEntry = getRunningEntry(timekeep.entries);
 		this.durationTimer.setValues(
-			runningEntry ? formatDurationLong(getEntryDuration(runningEntry, currentTime)) : "0s",
+			formatDurationClock(runningEntry ? getEntryDuration(runningEntry, currentTime) : 0),
 			""
 		);
-		const window = getTimekeepViewWindow(this.viewState.getState());
-		const total = getTotalDuration(timekeep.entries, currentTime, window);
+		const state = this.viewState.getState();
+		const window = getTimekeepViewWindow(state);
+		const includeBreaks = state.includeBreaksInTotal !== false;
+		const breakDisplayName = settings.automaticBreakName.trim() || "Break";
+		const breakName = breakDisplayName.toLocaleLowerCase();
+		const totalEntries = includeBreaks
+			? timekeep.entries
+			: timekeep.entries.filter(
+					(entry) => entry.name.trim().toLocaleLowerCase() !== breakName
+				);
+		const total = getTotalDuration(totalEntries, currentTime, window);
 		const viewModeLabel: Record<TimekeepViewMode, string> = {
 			[TimekeepViewMode.DAY]: "Day total",
 			[TimekeepViewMode.WEEK]: "Week total",
@@ -133,11 +152,19 @@ export class TimesheetCounters extends DomComponent {
 			[TimekeepViewMode.YEAR]: "Year total",
 		};
 
-		this.totalTimer.setLabel(viewModeLabel[this.viewState.getState().mode]);
+		const totalLabel = viewModeLabel[state.mode];
+		this.totalTimer.setLabel(totalLabel);
 		this.totalTimer.setValues(
 			total <= 0 ? "0.0h" : formatDuration(settings.primaryDurationFormat, total),
 			""
 		);
+		const toggleDescription = includeBreaks
+			? `${totalLabel} includes ${breakDisplayName}. Tap to exclude it.`
+			: `${totalLabel} excludes ${breakDisplayName}. Tap to include it.`;
+		this.wrapperEl.setAttribute("aria-label", toggleDescription);
+		this.wrapperEl.setAttribute("aria-pressed", String(!includeBreaks));
+		this.wrapperEl.setAttribute("data-breaks-included", String(includeBreaks));
+		this.wrapperEl.title = toggleDescription;
 		const capacityMS =
 			getTimekeepViewCapacityHours(
 				this.viewState.getState(),
@@ -150,5 +177,18 @@ export class TimesheetCounters extends DomComponent {
 		const capacityState = total <= 0 ? "empty" : total > capacityMS ? "over" : "within";
 		this.totalTimer.setCapacityState(capacityState);
 		this.wrapperEl.setAttribute("data-capacity-state", capacityState);
+	}
+
+	onToggleBreaksInTotal() {
+		this.viewState.setState((state) => ({
+			...state,
+			includeBreaksInTotal: state.includeBreaksInTotal === false,
+		}));
+	}
+
+	onToggleKeyDown(event: KeyboardEvent) {
+		if (event.key !== "Enter" && event.key !== " ") return;
+		event.preventDefault();
+		this.onToggleBreaksInTotal();
 	}
 }

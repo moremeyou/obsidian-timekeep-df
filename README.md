@@ -21,9 +21,10 @@ This plugin provides a simple and easy way to track time spent on various tasks.
 
 ### Focused live-work dashboard
 
-- The primary card makes the current **Activity**, active **Block** path, and live hours/minutes/seconds **Duration** easy to scan.
+- The primary card makes the current **Activity** and active **Block** path easy to scan. The companion **Duration** uses a compact live `HH:MM:SS` clock.
 - A large, centered Start/Stop control uses consistent icon geometry across desktop, tablet, and mobile.
 - The companion card shows the selected Day, Week, Month, Quarter, or Year total. It uses the theme’s green state while within capacity and red when over capacity.
+- Tap the whole companion timer card to toggle whether its range total and capacity state include the configured Break Activity. The card remembers the choice per tracker for the current Obsidian session without adding another visible line to the compact layout.
 - With no timer running, the focus card says **Get to work!** or **Stop working!** depending on whether the selected period is over its working-hours target.
 - Range navigation, Today, the native range selector, and the formatted date sit above the focus cards.
 
@@ -50,6 +51,7 @@ This plugin provides a simple and easy way to track time spent on various tasks.
 ### Current and historical entry workflows
 
 - In the current period, adding an Activity starts it immediately. If its trimmed, case-insensitive name matches an existing top-level Activity, Timekeep DF adds a new Block there automatically; autocomplete selection is convenient but is not required for consolidation. Every Activity/Block play control toggles to Stop while that row is active.
+- Tapping or focusing the empty Add Activity field immediately opens the complete registered Activity list; typing filters it. The popup expands for normal lists and becomes scrollable only when the available screen or list length requires it.
 - In a previous period, adding an Activity opens its editor immediately and never starts a live timer. Registry-backed autocomplete reuses the matching Activity instead of creating duplicate top-level names.
 - In a previous period, each Activity’s real-time control becomes **+**. It creates or reopens a correctly numbered child Block and opens the editor immediately.
 - A historical draft with no positive duration stays out of the normal filtered table. Canceling it leaves no visible zero-duration row; saving valid times makes it part of that period.
@@ -60,6 +62,14 @@ This plugin provides a simple and easy way to track time spent on various tasks.
 - If a Block crosses a range boundary, deletion trims or splits it at that boundary so its out-of-range time is retained. The Activity remains as a collapsed group even if the selected range becomes empty.
 - **Delete all history** is the separate destructive action for removing the Activity and all of its Blocks across every date. Its confirmation identifies the Activity and Block count.
 - Deleting an individual Block still removes that whole stored Block.
+
+### Optional automatic breaks
+
+- Automatic breaks are opt-in and disabled by default. When enabled, explicitly stopping a non-Break Activity during configured working hours immediately starts the configured Break Activity.
+- Repeated breaks consolidate into dated Blocks under one top-level Activity. Starting another Activity ends the running Break normally, while stopping the Break itself does not start another one.
+- Native time controls define the local working-hours start and end. A running automatic Break is capped at the configured end time, including after device sleep or while its tracker view is closed.
+- The Break Activity name is configurable and defaults to **Break**. An end time earlier than the start time represents an overnight working window.
+- Tapping the range timer card includes or excludes every top-level Activity whose trimmed name matches the configured Break Activity name without regard to letter case. This changes only the displayed total and capacity color; it never modifies tracking data, table rows, or exports.
 
 ### Native, safer editing
 
@@ -91,6 +101,10 @@ Timekeep DF adds these settings under **Settings → Timekeep DF**:
 | Default timesheet view | Day | Chooses the initial Day, Week, Month, Quarter, or Year window. |
 | Total daily working hours | 8 | Calculates the **%** column and Day capacity. |
 | Total days per week | 5 | Scales Week, Month, Quarter, and Year capacity. |
+| Enable automatic breaks | Off | Starts a consolidated Break Activity when work is explicitly stopped during working hours. |
+| Break Activity name | Break | Names the Activity used for automatic break Blocks. |
+| Working hours start | 09:00 | Earliest local time at which an explicit stop starts an automatic Break. |
+| Working hours end | 17:00 | Caps automatic Breaks at the local end of the work window. |
 
 ## ➕ Create a tracker
 

@@ -21,6 +21,7 @@ import { createNewTimekeepFile } from "@/timekeep/createNewTimekeepFile";
 import type { Timekeep, TimeEntry } from "@/timekeep/schema";
 
 import { TimekeepAutocomplete } from "@/service/autocomplete";
+import { AutomaticBreakService } from "@/service/automaticBreaks";
 import { TimekeepRegistry } from "@/service/registry";
 
 import createMerged from "@/commands/createMerged";
@@ -63,6 +64,8 @@ export default class TimekeepPlugin extends Plugin {
 
 	/** Name autocomplete service */
 	autocomplete: TimekeepAutocomplete;
+	/** Background cap for automatic Breaks whose tracker view is closed. */
+	automaticBreaks: AutomaticBreakService;
 
 	/** Currently loaded status bar view if present */
 	#statusBarView: TimesheetStatusBar | null = null;
@@ -89,6 +92,7 @@ export default class TimekeepPlugin extends Plugin {
 
 		this.registry = new TimekeepRegistry(app.vault, settingsStore);
 		this.autocomplete = new TimekeepAutocomplete(this.registry, settingsStore);
+		this.automaticBreaks = new AutomaticBreakService(this.registry, settingsStore);
 
 		// Expose new API
 		const api = new TimekeepApi(
@@ -124,6 +128,7 @@ export default class TimekeepPlugin extends Plugin {
 		this.addSettingTab(new TimekeepSettingsTab(this.app, this));
 
 		this.addChild(this.autocomplete);
+		this.addChild(this.automaticBreaks);
 
 		const onLoadStatusBar = this.onLoadStatusBar.bind(this);
 		this.register(this.settingsStore.subscribe(onLoadStatusBar));
