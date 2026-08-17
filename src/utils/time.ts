@@ -97,6 +97,18 @@ export function formatDurationLong(durationMS: number): string {
 	return ret.trim();
 }
 
+/** Formats a live duration as an hours-first digital clock. */
+export function formatDurationClock(durationMS: number): string {
+	const totalSeconds = Number.isFinite(durationMS)
+		? Math.max(0, Math.floor(durationMS / 1000))
+		: 0;
+	const hours = Math.floor(totalSeconds / 3600);
+	const minutes = Math.floor((totalSeconds % 3600) / 60);
+	const seconds = totalSeconds % 60;
+
+	return [hours, minutes, seconds].map((part) => String(part).padStart(2, "0")).join(":");
+}
+
 /**
  * Formats a duration in hours and minutes for non-active displays.
  * Seconds remain stored and continue contributing to the total.

@@ -70,6 +70,10 @@ export interface TimekeepSettings {
 	timestampFormat: string;
 	totalDailyWorkingHours: number;
 	totalDaysPerWeek: number;
+	automaticBreaksEnabled: boolean;
+	automaticBreakName: string;
+	workingHoursStart: string;
+	workingHoursEnd: string;
 	defaultViewMode: TimekeepViewMode;
 	/**@deprecated use {@link secondaryDurationFormat} instead */
 	showDecimalHours?: boolean;
@@ -104,6 +108,10 @@ export const defaultSettings: TimekeepSettings = {
 	timestampFormat: "YY-MM-DD",
 	totalDailyWorkingHours: 8,
 	totalDaysPerWeek: 5,
+	automaticBreaksEnabled: false,
+	automaticBreakName: "Break",
+	workingHoursStart: "09:00",
+	workingHoursEnd: "17:00",
 	defaultViewMode: TimekeepViewMode.DAY,
 	editableTimestampFormat: "YYYY-MM-DD HH:mm:ss",
 	csvTitle: true,
@@ -127,7 +135,30 @@ export const defaultSettings: TimekeepSettings = {
 	autocompleteEnabled: true,
 };
 
+function isValidNativeTime(value: string): boolean {
+	return /^([01]\d|2[0-3]):[0-5]\d$/.test(value);
+}
+
 export function legacySettingsCompatibility(settings: TimekeepSettings): void {
+	if (
+		Object.prototype.hasOwnProperty.call(settings, "workingHoursStart") &&
+		!isValidNativeTime(settings.workingHoursStart)
+	) {
+		settings.workingHoursStart = defaultSettings.workingHoursStart;
+	}
+	if (
+		Object.prototype.hasOwnProperty.call(settings, "workingHoursEnd") &&
+		!isValidNativeTime(settings.workingHoursEnd)
+	) {
+		settings.workingHoursEnd = defaultSettings.workingHoursEnd;
+	}
+	if (
+		Object.prototype.hasOwnProperty.call(settings, "automaticBreakName") &&
+		settings.automaticBreakName.trim().length === 0
+	) {
+		settings.automaticBreakName = defaultSettings.automaticBreakName;
+	}
+
 	if (
 		Object.prototype.hasOwnProperty.call(settings, "defaultViewMode") &&
 		!Object.values(TimekeepViewMode).includes(settings.defaultViewMode)

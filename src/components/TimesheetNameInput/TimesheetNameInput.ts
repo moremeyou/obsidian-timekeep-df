@@ -66,6 +66,7 @@ export class TimesheetNameInput extends DomComponent {
 		this.registerDomEvent(inputEl, "input", debounced(this.onDebouncedChange.bind(this), 300));
 
 		this.registerDomEvent(inputEl, "focus", this.onFocus.bind(this));
+		this.registerDomEvent(inputEl, "click", this.onFocus.bind(this));
 		this.registerDomEvent(inputEl, "keydown", this.onKeyDown.bind(this));
 
 		this.registerDomEvent(document, "mousedown", this.onClickOutside.bind(this));
@@ -85,6 +86,9 @@ export class TimesheetNameInput extends DomComponent {
 		const suggestions = autocomplete.names.getState();
 
 		const value = this.getValue();
+		if (value.trim().length === 0) {
+			return suggestions.map((item, refIndex) => ({ item, refIndex }));
+		}
 		const fuse = new Fuse(suggestions, {
 			includeMatches: true,
 			shouldSort: true,
@@ -104,7 +108,7 @@ export class TimesheetNameInput extends DomComponent {
 		const suggestionsEl = this.#suggestionsEl;
 		assert(suggestionsEl, "Suggestions element should be defined");
 
-		suggestionsEl.empty();
+		suggestionsEl.replaceChildren();
 		const suggestions = this.#suggestions;
 		if (suggestions.length < 1) return;
 
@@ -195,6 +199,8 @@ export class TimesheetNameInput extends DomComponent {
 	 * box if it is not already open
 	 */
 	onFocus() {
+		this.#suggestions = this.getFilteredSuggestions();
+		this.renderSuggestions();
 		this.setSuggestionsOpen(true);
 	}
 

@@ -146,6 +146,40 @@ describe("TimesheetRunningEntry", () => {
 		});
 	});
 
+	it("starts the configured Break after an explicit stop during working hours", () => {
+		vi.useFakeTimers();
+		vi.setSystemTime(new Date("2026-08-17T12:00:00"));
+		settings.setState({
+			...defaultSettings,
+			automaticBreaksEnabled: true,
+			workingHoursStart: "09:00",
+			workingHoursEnd: "17:00",
+		});
+		const runningEntry: TimeEntry = {
+			id: 1,
+			name: "Project",
+			startTime: moment("2026-08-17T10:00:00"),
+			endTime: null,
+			subEntries: null,
+		};
+		timekeep.setState({ entries: [runningEntry] });
+		component = new TimesheetRunningEntryViewing(
+			containerEl,
+			timekeep,
+			settings,
+			runningEntry,
+			onStartEditing
+		);
+		component.load();
+
+		(component.wrapperEl as HTMLFormElement).dispatchEvent(
+			new SubmitEvent("submit", { bubbles: true, cancelable: true })
+		);
+
+		expect(timekeep.getState().entries.at(-1)?.name).toBe("Break");
+		expect(timekeep.getState().entries.at(-1)?.endTime).toBeNull();
+	});
+
 	it("makes the Activity and Block path immediately clear", () => {
 		vi.useFakeTimers();
 		const start = moment("2026-08-12T10:00:00");

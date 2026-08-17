@@ -70,7 +70,7 @@ describe("TimesheetCounters", () => {
 		component.onUpdate();
 
 		expect(totalSetValues).toHaveBeenCalledWith("0.0h", "");
-		expect(durationSetValues).toHaveBeenCalledWith("0s", "");
+		expect(durationSetValues).toHaveBeenCalledWith("00:00:00", "");
 		expect(component.wrapperEl?.getAttribute("data-capacity-state")).toBe("empty");
 	});
 
@@ -138,7 +138,34 @@ describe("TimesheetCounters", () => {
 		});
 
 		expect(totalSetValues).toHaveBeenCalledWith("1h 0s", "");
-		expect(durationSetValues).toHaveBeenCalledWith("1h 0s", "");
+		expect(durationSetValues).toHaveBeenCalledWith("01:00:00", "");
+	});
+
+	it("caps an automatic Break at the configured working-hours end", () => {
+		vi.useFakeTimers();
+		vi.setSystemTime(new Date("2026-08-17T18:00:00"));
+		settingsStore.setState({
+			...defaultSettings,
+			automaticBreaksEnabled: true,
+			workingHoursStart: "09:00",
+			workingHoursEnd: "17:00",
+		});
+		timekeepStore.setState({
+			entries: [
+				{
+					id: 1,
+					name: "Break",
+					startTime: moment("2026-08-17T16:30:00"),
+					endTime: null,
+					subEntries: null,
+				},
+			],
+		});
+		component.load();
+
+		expect(timekeepStore.getState().entries[0].endTime?.format("YYYY-MM-DD HH:mm")).toBe(
+			"2026-08-17 17:00"
+		);
 	});
 
 	it("should show total duration as the sum of all entry durations", () => {
@@ -186,6 +213,68 @@ describe("TimesheetCounters", () => {
 		});
 
 		expect(totalSetValues).toHaveBeenCalledWith("3h 0s", "");
+	});
+
+	it("toggles the range total and capacity between including and excluding Break", () => {
+		vi.useFakeTimers();
+		vi.setSystemTime(new Date("2026-08-17T18:00:00"));
+		settingsStore.setState({
+			...defaultSettings,
+			automaticBreakName: "Break",
+			totalDailyWorkingHours: 2.25,
+		});
+		const viewState = createStore({
+			mode: TimekeepViewMode.DAY,
+			anchorDate: "2026-08-17",
+			followCurrent: true,
+			includeBreaksInTotal: true,
+		});
+		timekeepStore.setState({
+			entries: [
+				{
+					id: 1,
+					name: "Project",
+					startTime: moment("2026-08-17T10:00:00"),
+					endTime: moment("2026-08-17T12:00:00"),
+					subEntries: null,
+				},
+				{
+					id: 2,
+					name: " break ",
+					startTime: moment("2026-08-17T12:00:00"),
+					endTime: moment("2026-08-17T12:30:00"),
+					subEntries: null,
+				},
+			],
+		});
+		component = new TimesheetCounters(container, settingsStore, timekeepStore, viewState);
+		component.load();
+
+		const totalValue = component.totalTimer?.wrapperEl?.querySelector(
+			".timekeep-df-timer-value"
+		);
+		const totalMode = component.totalTimer?.wrapperEl?.querySelector(
+			".timekeep-df-timer-value-small"
+		);
+		expect(totalValue?.textContent).toBe("2h 30m 0s");
+		expect(totalMode?.hidden).toBe(true);
+		expect(component.wrapperEl?.getAttribute("data-capacity-state")).toBe("over");
+		expect(component.wrapperEl?.getAttribute("aria-pressed")).toBe("false");
+
+		component.wrapperEl?.click();
+
+		expect(viewState.getState().includeBreaksInTotal).toBe(false);
+		expect(totalValue?.textContent).toBe("2h 0s");
+		expect(totalMode?.hidden).toBe(true);
+		expect(component.wrapperEl?.getAttribute("data-capacity-state")).toBe("within");
+		expect(component.wrapperEl?.getAttribute("aria-pressed")).toBe("true");
+		expect(component.wrapperEl?.getAttribute("aria-label")).toContain("excludes Break");
+
+		component.wrapperEl?.dispatchEvent(
+			new KeyboardEvent("keydown", { key: "Enter", bubbles: true, cancelable: true })
+		);
+		expect(viewState.getState().includeBreaksInTotal).toBe(true);
+		expect(totalValue?.textContent).toBe("2h 30m 0s");
 	});
 
 	it("labels the total for the selected calendar range", () => {

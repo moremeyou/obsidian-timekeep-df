@@ -11,6 +11,7 @@ import {
 	formatPercentOfDay,
 	formatPdfRowDate,
 	formatDurationLong,
+	formatDurationClock,
 	formatDurationLongWithoutSeconds,
 	formatDurationShort,
 	formatDurationDecimal,
@@ -118,6 +119,19 @@ describe("formatDurationLong", () => {
 		const output = formatDurationLong(input);
 
 		expect(output).toBe(expected);
+	});
+});
+
+describe("formatDurationClock", () => {
+	test.each([
+		[0, "00:00:00"],
+		[999, "00:00:00"],
+		[1000, "00:00:01"],
+		[3_661_000, "01:01:01"],
+		[90_061_000, "25:01:01"],
+		[Number.NaN, "00:00:00"],
+	])('for duration "%s" should use digital clock format "%s"', (input, expected) => {
+		expect(formatDurationClock(input)).toBe(expected);
 	});
 });
 

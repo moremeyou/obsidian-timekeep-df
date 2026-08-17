@@ -10,9 +10,9 @@ import { ReplaceableComponent } from "../ReplaceableComponent";
 
 import { createObsidianIcon } from "@/components/obsidianIcon";
 
+import { stopTimekeepWithAutomaticBreak } from "@/timekeep/automaticBreaks";
 import { getPathToEntry, getRunningEntry } from "@/timekeep/queries";
 import type { TimeEntry, Timekeep } from "@/timekeep/schema";
-import { stopTimekeep } from "@/timekeep/update";
 import {
 	createTimekeepViewState,
 	timekeepViewIncludesCurrent,
@@ -159,7 +159,7 @@ export class TimesheetRunningEntryViewing extends ReplaceableComponent {
 
 		this.timekeep.setState((timekeep) => {
 			const currentTime = moment();
-			return stopTimekeep(timekeep, currentTime);
+			return stopTimekeepWithAutomaticBreak(timekeep, currentTime, this.settings.getState());
 		});
 	}
 }

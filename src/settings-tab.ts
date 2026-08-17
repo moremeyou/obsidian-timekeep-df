@@ -135,6 +135,78 @@ export class TimekeepSettingsTab extends PluginSettingTab {
 			});
 
 		new Setting(this.containerEl)
+			.setName("Automatic breaks")
+			.setDesc(
+				"Optionally start a Break Activity whenever you explicitly stop work during configured working hours. Starting another Activity ends the Break normally."
+			)
+			.setHeading();
+
+		new Setting(this.containerEl)
+			.setName("Enable automatic breaks")
+			.setDesc(
+				"When enabled, stopping a non-Break Activity during working hours starts a Break automatically. Leave this off to enter breaks manually."
+			)
+			.addToggle((t) => {
+				t.setValue(settings.automaticBreaksEnabled);
+				t.onChange((v) => {
+					this.settingsStore.setState((currentValue) => ({
+						...currentValue,
+						automaticBreaksEnabled: v,
+					}));
+				});
+			});
+
+		new Setting(this.containerEl)
+			.setName("Break Activity name")
+			.setDesc(
+				"The top-level Activity used for automatically tracked breaks. Repeated breaks are consolidated into dated Blocks under this Activity."
+			)
+			.addText((t) => {
+				t.setValue(settings.automaticBreakName);
+				t.onChange((v) => {
+					const name = v.trim() || defaultSettings.automaticBreakName;
+					this.settingsStore.setState((currentValue) => ({
+						...currentValue,
+						automaticBreakName: name,
+					}));
+				});
+			});
+
+		new Setting(this.containerEl)
+			.setName("Working hours start")
+			.setDesc("Automatic breaks can begin at or after this local time.")
+			.addText((t) => {
+				t.inputEl.type = "time";
+				t.inputEl.step = "60";
+				t.setValue(settings.workingHoursStart);
+				t.onChange((v) => {
+					if (!/^([01]\d|2[0-3]):[0-5]\d$/.test(v)) return;
+					this.settingsStore.setState((currentValue) => ({
+						...currentValue,
+						workingHoursStart: v,
+					}));
+				});
+			});
+
+		new Setting(this.containerEl)
+			.setName("Working hours end")
+			.setDesc(
+				"Automatic breaks stop at this local time. An earlier end time represents an overnight work window."
+			)
+			.addText((t) => {
+				t.inputEl.type = "time";
+				t.inputEl.step = "60";
+				t.setValue(settings.workingHoursEnd);
+				t.onChange((v) => {
+					if (!/^([01]\d|2[0-3]):[0-5]\d$/.test(v)) return;
+					this.settingsStore.setState((currentValue) => ({
+						...currentValue,
+						workingHoursEnd: v,
+					}));
+				});
+			});
+
+		new Setting(this.containerEl)
 			.setName("Primary duration format")
 			.setDesc("Format to show durations for the current and total timers")
 

@@ -1,6 +1,6 @@
 import type { EventRef, TAbstractFile, Vault, Workspace, WorkspaceLeaf } from "obsidian";
 
-import moment from "moment";
+import moment, { type Moment } from "moment";
 import { EditableFileView, Component, MarkdownView, TFile, requireApiVersion } from "obsidian";
 import { limitFunction } from "p-limit";
 
@@ -9,6 +9,10 @@ import type { Store } from "@/store";
 
 import { createStore } from "@/store";
 
+import {
+	endAutomaticBreakAtWorkingHoursEnd,
+	stopTimekeepWithAutomaticBreak,
+} from "@/timekeep/automaticBreaks";
 import type { HistoricalActivityDraft } from "@/timekeep/draft";
 import {
 	extractTimekeepCodeblocksWithPosition,
@@ -20,7 +24,6 @@ import {
 import { getRunningEntry } from "@/timekeep/queries";
 import type { TimeEntry, Timekeep } from "@/timekeep/schema";
 import { stripTimekeepRuntimeData } from "@/timekeep/schema";
-import { stopTimekeep } from "@/timekeep/update";
 import { createTimekeepViewState, type TimekeepViewState } from "@/timekeep/view";
 
 /** Entry within the timekeep registry */
@@ -308,7 +311,11 @@ export class TimekeepRegistry extends Component {
 
 					const currentTime = moment();
 					const initialTimekeep = targetTimekeep.timekeep;
-					const updatedTimekeep = stopTimekeep(initialTimekeep, currentTime);
+					const updatedTimekeep = stopTimekeepWithAutomaticBreak(
+						initialTimekeep,
+						currentTime,
+						this.settings.getState()
+					);
 
 					return replaceTimekeepCodeblock(
 						updatedTimekeep,
@@ -329,7 +336,11 @@ export class TimekeepRegistry extends Component {
 
 					const currentTime = moment();
 					const initialTimekeep = loadResult.timekeep;
-					const updatedTimekeep = stopTimekeep(initialTimekeep, currentTime);
+					const updatedTimekeep = stopTimekeepWithAutomaticBreak(
+						initialTimekeep,
+						currentTime,
+						this.settings.getState()
+					);
 
 					const stripped = stripTimekeepRuntimeData(updatedTimekeep);
 					const serialized = JSON.stringify(stripped);
@@ -343,6 +354,69 @@ export class TimekeepRegistry extends Component {
 				/* v8 ignore stop -- @preserve */
 			}
 		});
+	}
+
+	/** End an expired automatic Break at its configured workday boundary. */
+	async tryEndAutomaticBreak(
+		ref: TimekeepRegistryItemRef,
+		currentTime: Moment = moment()
+	): Promise<boolean> {
+		const file = ref.file;
+		if (file === null) throw new Error("File no longer exists");
+		if (ref.type === TimekeepEntryItemType.FILE && file.extension !== "timekeep-df") {
+			throw new Error(`Refusing to modify a non-DF standalone file: ${file.path}`);
+		}
+		if (ref.type === TimekeepEntryItemType.MARKDOWN && file.extension !== "md") {
+			throw new Error(`Refusing to modify a non-Markdown DF block: ${file.path}`);
+		}
+
+		let changed = false;
+		await this.#vault.process(file, (data) => {
+			switch (ref.type) {
+				case TimekeepEntryItemType.MARKDOWN: {
+					const targetTimekeep = extractTimekeepCodeblocksWithPosition(data).find(
+						(target) =>
+							target.startLine === ref.position.startLine &&
+							target.endLine === ref.position.endLine
+					);
+					if (!targetTimekeep) return data;
+
+					const updated = endAutomaticBreakAtWorkingHoursEnd(
+						targetTimekeep.timekeep,
+						currentTime,
+						this.settings.getState()
+					);
+					if (updated === targetTimekeep.timekeep) return data;
+					changed = true;
+					return replaceTimekeepCodeblock(
+						updated,
+						data,
+						targetTimekeep.startLine,
+						targetTimekeep.endLine
+					);
+				}
+
+				case TimekeepEntryItemType.FILE: {
+					const loadResult = load(data);
+					if (!loadResult.success) return data;
+					const updated = endAutomaticBreakAtWorkingHoursEnd(
+						loadResult.timekeep,
+						currentTime,
+						this.settings.getState()
+					);
+					if (updated === loadResult.timekeep) return data;
+					changed = true;
+					return JSON.stringify(stripTimekeepRuntimeData(updated));
+				}
+
+				/* v8 ignore start -- @preserve */
+				default:
+					throw new Error("unknown entry type");
+				/* v8 ignore stop -- @preserve */
+			}
+		});
+
+		return changed;
 	}
 
 	/**

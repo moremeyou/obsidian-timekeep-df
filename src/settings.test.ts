@@ -24,6 +24,13 @@ describe("legacy settings compatibility conversion", () => {
 		expect(defaultSettings.totalDaysPerWeek).toBe(5);
 	});
 
+	test("Automatic breaks are opt-in with a standard workday default", () => {
+		expect(defaultSettings.automaticBreaksEnabled).toBe(false);
+		expect(defaultSettings.automaticBreakName).toBe("Break");
+		expect(defaultSettings.workingHoursStart).toBe("09:00");
+		expect(defaultSettings.workingHoursEnd).toBe("17:00");
+	});
+
 	test("Fresh trackers default to the Day calendar view", () => {
 		expect(defaultSettings.defaultViewMode).toBe(TimekeepViewMode.DAY);
 	});
@@ -35,6 +42,19 @@ describe("legacy settings compatibility conversion", () => {
 		};
 		legacySettingsCompatibility(settings);
 		expect(settings.defaultViewMode).toBe(TimekeepViewMode.DAY);
+	});
+
+	test("Invalid automatic-break text settings return to safe defaults", () => {
+		const settings = {
+			...defaultSettings,
+			automaticBreakName: "   ",
+			workingHoursStart: "morning",
+			workingHoursEnd: "evening",
+		};
+		legacySettingsCompatibility(settings);
+		expect(settings.automaticBreakName).toBe("Break");
+		expect(settings.workingHoursStart).toBe("09:00");
+		expect(settings.workingHoursEnd).toBe("17:00");
 	});
 
 	test("Legacy timestamp formats lose their time and seconds portion", () => {
