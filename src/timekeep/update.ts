@@ -1,6 +1,8 @@
-import type { Moment } from "moment";
+import moment, { type Moment } from "moment";
 
+import { timekeepId } from "@/timekeep/id";
 import { TimeEntry, Timekeep } from "@/timekeep/schema";
+import type { TimekeepViewWindow } from "@/timekeep/view";
 
 /**
  * Recursively updates a collection of entries, finding a possibly deeply nested
@@ -130,6 +132,67 @@ export function removeEntry(entries: TimeEntry[], target: TimeEntry): TimeEntry[
 
 		return acc;
 	}, []);
+}
+
+function subtractWindowFromLeaf(
+	entry: TimeEntry,
+	currentTime: Moment,
+	window: TimekeepViewWindow
+): TimeEntry[] {
+	if (entry.subEntries !== null || entry.startTime === null) return [entry];
+	const effectiveEnd = entry.endTime ?? currentTime;
+	if (
+		!effectiveEnd.isAfter(entry.startTime) ||
+		!entry.startTime.isBefore(window.end) ||
+		!effectiveEnd.isAfter(window.start)
+	) {
+		return [entry];
+	}
+
+	const remaining: TimeEntry[] = [];
+	if (entry.startTime.isBefore(window.start)) {
+		remaining.push({
+			...entry,
+			endTime: moment(window.start),
+		});
+	}
+	if (effectiveEnd.isAfter(window.end)) {
+		remaining.push({
+			...entry,
+			id: remaining.length > 0 ? timekeepId.next() : entry.id,
+			startTime: moment(window.end),
+			endTime: entry.endTime === null ? null : moment(entry.endTime),
+		});
+	}
+	return remaining;
+}
+
+/**
+ * Remove only the portions of a top-level Activity that overlap a selected
+ * view window. Outside-window time and the Activity itself are preserved.
+ */
+export function removeActivityTimeWithinWindow(
+	entries: TimeEntry[],
+	activityId: number,
+	currentTime: Moment,
+	window: TimekeepViewWindow
+): TimeEntry[] {
+	return entries.map((entry) => {
+		if (entry.id !== activityId) return entry;
+
+		const sourceBlocks =
+			entry.subEntries ?? (entry.startTime === null ? [] : [{ ...entry, name: "Block 1" }]);
+		const subEntries = sourceBlocks.flatMap((block) =>
+			subtractWindowFromLeaf(block, currentTime, window)
+		);
+		return {
+			...entry,
+			startTime: null,
+			endTime: null,
+			collapsed: true,
+			subEntries,
+		};
+	});
 }
 
 /**

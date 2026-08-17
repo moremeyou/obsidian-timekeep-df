@@ -28,6 +28,26 @@ export function startNewEntry(
 }
 
 /**
+ * Start work for a named top-level Activity, reusing an existing Activity when
+ * its trimmed name matches case-insensitively.
+ */
+export function startActivity(
+	name: string,
+	currentTime: Moment,
+	entries: TimeEntry[]
+): TimeEntry[] {
+	const normalizedName = name.trim().toLocaleLowerCase();
+	const existingActivity =
+		normalizedName.length > 0
+			? entries.find((entry) => entry.name.trim().toLocaleLowerCase() === normalizedName)
+			: undefined;
+
+	return existingActivity
+		? startNewNestedEntry(currentTime, existingActivity.id, entries)
+		: startNewEntry(name, currentTime, entries);
+}
+
+/**
  * Start a new entry that is a sub-entry of the provided
  * target entry
  *

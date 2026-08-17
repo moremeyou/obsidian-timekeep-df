@@ -61,6 +61,7 @@ export class TimesheetViewControls extends DomComponent {
 			[TimekeepViewMode.DAY, "Day"],
 			[TimekeepViewMode.WEEK, "Week"],
 			[TimekeepViewMode.MONTH, "Month"],
+			[TimekeepViewMode.QUARTER, "Quarter"],
 			[TimekeepViewMode.YEAR, "Year"],
 		] as const) {
 			modeEl.createEl("option", { text: label, attr: { value } });

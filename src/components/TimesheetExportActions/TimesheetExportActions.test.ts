@@ -566,6 +566,79 @@ describe("TimesheetExportActions", () => {
 		vi.useRealTimers();
 	});
 
+	it("applies a Quarter snapshot to Markdown, CSV, JSON, PDF, and custom exports", async () => {
+		vi.useFakeTimers();
+		const currentTime = moment("2026-08-12T12:00:00");
+		vi.setSystemTime(currentTime.toDate());
+		timekeep.setState({
+			entries: [
+				{
+					id: 1,
+					name: "Previous quarter",
+					startTime: moment("2026-06-30T09:00:00"),
+					endTime: moment("2026-06-30T10:00:00"),
+					subEntries: null,
+				},
+				{
+					id: 2,
+					name: "Current quarter",
+					startTime: moment("2026-07-01T09:00:00"),
+					endTime: moment("2026-07-01T10:00:00"),
+					subEntries: null,
+				},
+			],
+		});
+		const viewState = createStore({
+			mode: TimekeepViewMode.QUARTER,
+			anchorDate: "2026-08-12",
+			followCurrent: true,
+		});
+		const onCustomExport = vi.fn();
+		customOutputFormats.setState({
+			custom: {
+				getButtonLabel: () => "Custom",
+				onExport: onCustomExport,
+			},
+		});
+		const component = new TimesheetExportActions(
+			container,
+			app,
+			timekeep,
+			settings,
+			customOutputFormats,
+			viewState
+		);
+		component.load();
+
+		await component.onCopyMarkdown();
+		expect(writeText.mock.calls.at(-1)?.[0]).toContain("Current quarter");
+		expect(writeText.mock.calls.at(-1)?.[0]).not.toContain("Previous quarter");
+
+		await component.onCopyCSV();
+		expect(writeText.mock.calls.at(-1)?.[0]).toContain("Current quarter");
+		expect(writeText.mock.calls.at(-1)?.[0]).not.toContain("Previous quarter");
+
+		await component.onCopyJSON();
+		const jsonOutput = JSON.parse(writeText.mock.calls.at(-1)?.[0] ?? "{}");
+		expect(jsonOutput.entries.map((entry: { name: string }) => entry.name)).toEqual([
+			"Current quarter",
+		]);
+
+		const exportPdfSpy = vi.spyOn(exportPdf, "exportPdf").mockResolvedValue(undefined);
+		await component.onSavePDF();
+		expect(exportPdfSpy.mock.calls.at(-1)?.[1].entries.map((entry) => entry.name)).toEqual([
+			"Current quarter",
+		]);
+
+		container.querySelector<HTMLButtonElement>('[data-custom-format="custom"]')?.click();
+		expect(onCustomExport.mock.calls.at(-1)?.[0].entries.map((entry) => entry.name)).toEqual([
+			"Current quarter",
+		]);
+
+		component.unload();
+		vi.useRealTimers();
+	});
+
 	it("onSavePDF should show a notice on error", async () => {
 		const exportPdfSpy = vi
 			.spyOn(exportPdf, "exportPdf")

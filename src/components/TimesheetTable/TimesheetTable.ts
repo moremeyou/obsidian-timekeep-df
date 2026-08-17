@@ -156,13 +156,23 @@ export class TimesheetTable extends DomComponent {
 			presentation: TimesheetRowPresentation;
 		};
 		const descriptors: RowDescriptor[] = [];
+		let resolvedHistoricalDraft: HistoricalActivityDraft | null = null;
 		const appendEntry = (
 			entry: (typeof timekeep.entries)[number],
 			depth: number,
 			presentation: TimesheetRowPresentation = {}
 		): void => {
 			descriptors.push({ entry, depth, presentation });
-			if (!entry.subEntries || entry.collapsed || entry.subEntries.length === 0) return;
+			if (!entry.subEntries || entry.subEntries.length === 0) return;
+			if (entry.collapsed) {
+				const draftEntry = resolvedHistoricalDraft
+					? entry.subEntries.find(
+							(child) => child.id === resolvedHistoricalDraft?.entryId
+						)
+					: undefined;
+				if (draftEntry) appendEntry(draftEntry, depth + 1, presentation);
+				return;
+			}
 
 			for (const child of getEntriesSorted(entry.subEntries, settings)) {
 				appendEntry(child, depth + 1, presentation);
@@ -175,7 +185,6 @@ export class TimesheetTable extends DomComponent {
 			getTimekeepViewWindow(this.viewState.getState())
 		);
 		const historicalDraft = this.historicalDraft.getState();
-		let resolvedHistoricalDraft: HistoricalActivityDraft | null = null;
 		if (historicalDraft) {
 			const sourceActivity =
 				timekeep.entries.find((entry) => entry.id === historicalDraft.activityId) ??
@@ -217,7 +226,6 @@ export class TimesheetTable extends DomComponent {
 									...sourceActivity,
 									startTime: null,
 									endTime: null,
-									collapsed: false,
 									subEntries: [draftEntry],
 								},
 					];
@@ -232,7 +240,6 @@ export class TimesheetTable extends DomComponent {
 							index === visibleActivityIndex
 								? {
 										...visibleActivity,
-										collapsed: false,
 										subEntries: [...visibleActivity.subEntries, draftEntry],
 									}
 								: entry

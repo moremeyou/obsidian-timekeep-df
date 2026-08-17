@@ -165,6 +165,7 @@ describe("TimesheetTable", () => {
 				{
 					id: 190,
 					name: "Project Management",
+					collapsed: true,
 					startTime: null,
 					endTime: null,
 					subEntries: [
@@ -194,6 +195,7 @@ describe("TimesheetTable", () => {
 
 		component.load();
 		expect(component.wrapperEl?.querySelector("form.timekeep-df-editing")).not.toBeNull();
+		expect(component.wrapperEl?.querySelectorAll("tbody > tr")).toHaveLength(2);
 		expect(
 			component.wrapperEl?.querySelector<HTMLInputElement>('form input[name="name"]')?.value
 		).toBe("Block 2");

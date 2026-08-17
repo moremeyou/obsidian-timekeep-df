@@ -16,7 +16,12 @@ import { TimesheetEntryName } from "@/components/TimesheetEntryName";
 import { TimesheetEntryPercent } from "@/components/TimesheetEntryPercent";
 
 import { prepareHistoricalBlockDraft, type HistoricalActivityDraft } from "@/timekeep/draft";
-import { getEntryTimeBounds, getRunningEntry, isEntryRunning } from "@/timekeep/queries";
+import {
+	getEntryById,
+	getEntryTimeBounds,
+	getRunningEntry,
+	isEntryRunning,
+} from "@/timekeep/queries";
 import type { TimeEntry, Timekeep } from "@/timekeep/schema";
 import { startNewNestedEntry } from "@/timekeep/start";
 import { setEntryCollapsed, stopTimekeep, updateEntry } from "@/timekeep/update";
@@ -279,7 +284,8 @@ export class TimesheetRowContent extends ReplaceableComponent {
 		);
 
 		this.timekeep.setState((timekeep) => {
-			const newEntry = setEntryCollapsed(entry, !entry.collapsed);
+			const storedEntry = getEntryById(entry.id, timekeep.entries) ?? entry;
+			const newEntry = setEntryCollapsed(storedEntry, !storedEntry.collapsed);
 			const entries = updateEntry(timekeep.entries, entry.id, newEntry);
 			return { ...timekeep, entries };
 		});

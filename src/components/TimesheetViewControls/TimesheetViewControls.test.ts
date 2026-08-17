@@ -32,6 +32,9 @@ describe("TimesheetViewControls", () => {
 		const mode = component.wrapperEl?.querySelector("select");
 		expect(mode).toBeInstanceOf(HTMLSelectElement);
 		expect(mode?.classList.contains("dropdown")).toBe(true);
+		expect(
+			Array.from((mode as HTMLSelectElement).options).map((option) => option.value)
+		).toContain(TimekeepViewMode.QUARTER);
 		(mode as HTMLSelectElement).value = TimekeepViewMode.WEEK;
 		mode?.dispatchEvent(new Event("change"));
 		expect(viewState.getState().mode).toBe(TimekeepViewMode.WEEK);

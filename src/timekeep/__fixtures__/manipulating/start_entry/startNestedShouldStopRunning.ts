@@ -21,6 +21,7 @@ export const expected: TimeEntry[] = [
 	{
 		id: 1,
 		name: "Part 1",
+		collapsed: true,
 		startTime: null,
 		endTime: null,
 		subEntries: [

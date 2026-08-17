@@ -202,6 +202,9 @@ describe("TimesheetCounters", () => {
 
 		viewState.setState({ ...viewState.getState(), mode: TimekeepViewMode.WEEK });
 		expect(label?.textContent).toBe("Week total");
+
+		viewState.setState({ ...viewState.getState(), mode: TimekeepViewMode.QUARTER });
+		expect(label?.textContent).toBe("Quarter total");
 	});
 
 	it("marks a non-zero total within capacity green and an over-capacity total red", () => {
