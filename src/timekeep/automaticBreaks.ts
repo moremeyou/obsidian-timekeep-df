@@ -68,8 +68,9 @@ export function isAutomaticBreakRunning(timekeep: Timekeep, settings: TimekeepSe
 }
 
 /**
- * Stop explicit work and begin a consolidated Break when the stop occurs
- * inside configured working hours. Stopping the Break itself only stops it.
+ * Stop explicit work and begin a consolidated Break. When the working-hours
+ * limiter is enabled, the stop must occur inside the configured window.
+ * Stopping the Break itself only stops it.
  */
 export function stopTimekeepWithAutomaticBreak(
 	timekeep: Timekeep,
@@ -88,6 +89,13 @@ export function stopTimekeepWithAutomaticBreak(
 	}
 
 	const stopped = stopTimekeep(timekeep, currentTime);
+	if (!settings.limitAutomaticBreaksToWorkingHours) {
+		return {
+			...stopped,
+			entries: startActivity(configuredBreakName(settings), currentTime, stopped.entries),
+		};
+	}
+
 	const window = getWorkingHoursWindow(currentTime, settings);
 	if (
 		window === null ||
@@ -109,7 +117,12 @@ export function endAutomaticBreakAtWorkingHoursEnd(
 	currentTime: Moment,
 	settings: TimekeepSettings
 ): Timekeep {
-	if (!isAutomaticBreakRunning(timekeep, settings)) return timekeep;
+	if (
+		!settings.limitAutomaticBreaksToWorkingHours ||
+		!isAutomaticBreakRunning(timekeep, settings)
+	) {
+		return timekeep;
+	}
 
 	const running = getRunningEntry(timekeep.entries);
 	if (!running?.startTime) return timekeep;

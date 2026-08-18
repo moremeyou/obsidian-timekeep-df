@@ -72,6 +72,7 @@ export interface TimekeepSettings {
 	totalDaysPerWeek: number;
 	automaticBreaksEnabled: boolean;
 	automaticBreakName: string;
+	limitAutomaticBreaksToWorkingHours: boolean;
 	workingHoursStart: string;
 	workingHoursEnd: string;
 	defaultViewMode: TimekeepViewMode;
@@ -110,6 +111,7 @@ export const defaultSettings: TimekeepSettings = {
 	totalDaysPerWeek: 5,
 	automaticBreaksEnabled: false,
 	automaticBreakName: "Break",
+	limitAutomaticBreaksToWorkingHours: false,
 	workingHoursStart: "09:00",
 	workingHoursEnd: "17:00",
 	defaultViewMode: TimekeepViewMode.DAY,

@@ -65,9 +65,10 @@ This plugin provides a simple and easy way to track time spent on various tasks.
 
 ### Optional automatic breaks
 
-- Automatic breaks are opt-in and disabled by default. When enabled, explicitly stopping a non-Break Activity during configured working hours immediately starts the configured Break Activity.
+- Automatic breaks are opt-in and disabled by default. When enabled, explicitly stopping a non-Break Activity immediately starts the configured Break Activity.
+- Working-hours limits are separately opt-in. When enabled, automatic Breaks only begin inside the configured window and are capped at its end; when disabled, they work at any time.
 - Repeated breaks consolidate into dated Blocks under one top-level Activity. Starting another Activity ends the running Break normally, while stopping the Break itself does not start another one.
-- Native time controls define the local working-hours start and end. A running automatic Break is capped at the configured end time, including after device sleep or while its tracker view is closed.
+- Native time controls define the local working-hours start and end. When working-hours limiting is enabled, a running automatic Break is capped at the configured end time, including after device sleep or while its tracker view is closed.
 - The Break Activity name is configurable and defaults to **Break**. An end time earlier than the start time represents an overnight working window.
 - Tapping the range timer card includes or excludes every top-level Activity whose trimmed name matches the configured Break Activity name without regard to letter case. This changes only the displayed total and capacity color; it never modifies tracking data, table rows, or exports.
 
@@ -101,10 +102,11 @@ Timekeep DF adds these settings under **Settings → Timekeep DF**:
 | Default timesheet view | Day | Chooses the initial Day, Week, Month, Quarter, or Year window. |
 | Total daily working hours | 8 | Calculates the **%** column and Day capacity. |
 | Total days per week | 5 | Scales Week, Month, Quarter, and Year capacity. |
-| Enable automatic breaks | Off | Starts a consolidated Break Activity when work is explicitly stopped during working hours. |
+| Enable automatic breaks | Off | Starts a consolidated Break Activity when work is explicitly stopped. |
 | Break Activity name | Break | Names the Activity used for automatic break Blocks. |
-| Working hours start | 09:00 | Earliest local time at which an explicit stop starts an automatic Break. |
-| Working hours end | 17:00 | Caps automatic Breaks at the local end of the work window. |
+| Limit automatic breaks to working hours | Off | Restricts automatic Break creation and cutoff to the configured work window. |
+| Working hours start | 09:00 | Start of the optional automatic-Break work window. |
+| Working hours end | 17:00 | End of the optional automatic-Break work window. |
 
 ## ➕ Create a tracker
 

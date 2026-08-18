@@ -27,6 +27,7 @@ describe("legacy settings compatibility conversion", () => {
 	test("Automatic breaks are opt-in with a standard workday default", () => {
 		expect(defaultSettings.automaticBreaksEnabled).toBe(false);
 		expect(defaultSettings.automaticBreakName).toBe("Break");
+		expect(defaultSettings.limitAutomaticBreaksToWorkingHours).toBe(false);
 		expect(defaultSettings.workingHoursStart).toBe("09:00");
 		expect(defaultSettings.workingHoursEnd).toBe("17:00");
 	});

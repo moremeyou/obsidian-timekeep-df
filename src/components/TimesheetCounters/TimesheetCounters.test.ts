@@ -3,8 +3,8 @@
 import moment from "moment";
 import { describe, it, expect, vi, beforeEach, afterEach, assert } from "vitest";
 
-import { createMockContainer } from "@/__mocks__/obsidian";
-import { defaultSettings, TimekeepSettings } from "@/settings";
+import { createMockContainer, MockNotice } from "@/__mocks__/obsidian";
+import { defaultSettings, DurationFormat, TimekeepSettings } from "@/settings";
 import { createStore, Store } from "@/store";
 
 import { TimesheetCounters } from "./TimesheetCounters";
@@ -147,6 +147,7 @@ describe("TimesheetCounters", () => {
 		settingsStore.setState({
 			...defaultSettings,
 			automaticBreaksEnabled: true,
+			limitAutomaticBreaksToWorkingHours: true,
 			workingHoursStart: "09:00",
 			workingHoursEnd: "17:00",
 		});
@@ -260,21 +261,80 @@ describe("TimesheetCounters", () => {
 		expect(totalMode?.hidden).toBe(true);
 		expect(component.wrapperEl?.getAttribute("data-capacity-state")).toBe("over");
 		expect(component.wrapperEl?.getAttribute("aria-pressed")).toBe("false");
+		expect(
+			component.totalTimer?.wrapperEl?.querySelector(".timekeep-df-timer-label")?.textContent
+		).toBe("Day total");
 
-		component.wrapperEl?.click();
+		component.durationTimer?.wrapperEl?.click();
 
 		expect(viewState.getState().includeBreaksInTotal).toBe(false);
 		expect(totalValue?.textContent).toBe("2h 0s");
 		expect(totalMode?.hidden).toBe(true);
 		expect(component.wrapperEl?.getAttribute("data-capacity-state")).toBe("within");
 		expect(component.wrapperEl?.getAttribute("aria-pressed")).toBe("true");
+		expect(component.wrapperEl?.getAttribute("data-breaks-included")).toBe("false");
 		expect(component.wrapperEl?.getAttribute("aria-label")).toContain("excludes Break");
+		expect(
+			component.totalTimer?.wrapperEl?.querySelector(".timekeep-df-timer-label")?.textContent
+		).toBe("Day total");
+		expect(MockNotice).toHaveBeenLastCalledWith(
+			"Now showing total day hours excluding breaks."
+		);
 
 		component.wrapperEl?.dispatchEvent(
 			new KeyboardEvent("keydown", { key: "Enter", bubbles: true, cancelable: true })
 		);
 		expect(viewState.getState().includeBreaksInTotal).toBe(true);
 		expect(totalValue?.textContent).toBe("2h 30m 0s");
+		expect(
+			component.totalTimer?.wrapperEl?.querySelector(".timekeep-df-timer-label")?.textContent
+		).toBe("Day total");
+		expect(MockNotice).toHaveBeenLastCalledWith(
+			"Now showing total day hours including breaks."
+		);
+	});
+
+	it("does not toggle or notify when Breaks do not change the formatted total", () => {
+		vi.useFakeTimers();
+		vi.setSystemTime(new Date("2026-08-18T18:00:00"));
+		settingsStore.setState({
+			...defaultSettings,
+			automaticBreakName: "Break",
+			primaryDurationFormat: DurationFormat.SHORT,
+		});
+		const viewState = createStore({
+			mode: TimekeepViewMode.DAY,
+			anchorDate: "2026-08-18",
+			followCurrent: true,
+			includeBreaksInTotal: true,
+		});
+		timekeepStore.setState({
+			entries: [
+				{
+					id: 1,
+					name: "Project",
+					startTime: moment("2026-08-18T09:00:00"),
+					endTime: moment("2026-08-18T17:23:10"),
+					subEntries: null,
+				},
+				{
+					id: 2,
+					name: "Break",
+					startTime: moment("2026-08-18T17:23:10"),
+					endTime: moment("2026-08-18T17:23:31"),
+					subEntries: null,
+				},
+			],
+		});
+		component = new TimesheetCounters(container, settingsStore, timekeepStore, viewState);
+		component.load();
+
+		expect(component.wrapperEl?.getAttribute("data-break-toggle-available")).toBe("false");
+		expect(component.wrapperEl?.getAttribute("aria-disabled")).toBe("true");
+		component.durationTimer?.wrapperEl?.click();
+
+		expect(viewState.getState().includeBreaksInTotal).toBe(true);
+		expect(MockNotice).not.toHaveBeenCalled();
 	});
 
 	it("labels the total for the selected calendar range", () => {
@@ -288,12 +348,15 @@ describe("TimesheetCounters", () => {
 
 		const label = component.totalTimer?.wrapperEl?.querySelector(".timekeep-df-timer-label");
 		expect(label?.textContent).toBe("Day total");
+		expect(component.wrapperEl?.getAttribute("aria-label")).toContain("Day total");
 
 		viewState.setState({ ...viewState.getState(), mode: TimekeepViewMode.WEEK });
 		expect(label?.textContent).toBe("Week total");
+		expect(component.wrapperEl?.getAttribute("aria-label")).toContain("Week total");
 
 		viewState.setState({ ...viewState.getState(), mode: TimekeepViewMode.QUARTER });
 		expect(label?.textContent).toBe("Quarter total");
+		expect(component.wrapperEl?.getAttribute("aria-label")).toContain("Quarter total");
 	});
 
 	it("marks a non-zero total within capacity green and an over-capacity total red", () => {

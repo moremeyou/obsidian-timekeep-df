@@ -1,4 +1,5 @@
 import moment from "moment";
+import { Notice } from "obsidian";
 
 import type { TimekeepSettings } from "@/settings";
 import type { Store } from "@/store";
@@ -27,6 +28,10 @@ import {
 	type TimekeepViewState,
 } from "@/timekeep/view";
 
+function formatRangeTotal(settings: TimekeepSettings, total: number): string {
+	return total <= 0 ? "0.0h" : formatDuration(settings.primaryDurationFormat, total);
+}
+
 /**
  * Component for rendering the two live updating timers at the top of the
  * time keep block
@@ -45,6 +50,8 @@ export class TimesheetCounters extends DomComponent {
 
 	/** Currently tracked background interval for content */
 	currentContentInterval: number | undefined;
+	/** Whether excluding Breaks changes the currently formatted range total. */
+	#breakToggleAvailable = false;
 
 	constructor(
 		containerEl: HTMLElement,
@@ -138,12 +145,15 @@ export class TimesheetCounters extends DomComponent {
 		const includeBreaks = state.includeBreaksInTotal !== false;
 		const breakDisplayName = settings.automaticBreakName.trim() || "Break";
 		const breakName = breakDisplayName.toLocaleLowerCase();
-		const totalEntries = includeBreaks
-			? timekeep.entries
-			: timekeep.entries.filter(
-					(entry) => entry.name.trim().toLocaleLowerCase() !== breakName
-				);
-		const total = getTotalDuration(totalEntries, currentTime, window);
+		const entriesWithoutBreaks = timekeep.entries.filter(
+			(entry) => entry.name.trim().toLocaleLowerCase() !== breakName
+		);
+		const totalIncludingBreaks = getTotalDuration(timekeep.entries, currentTime, window);
+		const totalExcludingBreaks = getTotalDuration(entriesWithoutBreaks, currentTime, window);
+		const total = includeBreaks ? totalIncludingBreaks : totalExcludingBreaks;
+		this.#breakToggleAvailable =
+			formatRangeTotal(settings, totalIncludingBreaks) !==
+			formatRangeTotal(settings, totalExcludingBreaks);
 		const viewModeLabel: Record<TimekeepViewMode, string> = {
 			[TimekeepViewMode.DAY]: "Day total",
 			[TimekeepViewMode.WEEK]: "Week total",
@@ -154,17 +164,25 @@ export class TimesheetCounters extends DomComponent {
 
 		const totalLabel = viewModeLabel[state.mode];
 		this.totalTimer.setLabel(totalLabel);
-		this.totalTimer.setValues(
-			total <= 0 ? "0.0h" : formatDuration(settings.primaryDurationFormat, total),
-			""
-		);
+		this.totalTimer.setValues(formatRangeTotal(settings, total), "");
 		const toggleDescription = includeBreaks
 			? `${totalLabel} includes ${breakDisplayName}. Tap to exclude it.`
 			: `${totalLabel} excludes ${breakDisplayName}. Tap to include it.`;
-		this.wrapperEl.setAttribute("aria-label", toggleDescription);
+		const unavailableDescription = `${totalLabel} has no displayed ${breakDisplayName} time to toggle.`;
+		this.wrapperEl.setAttribute(
+			"aria-label",
+			this.#breakToggleAvailable ? toggleDescription : unavailableDescription
+		);
+		this.wrapperEl.setAttribute("aria-disabled", String(!this.#breakToggleAvailable));
 		this.wrapperEl.setAttribute("aria-pressed", String(!includeBreaks));
 		this.wrapperEl.setAttribute("data-breaks-included", String(includeBreaks));
-		this.wrapperEl.title = toggleDescription;
+		this.wrapperEl.setAttribute(
+			"data-break-toggle-available",
+			String(this.#breakToggleAvailable)
+		);
+		this.wrapperEl.title = this.#breakToggleAvailable
+			? toggleDescription
+			: unavailableDescription;
 		const capacityMS =
 			getTimekeepViewCapacityHours(
 				this.viewState.getState(),
@@ -180,10 +198,17 @@ export class TimesheetCounters extends DomComponent {
 	}
 
 	onToggleBreaksInTotal() {
-		this.viewState.setState((state) => ({
+		if (!this.#breakToggleAvailable) return;
+		const state = this.viewState.getState();
+		const includeBreaks = state.includeBreaksInTotal === false;
+		this.viewState.setState({
 			...state,
-			includeBreaksInTotal: state.includeBreaksInTotal === false,
-		}));
+			includeBreaksInTotal: includeBreaks,
+		});
+		const range = state.mode.toLocaleLowerCase();
+		new Notice(
+			`Now showing total ${range} hours ${includeBreaks ? "including" : "excluding"} breaks.`
+		);
 	}
 
 	onToggleKeyDown(event: KeyboardEvent) {
