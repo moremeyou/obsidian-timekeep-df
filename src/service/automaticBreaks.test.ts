@@ -20,6 +20,7 @@ describe("AutomaticBreakService", () => {
 		const settings = createStore({
 			...defaultSettings,
 			automaticBreaksEnabled: true,
+			limitAutomaticBreaksToWorkingHours: true,
 			workingHoursStart: "09:00",
 			workingHoursEnd: "17:00",
 		});
@@ -65,6 +66,22 @@ describe("AutomaticBreakService", () => {
 
 		expect(endBreak).toHaveBeenCalledOnce();
 		expect(endBreak.mock.calls[0][0]).toMatchObject({ file: breakFile });
+	});
+
+	it("does nothing while working-hours limiting is disabled", async () => {
+		const vault = new MockVault();
+		const settings = createStore({
+			...defaultSettings,
+			automaticBreaksEnabled: true,
+			limitAutomaticBreaksToWorkingHours: false,
+		});
+		const registry = new TimekeepRegistry(vault.asVault(), settings);
+		const endBreak = vi.spyOn(registry, "tryEndAutomaticBreak");
+		const service = new AutomaticBreakService(registry, settings);
+
+		await service.checkExpiredBreaks();
+
+		expect(endBreak).not.toHaveBeenCalled();
 	});
 
 	it("does nothing while automatic breaks are disabled", async () => {

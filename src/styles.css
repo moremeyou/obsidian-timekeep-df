@@ -9,6 +9,17 @@
 	flex-flow: column;
 }
 
+/* Keep native work-window controls large enough to show the complete time value. */
+.timekeep-df-settings-time-input {
+	width: 9rem !important;
+	min-width: 9rem !important;
+	height: 2.5rem;
+	min-height: 2.5rem;
+	padding-inline: 0.75rem;
+	font-size: var(--font-ui-medium);
+	box-sizing: border-box;
+}
+
 /* Horizontally scroll the item table when its stable columns cannot fit. */
 .timekeep-df-table-wrapper {
 	width: 100%;
@@ -791,6 +802,10 @@
 	border-radius: var(--radius-m);
 	white-space: nowrap;
 	cursor: pointer;
+}
+
+.timekeep-df-timers[data-break-toggle-available="false"] {
+	cursor: default;
 }
 
 .timekeep-df-timers:focus-visible {

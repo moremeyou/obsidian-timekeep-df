@@ -137,14 +137,14 @@ export class TimekeepSettingsTab extends PluginSettingTab {
 		new Setting(this.containerEl)
 			.setName("Automatic breaks")
 			.setDesc(
-				"Optionally start a Break Activity whenever you explicitly stop work during configured working hours. Starting another Activity ends the Break normally."
+				"Optionally start a Break Activity whenever you explicitly stop work. Starting another Activity ends the Break normally."
 			)
 			.setHeading();
 
 		new Setting(this.containerEl)
 			.setName("Enable automatic breaks")
 			.setDesc(
-				"When enabled, stopping a non-Break Activity during working hours starts a Break automatically. Leave this off to enter breaks manually."
+				"When enabled, stopping a non-Break Activity starts a Break automatically. Leave this off to enter breaks manually."
 			)
 			.addToggle((t) => {
 				t.setValue(settings.automaticBreaksEnabled);
@@ -152,6 +152,21 @@ export class TimekeepSettingsTab extends PluginSettingTab {
 					this.settingsStore.setState((currentValue) => ({
 						...currentValue,
 						automaticBreaksEnabled: v,
+					}));
+				});
+			});
+
+		new Setting(this.containerEl)
+			.setName("Limit automatic breaks to working hours")
+			.setDesc(
+				"When enabled, automatic Breaks only start inside the configured work window and stop at its end. Leave this off to track automatic Breaks at any time."
+			)
+			.addToggle((t) => {
+				t.setValue(settings.limitAutomaticBreaksToWorkingHours);
+				t.onChange((v) => {
+					this.settingsStore.setState((currentValue) => ({
+						...currentValue,
+						limitAutomaticBreaksToWorkingHours: v,
 					}));
 				});
 			});
@@ -174,10 +189,11 @@ export class TimekeepSettingsTab extends PluginSettingTab {
 
 		new Setting(this.containerEl)
 			.setName("Working hours start")
-			.setDesc("Automatic breaks can begin at or after this local time.")
+			.setDesc("Start of the optional automatic-Break work window, in local time.")
 			.addText((t) => {
 				t.inputEl.type = "time";
 				t.inputEl.step = "60";
+				t.inputEl.addClass("timekeep-df-settings-time-input");
 				t.setValue(settings.workingHoursStart);
 				t.onChange((v) => {
 					if (!/^([01]\d|2[0-3]):[0-5]\d$/.test(v)) return;
@@ -191,11 +207,12 @@ export class TimekeepSettingsTab extends PluginSettingTab {
 		new Setting(this.containerEl)
 			.setName("Working hours end")
 			.setDesc(
-				"Automatic breaks stop at this local time. An earlier end time represents an overnight work window."
+				"End of the optional automatic-Break work window. An earlier time represents an overnight window."
 			)
 			.addText((t) => {
 				t.inputEl.type = "time";
 				t.inputEl.step = "60";
+				t.inputEl.addClass("timekeep-df-settings-time-input");
 				t.setValue(settings.workingHoursEnd);
 				t.onChange((v) => {
 					if (!/^([01]\d|2[0-3]):[0-5]\d$/.test(v)) return;

@@ -19,6 +19,11 @@ const enabledSettings = {
 	workingHoursEnd: "17:00",
 };
 
+const limitedSettings = {
+	...enabledSettings,
+	limitAutomaticBreaksToWorkingHours: true,
+};
+
 function runningActivity(name = "Project", start = "2026-08-17T10:00:00"): Timekeep {
 	return {
 		entries: [
@@ -70,9 +75,19 @@ describe("automatic breaks", () => {
 		expect(output.entries[1].subEntries?.at(-1)?.startTime?.isSame(now)).toBe(true);
 	});
 
-	it("does not start a Break outside working hours", () => {
+	it("starts a Break outside working hours when the limiter is disabled", () => {
 		const now = moment("2026-08-17T18:00:00");
 		const output = stopTimekeepWithAutomaticBreak(runningActivity(), now, enabledSettings);
+
+		expect(output.entries).toHaveLength(2);
+		expect(output.entries[0].endTime?.isSame(now)).toBe(true);
+		expect(output.entries.at(-1)?.name).toBe("Break");
+		expect(output.entries.at(-1)?.endTime).toBeNull();
+	});
+
+	it("does not start a Break outside working hours when the limiter is enabled", () => {
+		const now = moment("2026-08-17T18:00:00");
+		const output = stopTimekeepWithAutomaticBreak(runningActivity(), now, limitedSettings);
 
 		expect(output.entries).toHaveLength(1);
 		expect(output.entries[0].endTime?.isSame(now)).toBe(true);
@@ -95,7 +110,7 @@ describe("automatic breaks", () => {
 		const output = endAutomaticBreakAtWorkingHoursEnd(
 			input,
 			moment("2026-08-17T18:15:00"),
-			enabledSettings
+			limitedSettings
 		);
 
 		expect(output.entries[0].endTime?.format("YYYY-MM-DD HH:mm:ss")).toBe(
@@ -103,9 +118,21 @@ describe("automatic breaks", () => {
 		);
 	});
 
+	it("does not cap a running Break when the limiter is disabled", () => {
+		const input = runningActivity("Break", "2026-08-17T16:30:00");
+		const output = endAutomaticBreakAtWorkingHoursEnd(
+			input,
+			moment("2026-08-17T18:15:00"),
+			enabledSettings
+		);
+
+		expect(output).toBe(input);
+		expect(output.entries[0].endTime).toBeNull();
+	});
+
 	it("supports overnight working-hour windows", () => {
 		const settings = {
-			...enabledSettings,
+			...limitedSettings,
 			workingHoursStart: "22:00",
 			workingHoursEnd: "06:00",
 		};

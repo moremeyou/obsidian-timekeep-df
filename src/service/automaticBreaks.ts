@@ -33,7 +33,14 @@ export class AutomaticBreakService extends Component {
 	}
 
 	async checkExpiredBreaks(): Promise<void> {
-		if (this.#checking || !this.settings.getState().automaticBreaksEnabled) return;
+		const currentSettings = this.settings.getState();
+		if (
+			this.#checking ||
+			!currentSettings.automaticBreaksEnabled ||
+			!currentSettings.limitAutomaticBreaksToWorkingHours
+		) {
+			return;
+		}
 		this.#checking = true;
 		try {
 			const currentTime = moment();

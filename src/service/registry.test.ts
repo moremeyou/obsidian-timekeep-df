@@ -460,6 +460,7 @@ describe("TimekeepRegistry", () => {
 				createStore({
 					...defaultSettings,
 					automaticBreaksEnabled: true,
+					limitAutomaticBreaksToWorkingHours: true,
 					workingHoursStart: "09:00",
 					workingHoursEnd: "17:00",
 				})
