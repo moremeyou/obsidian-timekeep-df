@@ -8,7 +8,7 @@ import { beforeEach, it, describe, Mock, vi, expect, afterEach } from "vitest";
 import type { TimekeepSettings } from "@/settings";
 import type { Store } from "@/store";
 
-import { createMockContainer } from "@/__mocks__/obsidian";
+import { createMockContainer, MockNotice } from "@/__mocks__/obsidian";
 import { ClockFormat, defaultSettings } from "@/settings";
 import { createStore } from "@/store";
 
@@ -39,6 +39,7 @@ describe("TimesheetRowContentEditing", () => {
 	let component: TimesheetRowContentEditing;
 
 	beforeEach(() => {
+		MockNotice.mockClear();
 		app = {} as App;
 		containerEl = createMockContainer();
 		timekeep = createStore(defaultTimekeep());
@@ -194,7 +195,7 @@ describe("TimesheetRowContentEditing", () => {
 		expect(saved.endTime?.format("YYYY-MM-DD HH:mm:ss.SSS")).toBe("2026-09-04 01:02:00.000");
 	});
 
-	it("keeps an empty historical draft unstarted on Save", () => {
+	it("keeps a historical draft open until its end is after its start", () => {
 		const entry: TimeEntry = {
 			id: 1,
 			name: "Historical Activity",
@@ -226,7 +227,10 @@ describe("TimesheetRowContentEditing", () => {
 			startTime: null,
 			endTime: null,
 		});
-		expect(onFinishEditing).toHaveBeenCalledOnce();
+		expect(onFinishEditing).not.toHaveBeenCalled();
+		expect(MockNotice).toHaveBeenLastCalledWith(
+			"Timekeep DF: end time must be after start time"
+		);
 	});
 
 	it("saves a positive historical draft interval at minute precision", () => {

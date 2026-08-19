@@ -54,7 +54,7 @@ This plugin provides a simple and easy way to track time spent on various tasks.
 - Tapping or focusing the empty Add Activity field immediately opens the complete registered Activity list; typing filters it. The popup expands for normal lists and becomes scrollable only when the available screen or list length requires it.
 - In a previous period, adding an Activity opens its editor immediately and never starts a live timer. Registry-backed autocomplete reuses the matching Activity instead of creating duplicate top-level names.
 - In a previous period, each Activity’s real-time control becomes **+**. It creates or reopens a correctly numbered child Block and opens the editor immediately.
-- A historical draft with no positive duration stays out of the normal filtered table. Canceling it leaves no visible zero-duration row; saving valid times makes it part of that period.
+- A historical draft stays in memory and is not written into the tracker until it has a positive duration. Cancel restores the exact prior Activity, while saving valid times makes the new Block part of that period.
 
 ### Range-aware deletion
 
@@ -134,7 +134,7 @@ The tracker header prioritizes the current Activity, its active Block path, and 
 
 Each view shows only Activities and Blocks with tracked duration in its selected calendar window. Parent Activities remain visible when a descendant Block has duration. The tracker export buttons—Markdown, CSV, JSON, PDF, and registered custom formats—apply the same filter and clip overlapping sessions to the window; stored tracker data is not modified.
 
-For current periods, the row control starts or stops real-time tracking. For historical periods, that control becomes **+** and opens a new Block in the editor. Adding an Activity in a historical period also opens the editor immediately and never starts a live timer. A historical draft becomes part of the visible window only after it has a valid positive duration.
+For current periods, the row control starts or stops real-time tracking. For historical periods, that control becomes **+** and opens a new Block in the editor. Adding an Activity in a historical period also opens the editor immediately and never starts a live timer. A historical draft remains transient and is not written into the tracker until it has a valid positive duration; Cancel restores the exact prior Activity state.
 
 When you add an Activity whose trimmed name matches an existing Activity without regard to letter case, Timekeep DF reuses that Activity and creates a new Block. Selecting the autocomplete suggestion is the easiest way to guarantee the intended name, but the matching itself happens automatically when the form is submitted. This keeps one Activity-level history while the selected range determines which Blocks appear.
 

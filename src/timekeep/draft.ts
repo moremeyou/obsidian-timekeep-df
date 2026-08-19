@@ -10,6 +10,8 @@ export type HistoricalActivityDraft = {
 	entryId: number;
 	entryName: string;
 	initialTime: Moment;
+	/** Activity state to restore when this transient draft is cancelled. */
+	originalActivity?: TimeEntry | null;
 	/** Prevents a retained draft from opening duplicate mobile modals. */
 	claimed?: boolean;
 };
@@ -38,6 +40,7 @@ function prepareBlockDraft(
 					entryId: existingDraft.id,
 					entryName: existingDraft.name,
 					initialTime: moment(initialTime).startOf("minute"),
+					originalActivity: activity,
 				},
 			};
 		}
@@ -69,6 +72,7 @@ function prepareBlockDraft(
 			entryId: draftEntry.id,
 			entryName: draftEntry.name,
 			initialTime: moment(initialTime).startOf("minute"),
+			originalActivity: activity,
 		},
 	};
 }
@@ -127,6 +131,7 @@ export function prepareHistoricalActivityDraft(
 				entryId: activity.id,
 				entryName: activity.name,
 				initialTime: moment(initialTime).startOf("minute"),
+				originalActivity: null,
 			},
 		};
 	}
@@ -141,6 +146,7 @@ export function prepareHistoricalActivityDraft(
 				entryId: activity.id,
 				entryName: activity.name,
 				initialTime: moment(initialTime).startOf("minute"),
+				originalActivity: activity,
 			},
 		};
 	}
@@ -157,4 +163,45 @@ export function prepareHistoricalBlockDraft(
 	const activityIndex = entries.findIndex((entry) => entry.id === activityId);
 	if (activityIndex === -1) return null;
 	return prepareBlockDraft(entries, activityIndex, initialTime);
+}
+
+/**
+ * Remove a transient historical draft and restore the exact Activity state
+ * that existed before the editor opened.
+ */
+export function discardHistoricalActivityDraft(
+	entries: TimeEntry[],
+	draft: HistoricalActivityDraft
+): TimeEntry[] {
+	const activityIndex = entries.findIndex(
+		(entry) =>
+			entry.id === draft.activityId ||
+			normalizedName(entry.name) === normalizedName(draft.activityName)
+	);
+	if (activityIndex === -1) return entries;
+
+	const originalActivity = draft.originalActivity;
+	if (originalActivity === undefined) {
+		const activity = entries[activityIndex];
+		if (activity.id === draft.entryId) {
+			return entries.filter((_, index) => index !== activityIndex);
+		}
+		if (activity.subEntries === null) return entries;
+		return entries.map((entry, index) =>
+			index === activityIndex
+				? {
+						...activity,
+						subEntries: activity.subEntries.filter(
+							(child) => child.id !== draft.entryId
+						),
+					}
+				: entry
+		);
+	}
+
+	if (originalActivity === null) {
+		return entries.filter((_, index) => index !== activityIndex);
+	}
+
+	return entries.map((entry, index) => (index === activityIndex ? originalActivity : entry));
 }

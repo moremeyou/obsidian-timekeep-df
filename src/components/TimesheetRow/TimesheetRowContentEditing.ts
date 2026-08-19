@@ -1,6 +1,7 @@
 import type { App } from "obsidian";
 
 import moment, { type Moment } from "moment";
+import { Notice } from "obsidian";
 
 import type { Store } from "@/store";
 
@@ -13,7 +14,7 @@ import { ReplaceableComponent } from "@/components/ReplaceableComponent";
 
 import { ConfirmModal } from "@/modals/ConfirmModal";
 
-import type { HistoricalActivityDraft } from "@/timekeep/draft";
+import { discardHistoricalActivityDraft, type HistoricalActivityDraft } from "@/timekeep/draft";
 import { getEntryById } from "@/timekeep/queries";
 import type { TimeEntry, Timekeep } from "@/timekeep/schema";
 import { removeActivityTimeWithinWindow, removeEntry, updateEntry } from "@/timekeep/update";
@@ -167,7 +168,7 @@ export class TimesheetRowContentEditing extends ReplaceableComponent {
 			},
 		});
 		cancelButton.type = "button";
-		this.registerDomEvent(cancelButton, "click", this.onFinishEditing);
+		this.registerDomEvent(cancelButton, "click", this.onCancel.bind(this));
 		cancelButton.appendText("Cancel");
 
 		const destructiveActionsEl = footerEl.createDiv({
@@ -300,6 +301,17 @@ export class TimesheetRowContentEditing extends ReplaceableComponent {
 			this.#endTimeEditor.setValue(this.historicalDraft.initialTime);
 	}
 
+	onCancel() {
+		const historicalDraft = this.historicalDraft;
+		if (historicalDraft) {
+			this.timekeep.setState((timekeep) => ({
+				...timekeep,
+				entries: discardHistoricalActivityDraft(timekeep.entries, historicalDraft),
+			}));
+		}
+		this.onFinishEditing();
+	}
+
 	onConfirmDelete() {
 		const state = this.viewState.getState();
 		const blockCount = this.entry.subEntries?.length ?? 1;
@@ -368,6 +380,18 @@ export class TimesheetRowContentEditing extends ReplaceableComponent {
 
 		const name = this.#nameInputEl.value;
 		const entry = this.entry;
+		const historicalStartTime = this.historicalDraft ? this.#startTimeEditor.getValue() : null;
+		const historicalEndTime = this.historicalDraft ? this.#endTimeEditor.getValue() : null;
+
+		if (
+			this.historicalDraft &&
+			(!historicalStartTime?.isValid() ||
+				!historicalEndTime?.isValid() ||
+				!historicalEndTime.isAfter(historicalStartTime))
+		) {
+			new Notice("Timekeep DF: end time must be after start time");
+			return;
+		}
 
 		// Clear a historical editor before its data update can rebuild the table.
 		if (this.historicalDraft) this.onFinishEditing();
@@ -377,17 +401,9 @@ export class TimesheetRowContentEditing extends ReplaceableComponent {
 			const storedEntry = getEntryById(entry.id, timekeep.entries) ?? entry;
 			const newEntry = { ...storedEntry, name };
 			if (newEntry.subEntries === null) {
-				if (this.historicalDraft) {
-					const startTimeValue = this.#startTimeEditor!.getValue();
-					const endTimeValue = this.#endTimeEditor!.getValue();
-					if (
-						startTimeValue.isValid() &&
-						endTimeValue.isValid() &&
-						endTimeValue.isAfter(startTimeValue)
-					) {
-						newEntry.startTime = startTimeValue;
-						newEntry.endTime = endTimeValue;
-					}
+				if (historicalStartTime && historicalEndTime) {
+					newEntry.startTime = historicalStartTime;
+					newEntry.endTime = historicalEndTime;
 				} else if (storedEntry.startTime !== null) {
 					const startTimeValue = this.#startTimeEditor!.getValue();
 					if (startTimeValue.isValid()) newEntry.startTime = startTimeValue;

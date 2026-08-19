@@ -8,7 +8,7 @@ import {
 
 import type { TimesheetSaveAdapter } from "./TimesheetSaveAdapter";
 
-import { replaceTimekeepCodeblock } from "@/timekeep/parser";
+import { load, replaceTimekeepCodeblock } from "@/timekeep/parser";
 import type { Timekeep } from "@/timekeep/schema";
 
 export class TimesheetMarkdownSaveAdapter implements TimesheetSaveAdapter {
@@ -64,12 +64,26 @@ export class TimesheetMarkdownSaveAdapter implements TimesheetSaveAdapter {
 
 		// Replace the stored timekeep block with the new one
 		await this.vault.process(file, (data) => {
-			return replaceTimekeepCodeblock(
+			this.assertValidStoredTimekeep(data, sectionInfo.lineStart, sectionInfo.lineEnd);
+			const updated = replaceTimekeepCodeblock(
 				timekeep,
 				data,
 				sectionInfo.lineStart,
 				sectionInfo.lineEnd
 			);
+			this.assertValidStoredTimekeep(updated, sectionInfo.lineStart, sectionInfo.lineEnd);
+			return updated;
 		});
+	}
+
+	private assertValidStoredTimekeep(data: string, lineStart: number, lineEnd: number): void {
+		const content = data
+			.split("\n")
+			.slice(lineStart + 1, lineEnd)
+			.join("\n");
+		const result = load(content);
+		if (!result.success) {
+			throw new Error(`Refusing to overwrite invalid timekeep data: ${result.error}`);
+		}
 	}
 }
