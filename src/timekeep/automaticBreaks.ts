@@ -44,6 +44,19 @@ export function getWorkingHoursWindow(
 	return { start, end };
 }
 
+/** Whether a local timestamp is at or beyond the end of its recurring work window. */
+export function isAfterWorkingHours(at: Moment, settings: TimekeepSettings): boolean {
+	const startMinutes = parseTimeMinutes(settings.workingHoursStart);
+	const endMinutes = parseTimeMinutes(settings.workingHoursEnd);
+	if (startMinutes === null || endMinutes === null || startMinutes === endMinutes) return false;
+
+	const atMinutes = at.hours() * 60 + at.minutes();
+	if (startMinutes < endMinutes) return atMinutes >= endMinutes;
+
+	// For an overnight schedule, the daytime gap begins at the shift end.
+	return atMinutes >= endMinutes && atMinutes < startMinutes;
+}
+
 function configuredBreakName(settings: TimekeepSettings): string {
 	return settings.automaticBreakName.trim() || defaultSettings.automaticBreakName;
 }

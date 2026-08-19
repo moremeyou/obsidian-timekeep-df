@@ -5,6 +5,7 @@ import type { Store } from "@/store";
 
 import { ReplaceableComponent } from "@/components/ReplaceableComponent";
 
+import { isAfterWorkingHours } from "@/timekeep/automaticBreaks";
 import { getTotalDuration } from "@/timekeep/queries";
 import type { Timekeep } from "@/timekeep/schema";
 import {
@@ -49,6 +50,7 @@ export class TimesheetRunningEntryEmpty extends ReplaceableComponent {
 		this.register(this.timekeep.subscribe(onUpdate));
 		this.register(this.settings.subscribe(onUpdate));
 		this.register(this.viewState.subscribe(onUpdate));
+		this.registerInterval(window.setInterval(onUpdate, 30_000));
 		onUpdate();
 	}
 
@@ -72,7 +74,10 @@ export class TimesheetRunningEntryEmpty extends ReplaceableComponent {
 			60 *
 			1000;
 
+		const capacityReached = capacityMilliseconds > 0 && total >= capacityMilliseconds;
 		this.#messageEl.textContent =
-			total > capacityMilliseconds ? "Stop working!" : "Get to work!";
+			capacityReached || isAfterWorkingHours(currentTime, settings)
+				? "Stop working!"
+				: "Get to work!";
 	}
 }
