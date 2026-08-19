@@ -149,7 +149,7 @@ describe("TimesheetTable", () => {
 		component.wrapperEl?.querySelector<HTMLButtonElement>('[data-action="cancel"]')?.click();
 		expect(historicalDraft.getState()).toBeNull();
 		expect(component.wrapperEl?.querySelectorAll("tbody > tr")).toHaveLength(0);
-		expect(timekeep.getState().entries).toEqual([draftEntry]);
+		expect(timekeep.getState().entries).toEqual([]);
 	});
 
 	it("reopens a historical draft after parser runtime IDs change", () => {

@@ -273,8 +273,8 @@ export class TimesheetRowContent extends ReplaceableComponent {
 			initialTime
 		);
 		if (!prepared) return;
-		this.timekeep.setState({ ...timekeep, entries: prepared.entries });
 		this.historicalDraft.setState(prepared.draft);
+		this.timekeep.setState({ ...timekeep, entries: prepared.entries });
 	}
 
 	onToggleCollapsed() {

@@ -13,13 +13,18 @@ import { Timesheet } from "@/components/Timesheet";
 import { TimesheetLoadError } from "@/components/TimesheetLoadError";
 import { TimesheetSaveError } from "@/components/TimesheetSaveError";
 
-import type { HistoricalActivityDraft } from "@/timekeep/draft";
+import { discardHistoricalActivityDraft, type HistoricalActivityDraft } from "@/timekeep/draft";
 import type { LoadResult } from "@/timekeep/parser";
 import { defaultTimekeep, stripTimekeepRuntimeData, type Timekeep } from "@/timekeep/schema";
 import { createTimekeepViewState, type TimekeepViewState } from "@/timekeep/view";
 
 import { TimekeepAutocomplete } from "@/service/autocomplete";
 import { TimekeepRegistry } from "@/service/registry";
+
+type SaveRequest = {
+	timekeep: Timekeep;
+	serialized: string;
+};
 
 export default class TimekeepView extends ContentComponent<
 	Timesheet | TimesheetLoadError | TimesheetSaveError | EmptyComponent
@@ -36,6 +41,7 @@ export default class TimekeepView extends ContentComponent<
 	trackerKey: (() => string) | undefined;
 	fallbackViewState: Store<TimekeepViewState>;
 	fallbackHistoricalDraft: Store<HistoricalActivityDraft | null>;
+	historicalDraft: Store<HistoricalActivityDraft | null>;
 
 	/** Loading result for the timekeep data */
 	loadResult: Store<LoadResult | null>;
@@ -49,6 +55,12 @@ export default class TimekeepView extends ContentComponent<
 
 	onBeforeSave: VoidFunction | undefined;
 	onAfterSave: VoidFunction | undefined;
+
+	#timekeepInitialized = false;
+	#saveSubscriptionRegistered = false;
+	#lastSavedSerialized: string | null = null;
+	#desiredSave: SaveRequest | null = null;
+	#saveLoop: Promise<void> | null = null;
 
 	constructor(
 		containerEl: HTMLElement,
@@ -78,6 +90,7 @@ export default class TimekeepView extends ContentComponent<
 			createTimekeepViewState(settings.getState().defaultViewMode)
 		);
 		this.fallbackHistoricalDraft = createStore<HistoricalActivityDraft | null>(null);
+		this.historicalDraft = this.fallbackHistoricalDraft;
 
 		this.saveAdapter = saveAdapter;
 	}
@@ -112,11 +125,22 @@ export default class TimekeepView extends ContentComponent<
 			this.setContent(new TimesheetSaveError(this.containerEl, this.timekeep));
 		} else if (loadResult.success) {
 			const timekeep = loadResult.timekeep;
-			this.timekeep.setState(timekeep);
-
-			this.register(this.timekeep.subscribe(this.onSave.bind(this)));
 
 			const trackerKey = this.registry && this.trackerKey ? this.trackerKey() : null;
+			this.historicalDraft = trackerKey
+				? (this.registry?.getHistoricalDraft(trackerKey) ?? this.fallbackHistoricalDraft)
+				: this.fallbackHistoricalDraft;
+
+			if (!this.#timekeepInitialized) {
+				this.timekeep.setState(timekeep);
+				this.#lastSavedSerialized = this.serializeTimekeep(timekeep);
+				this.#timekeepInitialized = true;
+			}
+			if (!this.#saveSubscriptionRegistered) {
+				this.register(this.timekeep.subscribe(this.onSave.bind(this)));
+				this.#saveSubscriptionRegistered = true;
+			}
+
 			this.setContent(
 				new Timesheet(
 					this.containerEl,
@@ -126,9 +150,7 @@ export default class TimekeepView extends ContentComponent<
 					this.customOutputFormats,
 					this.autocomplete,
 					trackerKey ? this.registry?.getViewState(trackerKey) : this.fallbackViewState,
-					trackerKey
-						? this.registry?.getHistoricalDraft(trackerKey)
-						: this.fallbackHistoricalDraft
+					this.historicalDraft
 				)
 			);
 		} else {
@@ -136,13 +158,45 @@ export default class TimekeepView extends ContentComponent<
 		}
 	}
 
-	async onSave() {
+	onSave(): Promise<void> {
+		const timekeep = this.getPersistableTimekeep();
+		this.#desiredSave = {
+			timekeep,
+			serialized: this.serializeTimekeep(timekeep),
+		};
+
+		if (this.#saveLoop === null) {
+			this.startSaveLoop();
+		}
+
+		return this.#saveLoop ?? Promise.resolve();
+	}
+
+	private startSaveLoop(): void {
+		const loop = this.flushSaveQueue();
+		this.#saveLoop = loop;
+		void loop.finally(() => {
+			if (this.#saveLoop !== loop) return;
+			this.#saveLoop = null;
+			if (this.#desiredSave !== null) this.startSaveLoop();
+		});
+	}
+
+	private async flushSaveQueue(): Promise<void> {
+		while (this.#desiredSave !== null) {
+			const request = this.#desiredSave;
+			this.#desiredSave = null;
+			if (request.serialized === this.#lastSavedSerialized) continue;
+			await this.performSave(request);
+		}
+	}
+
+	private async performSave(request: SaveRequest): Promise<void> {
 		if (this.onBeforeSave) this.onBeforeSave();
 
-		const timekeep = this.timekeep.getState();
-
 		try {
-			await this.saveAdapter.onSave(timekeep);
+			await this.saveAdapter.onSave(request.timekeep);
+			this.#lastSavedSerialized = request.serialized;
 
 			// Clear error state on success
 			if (this.saveError.getState()) {
@@ -152,7 +206,7 @@ export default class TimekeepView extends ContentComponent<
 			console.error("Timekeep DF failed to save", e);
 
 			try {
-				const fileName = await this.saveFallback(timekeep);
+				const fileName = await this.saveFallback(request.timekeep);
 				new Notice(`Timekeep DF: save failed; backup saved to ${fileName}`);
 			} catch (e) {
 				console.error("Timekeep DF couldn't save a fallback", e);
@@ -163,6 +217,21 @@ export default class TimekeepView extends ContentComponent<
 		} finally {
 			if (this.onAfterSave) this.onAfterSave();
 		}
+	}
+
+	private getPersistableTimekeep(): Timekeep {
+		const timekeep = this.timekeep.getState();
+		const historicalDraft = this.historicalDraft.getState();
+		if (historicalDraft === null) return timekeep;
+
+		return {
+			...timekeep,
+			entries: discardHistoricalActivityDraft(timekeep.entries, historicalDraft),
+		};
+	}
+
+	private serializeTimekeep(timekeep: Timekeep): string {
+		return JSON.stringify(stripTimekeepRuntimeData(timekeep));
 	}
 
 	/**

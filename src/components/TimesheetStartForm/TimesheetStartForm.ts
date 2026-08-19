@@ -132,8 +132,8 @@ export class TimesheetStartForm extends DomComponent {
 				this.autocomplete.names.getState(),
 				selectedDateTime
 			);
-			this.timekeep.setState({ ...timekeep, entries: prepared.entries });
 			this.historicalDraft.setState(prepared.draft);
+			this.timekeep.setState({ ...timekeep, entries: prepared.entries });
 			nameInput.resetValue();
 			return;
 		}

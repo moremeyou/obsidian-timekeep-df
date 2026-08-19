@@ -1,7 +1,11 @@
 import moment from "moment";
 import { describe, expect, it } from "vitest";
 
-import { prepareHistoricalActivityDraft, prepareHistoricalBlockDraft } from "./draft";
+import {
+	discardHistoricalActivityDraft,
+	prepareHistoricalActivityDraft,
+	prepareHistoricalBlockDraft,
+} from "./draft";
 
 import type { TimeEntry } from "@/timekeep/schema";
 
@@ -140,5 +144,35 @@ describe("prepareHistoricalActivityDraft", () => {
 
 		expect(prepared?.entries[0].subEntries?.at(-1)?.name).toBe("Block 3");
 		expect(prepared?.draft.entryId).toBe(prepared?.entries[0].subEntries?.at(-1)?.id);
+	});
+
+	it("restores an existing Activity exactly when a historical Block draft is discarded", () => {
+		const activity: TimeEntry = {
+			id: 10,
+			name: "Project Management",
+			startTime: moment("2026-08-10T09:00"),
+			endTime: moment("2026-08-10T10:00"),
+			subEntries: null,
+		};
+		const prepared = prepareHistoricalBlockDraft(
+			[activity],
+			activity.id,
+			moment("2026-08-11T14:30")
+		)!;
+
+		expect(discardHistoricalActivityDraft(prepared.entries, prepared.draft)).toEqual([
+			activity,
+		]);
+	});
+
+	it("removes a newly created historical Activity draft when it is discarded", () => {
+		const prepared = prepareHistoricalActivityDraft(
+			[],
+			"Project Management",
+			[],
+			moment("2026-08-11T14:30")
+		);
+
+		expect(discardHistoricalActivityDraft(prepared.entries, prepared.draft)).toEqual([]);
 	});
 });
