@@ -1,7 +1,7 @@
 // @vitest-environment happy-dom
 
 import moment from "moment";
-import { beforeEach, it, describe, expect, afterEach } from "vitest";
+import { beforeEach, it, describe, expect, afterEach, vi } from "vitest";
 
 import type { TimekeepSettings } from "@/settings";
 import type { Store } from "@/store";
@@ -25,6 +25,8 @@ describe("TimesheetRunningEntry", () => {
 	let component: TimesheetRunningEntry;
 
 	beforeEach(() => {
+		vi.useFakeTimers();
+		vi.setSystemTime(new Date("2026-08-19T12:00:00"));
 		containerEl = createMockContainer();
 		timekeep = createStore(defaultTimekeep());
 		settings = createStore(defaultSettings);
@@ -32,6 +34,49 @@ describe("TimesheetRunningEntry", () => {
 
 	afterEach(() => {
 		if (component) component.unload();
+		vi.useRealTimers();
+	});
+
+	it.each([
+		["2026-08-19T08:00:00", "Get to work!"],
+		["2026-08-19T12:00:00", "Get to work!"],
+		["2026-08-19T17:00:00", "Stop working!"],
+		["2026-08-19T18:00:00", "Stop working!"],
+	])("combines a below-target day with the work window at %s", (now, expected) => {
+		vi.setSystemTime(new Date(now));
+		component = new TimesheetRunningEntry(containerEl, timekeep, settings);
+		component.load();
+
+		expect(containerEl.textContent).toBe(expected);
+	});
+
+	it("tells the user to stop once the daily target is exactly reached", () => {
+		timekeep.setState({
+			entries: [
+				{
+					id: 1,
+					name: "Full day",
+					startTime: moment("2026-08-19T03:00:00"),
+					endTime: moment("2026-08-19T11:00:00"),
+					subEntries: null,
+				},
+			],
+		});
+		component = new TimesheetRunningEntry(containerEl, timekeep, settings);
+		component.load();
+
+		expect(containerEl.textContent).toBe("Stop working!");
+	});
+
+	it("updates automatically when the workday end passes", () => {
+		vi.setSystemTime(new Date("2026-08-19T16:59:45"));
+		component = new TimesheetRunningEntry(containerEl, timekeep, settings);
+		component.load();
+		expect(containerEl.textContent).toBe("Get to work!");
+
+		vi.advanceTimersByTime(30_000);
+
+		expect(containerEl.textContent).toBe("Stop working!");
 	});
 
 	it("should load without error", () => {

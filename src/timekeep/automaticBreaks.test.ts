@@ -8,6 +8,7 @@ import type { TimeEntry, Timekeep } from "./schema";
 import {
 	endAutomaticBreakAtWorkingHoursEnd,
 	getWorkingHoursWindow,
+	isAfterWorkingHours,
 	stopTimekeepWithAutomaticBreak,
 } from "./automaticBreaks";
 
@@ -146,5 +147,21 @@ describe("automatic breaks", () => {
 			settings
 		);
 		expect(output.entries.at(-1)?.name).toBe("Break");
+	});
+
+	it.each([
+		["2026-08-18T02:00:00", false],
+		["2026-08-18T06:00:00", true],
+		["2026-08-18T12:00:00", true],
+		["2026-08-18T21:59:00", true],
+		["2026-08-18T22:00:00", false],
+	])("detects off-hours after an overnight shift at %s", (at, expected) => {
+		const settings = {
+			...enabledSettings,
+			workingHoursStart: "22:00",
+			workingHoursEnd: "06:00",
+		};
+
+		expect(isAfterWorkingHours(moment(at), settings)).toBe(expected);
 	});
 });

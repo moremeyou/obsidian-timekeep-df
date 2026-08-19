@@ -25,7 +25,7 @@ This plugin provides a simple and easy way to track time spent on various tasks.
 - A large, centered Start/Stop control uses consistent icon geometry across desktop, tablet, and mobile.
 - The companion card shows the selected Day, Week, Month, Quarter, or Year total. It uses the theme’s green state while within capacity and red when over capacity.
 - Tap the whole companion timer card to toggle whether its range total and capacity state include the configured Break Activity. The card remembers the choice per tracker for the current Obsidian session without adding another visible line to the compact layout.
-- With no timer running, the focus card says **Get to work!** or **Stop working!** depending on whether the selected period is over its working-hours target.
+- With no timer running, the focus card says **Stop working!** once the selected period reaches its working-hours target or the configured work window has ended; otherwise it says **Get to work!**. Overnight work windows are supported.
 - Range navigation, Today, the native range selector, and the formatted date sit above the focus cards.
 
 ### Activity and Block table refinements
