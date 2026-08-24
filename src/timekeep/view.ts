@@ -11,12 +11,21 @@ export enum TimekeepViewMode {
 	YEAR = "YEAR",
 }
 
+/** Initial/cycling presentation for the compact timer card. */
+export enum TimekeepCounterView {
+	RANGE_TOTAL_WITH_BREAKS = "RANGE_TOTAL_WITH_BREAKS",
+	RANGE_TOTAL_WITHOUT_BREAKS = "RANGE_TOTAL_WITHOUT_BREAKS",
+	CURRENT_ACTIVITY_PERCENT = "CURRENT_ACTIVITY_PERCENT",
+}
+
 export type TimekeepViewState = {
 	mode: TimekeepViewMode;
 	anchorDate: string;
 	followCurrent: boolean;
 	/** Session-only choice for whether the range counter includes Break Activities. */
 	includeBreaksInTotal?: boolean;
+	/** Session-only presentation selected for the compact timer card. */
+	counterView?: TimekeepCounterView;
 };
 
 export type TimekeepViewWindow = {
@@ -26,13 +35,15 @@ export type TimekeepViewWindow = {
 
 export function createTimekeepViewState(
 	mode: TimekeepViewMode,
-	currentTime: Moment = moment()
+	currentTime: Moment = moment(),
+	counterView: TimekeepCounterView = TimekeepCounterView.RANGE_TOTAL_WITH_BREAKS
 ): TimekeepViewState {
 	return {
 		mode,
 		anchorDate: currentTime.format("YYYY-MM-DD"),
 		followCurrent: true,
-		includeBreaksInTotal: true,
+		includeBreaksInTotal: counterView !== TimekeepCounterView.RANGE_TOTAL_WITHOUT_BREAKS,
+		counterView,
 	};
 }
 
@@ -113,6 +124,23 @@ export function formatTimekeepViewLabel(state: TimekeepViewState): string {
 		case TimekeepViewMode.YEAR:
 			return start.format("YYYY");
 	}
+}
+
+/** Append range-specific context to a Block name for display only. */
+export function formatBlockNameForView(entry: TimeEntry, mode: TimekeepViewMode): string {
+	if (entry.subEntries !== null || entry.startTime === null) return entry.name;
+
+	let context: string;
+	const startTime = entry.startTime;
+	if (mode === TimekeepViewMode.DAY) context = startTime.format("HH:mm");
+	else if (mode === TimekeepViewMode.WEEK) {
+		const dayPart = startTime.hour() < 12 ? "Morning" : "Afternoon";
+		context = `${startTime.format("dddd")} ${dayPart}`;
+	} else if (mode === TimekeepViewMode.MONTH) context = `W${startTime.isoWeek()}`;
+	else if (mode === TimekeepViewMode.QUARTER) context = startTime.format("MMMM");
+	else context = startTime.format("MMMM");
+
+	return `${entry.name} (${context})`;
 }
 
 export function timekeepViewIncludesCurrent(

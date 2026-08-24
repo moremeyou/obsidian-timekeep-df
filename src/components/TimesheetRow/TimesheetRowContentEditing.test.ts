@@ -24,6 +24,12 @@ function getInput(containerEl: HTMLElement, name: string): HTMLInputElement {
 	return inputEl!;
 }
 
+function getSelect(containerEl: HTMLElement, name: string): HTMLSelectElement {
+	const selectEl = containerEl.querySelector<HTMLSelectElement>(`select[name="${name}"]`);
+	expect(selectEl).not.toBeNull();
+	return selectEl!;
+}
+
 function submitEditor(containerEl: HTMLElement): void {
 	const formEl = containerEl.querySelector<HTMLFormElement>("form.timekeep-df-editing");
 	expect(formEl).not.toBeNull();
@@ -72,6 +78,136 @@ describe("TimesheetRowContentEditing", () => {
 			onFinishEditing
 		);
 		component.load();
+		expect(containerEl.querySelector('select[name="activity"]')).toBeNull();
+	});
+
+	it("shows every existing Activity and selects the Block's current parent", () => {
+		const block: TimeEntry = {
+			id: 2,
+			name: "Block 1",
+			startTime: moment("2026-08-11T09:00"),
+			endTime: moment("2026-08-11T10:00"),
+			subEntries: null,
+		};
+		timekeep.setState({
+			entries: [
+				{
+					id: 1,
+					name: "Project Management",
+					startTime: null,
+					endTime: null,
+					subEntries: [block],
+				},
+				{
+					id: 3,
+					name: "Production",
+					startTime: moment("2026-08-10T09:00"),
+					endTime: moment("2026-08-10T10:00"),
+					subEntries: null,
+				},
+			],
+		});
+		component = new TimesheetRowContentEditing(
+			containerEl,
+			app,
+			timekeep,
+			settings,
+			block,
+			onFinishEditing,
+			null,
+			"row",
+			undefined,
+			false,
+			1
+		);
+		component.load();
+
+		const activitySelect = getSelect(containerEl, "activity");
+		expect(activitySelect.getAttribute("aria-label")).toBe("Activity");
+		expect(Array.from(activitySelect.options).map((option) => option.text)).toEqual([
+			"Project Management",
+			"Production",
+		]);
+		expect(activitySelect.value).toBe("1");
+	});
+
+	it("moves only the edited Block while preserving hidden history", () => {
+		const hiddenBlock: TimeEntry = {
+			id: 2,
+			name: "Block 1",
+			startTime: moment("2026-08-10T09:00"),
+			endTime: moment("2026-08-10T10:00"),
+			subEntries: null,
+		};
+		const visibleBlock: TimeEntry = {
+			id: 3,
+			name: "Block 1",
+			startTime: moment("2026-08-11T11:00"),
+			endTime: moment("2026-08-11T12:00"),
+			subEntries: null,
+		};
+		const targetBlock: TimeEntry = {
+			id: 5,
+			name: "Block 1",
+			startTime: moment("2026-08-09T13:00"),
+			endTime: moment("2026-08-09T14:00"),
+			subEntries: null,
+		};
+		timekeep.setState({
+			entries: [
+				{
+					id: 1,
+					name: "Source",
+					startTime: null,
+					endTime: null,
+					subEntries: [hiddenBlock, visibleBlock],
+				},
+				{
+					id: 4,
+					name: "Target",
+					startTime: null,
+					endTime: null,
+					subEntries: [targetBlock],
+				},
+			],
+		});
+		component = new TimesheetRowContentEditing(
+			containerEl,
+			app,
+			timekeep,
+			settings,
+			visibleBlock,
+			onFinishEditing,
+			null,
+			"row",
+			undefined,
+			false,
+			1
+		);
+		component.load();
+
+		getSelect(containerEl, "activity").value = "4";
+		getInput(containerEl, "name").value = "Moved block";
+		submitEditor(containerEl);
+
+		const [source, target] = timekeep.getState().entries;
+		expect(source).toMatchObject({
+			id: 1,
+			name: "Source",
+			startTime: hiddenBlock.startTime,
+			endTime: hiddenBlock.endTime,
+			subEntries: null,
+		});
+		expect(target.subEntries?.map((entry) => entry.id)).toEqual([5, 3]);
+		expect(target.subEntries?.at(-1)).toMatchObject({
+			name: "Moved block",
+		});
+		expect(target.subEntries?.at(-1)?.startTime?.format("YYYY-MM-DD HH:mm")).toBe(
+			"2026-08-11 11:00"
+		);
+		expect(target.subEntries?.at(-1)?.endTime?.format("YYYY-MM-DD HH:mm")).toBe(
+			"2026-08-11 12:00"
+		);
 	});
 
 	it("renders native date and time inputs initialized in local time on every platform", () => {
@@ -266,6 +402,92 @@ describe("TimesheetRowContentEditing", () => {
 		const saved = timekeep.getState().entries[0];
 		expect(saved.startTime?.format("YYYY-MM-DD HH:mm:ss.SSS")).toBe("2026-08-11 14:25:00.000");
 		expect(saved.endTime?.format("YYYY-MM-DD HH:mm:ss.SSS")).toBe("2026-08-11 14:30:00.000");
+	});
+
+	it("moves a newly saved historical Block to the selected Activity", () => {
+		const originalBlock: TimeEntry = {
+			id: 2,
+			name: "Block 1",
+			startTime: moment("2026-08-10T09:00"),
+			endTime: moment("2026-08-10T10:00"),
+			subEntries: null,
+		};
+		const originalActivity: TimeEntry = {
+			id: 1,
+			name: "Source",
+			startTime: null,
+			endTime: null,
+			subEntries: [originalBlock],
+		};
+		const draftBlock: TimeEntry = {
+			id: 3,
+			name: "Block 1",
+			startTime: null,
+			endTime: null,
+			subEntries: null,
+		};
+		const targetBlock: TimeEntry = {
+			id: 5,
+			name: "Block 1",
+			startTime: moment("2026-08-09T13:00"),
+			endTime: moment("2026-08-09T14:00"),
+			subEntries: null,
+		};
+		const draft: HistoricalActivityDraft = {
+			activityId: originalActivity.id,
+			activityName: originalActivity.name,
+			entryId: draftBlock.id,
+			entryName: draftBlock.name,
+			initialTime: moment("2026-08-11T14:25"),
+			originalActivity,
+		};
+		timekeep.setState({
+			entries: [
+				{ ...originalActivity, subEntries: [originalBlock, draftBlock] },
+				{
+					id: 4,
+					name: "Target",
+					startTime: null,
+					endTime: null,
+					subEntries: [targetBlock],
+				},
+			],
+		});
+		component = new TimesheetRowContentEditing(
+			containerEl,
+			app,
+			timekeep,
+			settings,
+			draftBlock,
+			onFinishEditing,
+			draft,
+			"row",
+			undefined,
+			false,
+			originalActivity.id
+		);
+		component.load();
+
+		getSelect(containerEl, "activity").value = "4";
+		getInput(containerEl, "timekeep-df-end-native-time").value = "14:30";
+		submitEditor(containerEl);
+
+		const [source, target] = timekeep.getState().entries;
+		expect(source).toMatchObject({
+			id: originalActivity.id,
+			name: originalActivity.name,
+			startTime: originalBlock.startTime,
+			endTime: originalBlock.endTime,
+			subEntries: null,
+		});
+		expect(target.subEntries?.map((child) => child.id)).toEqual([5, 3]);
+		expect(target.subEntries?.at(-1)?.startTime?.format("YYYY-MM-DD HH:mm:ss.SSS")).toBe(
+			"2026-08-11 14:25:00.000"
+		);
+		expect(target.subEntries?.at(-1)?.endTime?.format("YYYY-MM-DD HH:mm:ss.SSS")).toBe(
+			"2026-08-11 14:30:00.000"
+		);
+		expect(onFinishEditing).toHaveBeenCalledOnce();
 	});
 
 	it("clicking the cancel button should call onFinishEditing", () => {

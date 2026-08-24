@@ -117,8 +117,13 @@ export class TimekeepRegistry extends Component {
 		const existing = this.viewStates.get(trackerKey);
 		if (existing) return existing;
 
+		const settings = this.settings.getState();
 		const viewState = createStore(
-			createTimekeepViewState(this.settings.getState().defaultViewMode)
+			createTimekeepViewState(
+				settings.defaultViewMode,
+				undefined,
+				settings.defaultCounterView
+			)
 		);
 		this.viewStates.set(trackerKey, viewState);
 		return viewState;

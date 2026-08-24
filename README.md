@@ -24,7 +24,7 @@ This plugin provides a simple and easy way to track time spent on various tasks.
 - The primary card makes the current **Activity** and active **Block** path easy to scan. The companion **Duration** uses a compact live `HH:MM:SS` clock.
 - A large, centered Start/Stop control uses consistent icon geometry across desktop, tablet, and mobile.
 - The companion card shows the selected Day, Week, Month, Quarter, or Year total. It uses the theme’s green state while within capacity and red when over capacity.
-- Tap the whole companion timer card to toggle whether its range total and capacity state include the configured Break Activity. The card remembers the choice per tracker for the current Obsidian session without adding another visible line to the compact layout.
+- Tap the whole companion timer card to cycle its lower range row through the total including Breaks, the total excluding Breaks, and the current Activity's percentage of the selected range capacity, labeled **Day %**, **Week %**, and so on. The upper **Duration** row remains unchanged. If Breaks do not change the displayed total, that state is skipped. The card remembers the choice per tracker for the current Obsidian session.
 - With no timer running, the focus card says **Stop working!** once the selected period reaches its working-hours target or the configured work window has ended; otherwise it says **Get to work!**. Overnight work windows are supported.
 - Range navigation, Today, the native range selector, and the formatted date sit above the focus cards.
 
@@ -39,6 +39,7 @@ This plugin provides a simple and easy way to track time spent on various tasks.
 - Start and End cells show local time only, but the complete dates and timestamps remain stored. Table durations omit seconds; the live dashboard Duration retains seconds.
 - Empty rows are hidden in the selected calendar window. An Activity remains visible when any descendant Block has duration in that window.
 - Automatic Block names restart at **Block 1** for each local calendar day; Block names do not need to be globally unique.
+- Optional display-only Block context distinguishes repeated names without changing tracker data or exports. Day adds `HH:mm`; Week adds the weekday plus Morning/Afternoon, Month adds the ISO week number, and Quarter and Year add the month.
 
 ### Day, Week, Month, Quarter, and Year views
 
@@ -55,6 +56,7 @@ This plugin provides a simple and easy way to track time spent on various tasks.
 - In a previous period, adding an Activity opens its editor immediately and never starts a live timer. Registry-backed autocomplete reuses the matching Activity instead of creating duplicate top-level names.
 - In a previous period, each Activity’s real-time control becomes **+**. It creates or reopens a correctly numbered child Block and opens the editor immediately.
 - A historical draft stays in memory and is not written into the tracker until it has a positive duration. Cancel restores the exact prior Activity, while saving valid times makes the new Block part of that period.
+- Editing an Activity opens the full editor for that Activity's most recently started Block overlapping the selected Day, Week, Month, Quarter, or Year.
 
 ### Range-aware deletion
 
@@ -77,6 +79,7 @@ This plugin provides a simple and easy way to track time spent on various tasks.
 - Start and End use separate native date and time pickers on every device, with configurable 12-hour or 24-hour display.
 - Editors initialize in local time and save at minute precision, zeroing seconds and milliseconds without dropping the stored date.
 - **-5 Min** and **+5 Min** adjustments sit alongside Save, Cancel, and Delete. Invalid or empty date/time input does not replace a valid stored timestamp.
+- Every Block editor includes an **Activity** dropdown. Choosing another existing Activity moves the complete Block—name, start, and end—without changing or discarding any other historical Blocks.
 - Desktop editing remains inline. Tablet and mobile use compact screen-aware modals so controls are not sized from the horizontally scrolling table.
 - Save and Delete use clear Lucide icons, delete confirmation has a compact responsive layout, and redundant close controls have been removed.
 
@@ -100,6 +103,8 @@ Timekeep DF adds these settings under **Settings → Timekeep DF**:
 | --- | --- | --- |
 | Clock format | 24-hour | Selects 12-hour or 24-hour timestamp display and native-picker hints. |
 | Default timesheet view | Day | Chooses the initial Day, Week, Month, Quarter, or Year window. |
+| Default timer card view | Range total, including Breaks | Chooses whether a newly opened tracker starts with the including-Breaks total, excluding-Breaks total, or current-Activity percentage. |
+| Add range context to Block names | Off | Adds view-specific context to displayed Block names without changing stored names or exports. |
 | Total daily working hours | 8 | Calculates the **%** column and Day capacity. |
 | Total days per week | 5 | Scales Week, Month, Quarter, and Year capacity. |
 | Enable automatic breaks | Off | Starts a consolidated Break Activity when work is explicitly stopped. |
@@ -136,7 +141,13 @@ Each view shows only Activities and Blocks with tracked duration in its selected
 
 For current periods, the row control starts or stops real-time tracking. For historical periods, that control becomes **+** and opens a new Block in the editor. Adding an Activity in a historical period also opens the editor immediately and never starts a live timer. A historical draft remains transient and is not written into the tracker until it has a valid positive duration; Cancel restores the exact prior Activity state.
 
+In every range view, the Edit control on an Activity opens the full editor for the most recently started Block that overlaps the selected Day, Week, Month, Quarter, or Year. This provides immediate timestamp and parent-Activity editing even when the Activity is collapsed; later Blocks outside the selected range are never chosen.
+
 When you add an Activity whose trimmed name matches an existing Activity without regard to letter case, Timekeep DF reuses that Activity and creates a new Block. Selecting the autocomplete suggestion is the easiest way to guarantee the intended name, but the matching itself happens automatically when the form is submitted. This keeps one Activity-level history while the selected range determines which Blocks appear.
+
+When editing an existing Block, use the **Activity** dropdown to move it to another existing parent Activity. The move works for current and historical Blocks on desktop, tablet, and mobile, preserves the Block's complete timestamps, and operates on the full stored tracker rather than only the Blocks visible in the selected range.
+
+Enable **Add range context to Block names** to distinguish repeated Block names in the table. Context is parenthesized. Day uses the Block start time (`Block 1 (09:30)`). Week uses the weekday plus **Morning** before noon or **Afternoon** from noon onward (`Block 1 (Monday Morning)`). Month uses the ISO week number, while Quarter and Year use the month (`Block 1 (August)`). The appended text is presentation-only and is never written into tracker JSON or exports.
 
 In an Activity editor, **Delete in range** removes only tracked time overlapping the currently selected calendar window. Boundary-crossing Blocks are trimmed or split so time outside the range survives. Use **Delete all history** only when you intend to remove the Activity and every Block across all dates. An individual Block's **Delete** action removes that complete Block.
 

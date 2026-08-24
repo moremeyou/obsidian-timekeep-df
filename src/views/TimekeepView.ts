@@ -86,8 +86,13 @@ export default class TimekeepView extends ContentComponent<
 		this.autocomplete = autocomplete;
 		this.registry = registry;
 		this.trackerKey = trackerKey;
+		const initialSettings = settings.getState();
 		this.fallbackViewState = createStore(
-			createTimekeepViewState(settings.getState().defaultViewMode)
+			createTimekeepViewState(
+				initialSettings.defaultViewMode,
+				undefined,
+				initialSettings.defaultCounterView
+			)
 		);
 		this.fallbackHistoricalDraft = createStore<HistoricalActivityDraft | null>(null);
 		this.historicalDraft = this.fallbackHistoricalDraft;

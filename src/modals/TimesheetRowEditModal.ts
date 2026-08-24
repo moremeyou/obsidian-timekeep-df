@@ -21,6 +21,7 @@ export class TimesheetRowEditModal extends Modal {
 	title: string;
 	viewState: Store<TimekeepViewState>;
 	isActivity: boolean;
+	activityId: number | null;
 
 	editor: TimesheetRowContentEditing | undefined;
 	#finished = false;
@@ -34,7 +35,8 @@ export class TimesheetRowEditModal extends Modal {
 		title: string,
 		onFinish: VoidFunction,
 		viewState: Store<TimekeepViewState>,
-		isActivity: boolean
+		isActivity: boolean,
+		activityId: number | null
 	) {
 		super(app);
 		this.shouldRestoreSelection = false;
@@ -46,6 +48,7 @@ export class TimesheetRowEditModal extends Modal {
 		this.onFinish = onFinish;
 		this.viewState = viewState;
 		this.isActivity = isActivity;
+		this.activityId = activityId;
 	}
 
 	onOpen(): void {
@@ -64,7 +67,8 @@ export class TimesheetRowEditModal extends Modal {
 			this.historicalDraft,
 			"modal",
 			this.viewState,
-			this.isActivity
+			this.isActivity,
+			this.activityId
 		);
 		this.editor.load();
 	}

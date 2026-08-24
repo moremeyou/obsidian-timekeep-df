@@ -17,7 +17,12 @@ import { ConfirmModal } from "@/modals/ConfirmModal";
 import { discardHistoricalActivityDraft, type HistoricalActivityDraft } from "@/timekeep/draft";
 import { getEntryById } from "@/timekeep/queries";
 import type { TimeEntry, Timekeep } from "@/timekeep/schema";
-import { removeActivityTimeWithinWindow, removeEntry, updateEntry } from "@/timekeep/update";
+import {
+	removeActivityTimeWithinWindow,
+	removeEntry,
+	updateBlockActivity,
+	updateEntry,
+} from "@/timekeep/update";
 import {
 	createTimekeepViewState,
 	formatTimekeepViewLabel,
@@ -57,9 +62,13 @@ export class TimesheetRowContentEditing extends ReplaceableComponent {
 	presentation: TimesheetRowEditorPresentation;
 	viewState: Store<TimekeepViewState>;
 	isActivity: boolean;
+	/** Top-level Activity that owns this Block. */
+	activityId: number | null;
 
 	/** Input for the entry name */
 	#nameInputEl: HTMLInputElement | undefined;
+	/** Existing parent Activity selection for nested Blocks. */
+	#activitySelectEl: HTMLSelectElement | undefined;
 	/** Date and time editor for the entry start */
 	#startTimeEditor: TimestampEditor | undefined;
 	/** Date and time editor for the entry end */
@@ -78,7 +87,8 @@ export class TimesheetRowContentEditing extends ReplaceableComponent {
 		historicalDraft: HistoricalActivityDraft | null = null,
 		presentation: TimesheetRowEditorPresentation = "row",
 		viewState?: Store<TimekeepViewState>,
-		isActivity: boolean = entry.subEntries !== null
+		isActivity: boolean = entry.subEntries !== null,
+		activityId: number | null = null
 	) {
 		super(containerEl);
 
@@ -89,9 +99,18 @@ export class TimesheetRowContentEditing extends ReplaceableComponent {
 		this.entry = entry;
 		this.historicalDraft = historicalDraft;
 		this.presentation = presentation;
+		const initialSettings = settings.getState();
 		this.viewState =
-			viewState ?? createStore(createTimekeepViewState(settings.getState().defaultViewMode));
+			viewState ??
+			createStore(
+				createTimekeepViewState(
+					initialSettings.defaultViewMode,
+					undefined,
+					initialSettings.defaultCounterView
+				)
+			);
 		this.isActivity = isActivity;
+		this.activityId = activityId;
 		this.onFinishEditing = onFinishEditing;
 	}
 
@@ -107,6 +126,29 @@ export class TimesheetRowContentEditing extends ReplaceableComponent {
 
 		const formEl = contentEl.createEl("form", { cls: "timekeep-df-editing" });
 		this.registerDomEvent(formEl, "submit", this.onSubmit.bind(this));
+
+		if (!this.isActivity && this.entry.subEntries === null && this.activityId !== null) {
+			const activityLabelEl = formEl.createEl("label", {
+				cls: ["timekeep-df-input-label", "timekeep-df-activity-label"],
+			});
+			activityLabelEl.createSpan({
+				cls: "timekeep-df-input-title",
+				text: "Activity",
+			});
+			const activitySelectEl = activityLabelEl.createEl("select", {
+				cls: ["timekeep-df-input", "timekeep-df-activity-select"],
+				attr: { "aria-label": "Activity" },
+			});
+			activitySelectEl.name = "activity";
+			for (const activity of this.timekeep.getState().entries) {
+				const optionEl = activitySelectEl.createEl("option", {
+					text: activity.name,
+				});
+				optionEl.value = String(activity.id);
+				optionEl.selected = activity.id === this.activityId;
+			}
+			this.#activitySelectEl = activitySelectEl;
+		}
 
 		const nameLabelEl = formEl.createEl("label", {
 			cls: "timekeep-df-input-label",
@@ -380,6 +422,9 @@ export class TimesheetRowContentEditing extends ReplaceableComponent {
 
 		const name = this.#nameInputEl.value;
 		const entry = this.entry;
+		const targetActivityId = this.#activitySelectEl
+			? Number(this.#activitySelectEl.value)
+			: this.activityId;
 		const historicalStartTime = this.historicalDraft ? this.#startTimeEditor.getValue() : null;
 		const historicalEndTime = this.historicalDraft ? this.#endTimeEditor.getValue() : null;
 
@@ -414,7 +459,17 @@ export class TimesheetRowContentEditing extends ReplaceableComponent {
 					if (endTimeValue.isValid()) newEntry.endTime = endTimeValue;
 				}
 			}
-			return { ...timekeep, entries: updateEntry(timekeep.entries, entry.id, newEntry) };
+			const entries =
+				this.activityId !== null && targetActivityId !== null
+					? updateBlockActivity(
+							timekeep.entries,
+							entry.id,
+							this.activityId,
+							targetActivityId,
+							newEntry
+						)
+					: updateEntry(timekeep.entries, entry.id, newEntry);
+			return { ...timekeep, entries };
 		});
 
 		if (!this.historicalDraft) this.onFinishEditing();

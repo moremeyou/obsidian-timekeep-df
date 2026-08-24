@@ -7,7 +7,7 @@ import {
 	TimekeepSettings,
 	legacySettingsCompatibility,
 } from "./settings";
-import { TimekeepViewMode } from "./timekeep/view";
+import { TimekeepCounterView, TimekeepViewMode } from "./timekeep/view";
 
 describe("legacy settings compatibility conversion", () => {
 	test("Fresh mobile PDF exports use a fork-specific folder", () => {
@@ -36,6 +36,13 @@ describe("legacy settings compatibility conversion", () => {
 		expect(defaultSettings.defaultViewMode).toBe(TimekeepViewMode.DAY);
 	});
 
+	test("Block context is opt-in and the timer card starts with Breaks included", () => {
+		expect(defaultSettings.appendBlockContext).toBe(false);
+		expect(defaultSettings.defaultCounterView).toBe(
+			TimekeepCounterView.RANGE_TOTAL_WITH_BREAKS
+		);
+	});
+
 	test("Invalid saved calendar views return to Day", () => {
 		const settings = {
 			...defaultSettings,
@@ -43,6 +50,15 @@ describe("legacy settings compatibility conversion", () => {
 		};
 		legacySettingsCompatibility(settings);
 		expect(settings.defaultViewMode).toBe(TimekeepViewMode.DAY);
+	});
+
+	test("Invalid saved timer card views return to the including-Breaks total", () => {
+		const settings = {
+			...defaultSettings,
+			defaultCounterView: "INVALID" as TimekeepCounterView,
+		};
+		legacySettingsCompatibility(settings);
+		expect(settings.defaultCounterView).toBe(TimekeepCounterView.RANGE_TOTAL_WITH_BREAKS);
 	});
 
 	test("Invalid automatic-break text settings return to safe defaults", () => {

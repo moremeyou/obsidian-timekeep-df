@@ -13,7 +13,7 @@ import { TimesheetTable } from "./TimesheetTable";
 
 import type { HistoricalActivityDraft } from "@/timekeep/draft";
 import { defaultTimekeep, type Timekeep } from "@/timekeep/schema";
-import { TimekeepViewMode } from "@/timekeep/view";
+import { shiftTimekeepView, TimekeepViewMode } from "@/timekeep/view";
 
 describe("TimesheetTable", () => {
 	let containerEl: HTMLElement;
@@ -36,7 +36,7 @@ describe("TimesheetTable", () => {
 			(heading) => heading.textContent
 		);
 		expect(headings).toContain("%");
-		expect(headings).not.toContain("% of Day");
+		expect(headings).not.toContain("Day %");
 		expect(headings).toEqual(["", "Activity", "Duration", "%", "Start", "End", ""]);
 		expect(component.wrapperEl?.classList.contains("timekeep-df-table-wrapper")).toBe(true);
 		const headingElements = component.wrapperEl?.querySelectorAll("th");
@@ -103,6 +103,54 @@ describe("TimesheetTable", () => {
 		vi.useRealTimers();
 	});
 
+	it.each([
+		[TimekeepViewMode.DAY, "2026-08-23T09:00:00", "No tracked activities on this day."],
+		[TimekeepViewMode.WEEK, "2026-08-18T09:00:00", "No tracked activities in this week."],
+		[TimekeepViewMode.MONTH, "2026-07-15T09:00:00", "No tracked activities in this month."],
+		[TimekeepViewMode.QUARTER, "2026-04-15T09:00:00", "No tracked activities in this quarter."],
+		[TimekeepViewMode.YEAR, "2025-08-12T09:00:00", "No tracked activities in this year."],
+	] as const)("rerenders a populated previous %s range", (mode, blockStart, emptyMessage) => {
+		vi.useFakeTimers();
+		vi.setSystemTime(new Date("2026-08-24T12:00:00"));
+		const viewState = createStore({
+			mode,
+			anchorDate: "2026-08-24",
+			followCurrent: true,
+		});
+		timekeep.setState({
+			entries: [
+				{
+					id: 1,
+					name: "Historical Activity",
+					collapsed: true,
+					startTime: null,
+					endTime: null,
+					subEntries: [
+						{
+							id: 2,
+							name: "Block 1",
+							startTime: moment(blockStart),
+							endTime: moment(blockStart).add(1, "hour"),
+							subEntries: null,
+						},
+					],
+				},
+			],
+		});
+		component = new TimesheetTable(containerEl, app, timekeep, settings, viewState);
+		component.load();
+
+		expect(component.wrapperEl?.querySelector(".timekeep-df-empty-row")?.textContent).toBe(
+			emptyMessage
+		);
+		viewState.setState((state) => shiftTimekeepView(state, -1));
+
+		expect(component.wrapperEl?.querySelector(".timekeep-df-empty-row")).toBeNull();
+		expect(component.wrapperEl?.textContent).toContain("Historical Activity");
+		expect(component.wrapperEl?.querySelectorAll("tbody > tr.timekeep-df-row")).toHaveLength(1);
+		vi.useRealTimers();
+	});
+
 	it("temporarily shows and edits an empty historical draft, then hides it on cancel", () => {
 		const viewState = createStore({
 			mode: TimekeepViewMode.DAY,
@@ -148,7 +196,10 @@ describe("TimesheetTable", () => {
 
 		component.wrapperEl?.querySelector<HTMLButtonElement>('[data-action="cancel"]')?.click();
 		expect(historicalDraft.getState()).toBeNull();
-		expect(component.wrapperEl?.querySelectorAll("tbody > tr")).toHaveLength(0);
+		expect(component.wrapperEl?.querySelectorAll("tbody > tr.timekeep-df-row")).toHaveLength(0);
+		expect(component.wrapperEl?.querySelector(".timekeep-df-empty-row")?.textContent).toBe(
+			"No tracked activities on this day."
+		);
 		expect(timekeep.getState().entries).toEqual([]);
 	});
 

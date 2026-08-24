@@ -55,8 +55,16 @@ export class TimesheetStartForm extends DomComponent {
 		this.timekeep = timekeep;
 		this.settings = settings;
 		this.autocomplete = autocomplete;
+		const initialSettings = settings.getState();
 		this.viewState =
-			viewState ?? createStore(createTimekeepViewState(settings.getState().defaultViewMode));
+			viewState ??
+			createStore(
+				createTimekeepViewState(
+					initialSettings.defaultViewMode,
+					undefined,
+					initialSettings.defaultCounterView
+				)
+			);
 		this.historicalDraft = historicalDraft ?? createStore<HistoricalActivityDraft | null>(null);
 	}
 

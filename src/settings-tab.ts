@@ -14,7 +14,7 @@ import {
 	PdfExportBehavior,
 } from "@/settings";
 
-import { TimekeepViewMode } from "@/timekeep/view";
+import { TimekeepCounterView, TimekeepViewMode } from "@/timekeep/view";
 
 export class TimekeepSettingsTab extends PluginSettingTab {
 	settingsStore: Store<TimekeepSettings>;
@@ -92,6 +92,42 @@ export class TimekeepSettingsTab extends PluginSettingTab {
 					this.settingsStore.setState((currentValue) => ({
 						...currentValue,
 						defaultViewMode: v as TimekeepViewMode,
+					}));
+				});
+			});
+
+		new Setting(this.containerEl)
+			.setName("Default timer card view")
+			.setDesc(
+				"The metric shown when a tracker first opens. Tapping the timer card cycles through the other views for that tracker session."
+			)
+			.addDropdown((t) => {
+				t.addOptions({
+					[TimekeepCounterView.RANGE_TOTAL_WITH_BREAKS]: "Range total, including Breaks",
+					[TimekeepCounterView.RANGE_TOTAL_WITHOUT_BREAKS]:
+						"Range total, excluding Breaks",
+					[TimekeepCounterView.CURRENT_ACTIVITY_PERCENT]: "Current Activity percentage",
+				});
+				t.setValue(settings.defaultCounterView);
+				t.onChange((v) => {
+					this.settingsStore.setState((currentValue) => ({
+						...currentValue,
+						defaultCounterView: v as TimekeepCounterView,
+					}));
+				});
+			});
+
+		new Setting(this.containerEl)
+			.setName("Add range context to Block names")
+			.setDesc(
+				"Appends time, weekday, week, quarter, or month context to Block names in the table only. Stored Block names and exports are unchanged."
+			)
+			.addToggle((t) => {
+				t.setValue(settings.appendBlockContext);
+				t.onChange((v) => {
+					this.settingsStore.setState((currentValue) => ({
+						...currentValue,
+						appendBlockContext: v,
 					}));
 				});
 			});

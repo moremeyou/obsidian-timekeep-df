@@ -18,6 +18,7 @@ import {
 	createTimekeepViewState,
 	filterTimekeepViewEntries,
 	getTimekeepViewWindow,
+	TimekeepViewMode,
 	type TimekeepViewState,
 } from "@/timekeep/view";
 
@@ -39,6 +40,8 @@ export class TimesheetTable extends DomComponent {
 
 	/** Currently mounted row children */
 	#rows: TimesheetRow[] = [];
+	/** Message shown when the selected calendar window has no tracked time. */
+	#emptyRowEl: HTMLTableRowElement | undefined;
 
 	constructor(
 		containerEl: HTMLElement,
@@ -53,8 +56,16 @@ export class TimesheetTable extends DomComponent {
 		this.app = app;
 		this.timekeep = timekeep;
 		this.settings = settings;
+		const initialSettings = settings.getState();
 		this.viewState =
-			viewState ?? createStore(createTimekeepViewState(settings.getState().defaultViewMode));
+			viewState ??
+			createStore(
+				createTimekeepViewState(
+					initialSettings.defaultViewMode,
+					undefined,
+					initialSettings.defaultCounterView
+				)
+			);
 		this.historicalDraft = historicalDraft ?? createStore<HistoricalActivityDraft | null>(null);
 	}
 
@@ -131,6 +142,9 @@ export class TimesheetTable extends DomComponent {
 	 * Remove the existing rows from the table body children
 	 */
 	clearRows() {
+		this.#emptyRowEl?.remove();
+		this.#emptyRowEl = undefined;
+
 		// Unload existing children and reset the rows list
 		for (const row of this.#rows) {
 			this.removeChild(row);
@@ -270,6 +284,18 @@ export class TimesheetTable extends DomComponent {
 					};
 				}
 			}
+		}
+		if (descriptors.length === 0) {
+			const mode = this.viewState.getState().mode;
+			const range = mode.toLocaleLowerCase();
+			const preposition = mode === TimekeepViewMode.DAY ? "on" : "in";
+			const emptyRowEl = bodyEl.createEl("tr", { cls: "timekeep-df-empty-row" });
+			emptyRowEl.createEl("td", {
+				text: `No tracked activities ${preposition} this ${range}.`,
+				attr: { colspan: "7" },
+			});
+			this.#emptyRowEl = emptyRowEl;
+			return;
 		}
 
 		for (const { entry, depth, presentation } of descriptors) {

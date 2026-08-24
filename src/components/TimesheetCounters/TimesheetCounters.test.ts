@@ -12,7 +12,7 @@ import { TimesheetTimer } from "./TimesheetTimer";
 
 import * as queries from "@/timekeep/queries";
 import { defaultTimekeep, Timekeep } from "@/timekeep/schema";
-import { TimekeepViewMode } from "@/timekeep/view";
+import { TimekeepCounterView, TimekeepViewMode } from "@/timekeep/view";
 
 describe("TimesheetCounters", () => {
 	let container: HTMLElement;
@@ -284,8 +284,32 @@ describe("TimesheetCounters", () => {
 		component.wrapperEl?.dispatchEvent(
 			new KeyboardEvent("keydown", { key: "Enter", bubbles: true, cancelable: true })
 		);
+		expect(viewState.getState().counterView).toBe(TimekeepCounterView.CURRENT_ACTIVITY_PERCENT);
 		expect(viewState.getState().includeBreaksInTotal).toBe(true);
-		expect(totalValue?.textContent).toBe("2h 30m 0s");
+		expect(
+			component.totalTimer?.wrapperEl?.querySelector(".timekeep-df-timer-label")?.textContent
+		).toBe("Day %");
+		expect(
+			component.totalTimer?.wrapperEl?.querySelector(".timekeep-df-timer-value")?.textContent
+		).toBe("—");
+		expect(
+			component.durationTimer?.wrapperEl?.querySelector(".timekeep-df-timer-label")
+				?.textContent
+		).toBe("Duration");
+		expect(
+			component.durationTimer?.wrapperEl?.querySelector(".timekeep-df-timer-value")
+				?.textContent
+		).toBe("00:00:00");
+		expect(MockNotice).toHaveBeenLastCalledWith(
+			"No current Activity is running; day percentage is unavailable."
+		);
+
+		component.wrapperEl?.click();
+		expect(viewState.getState().counterView).toBe(TimekeepCounterView.RANGE_TOTAL_WITH_BREAKS);
+		expect(
+			component.durationTimer?.wrapperEl?.querySelector(".timekeep-df-timer-label")
+				?.textContent
+		).toBe("Duration");
 		expect(
 			component.totalTimer?.wrapperEl?.querySelector(".timekeep-df-timer-label")?.textContent
 		).toBe("Day total");
@@ -294,7 +318,7 @@ describe("TimesheetCounters", () => {
 		);
 	});
 
-	it("does not toggle or notify when Breaks do not change the formatted total", () => {
+	it("skips the excluded-Break state when Breaks do not change the formatted total", () => {
 		vi.useFakeTimers();
 		vi.setSystemTime(new Date("2026-08-18T18:00:00"));
 		settingsStore.setState({
@@ -330,11 +354,70 @@ describe("TimesheetCounters", () => {
 		component.load();
 
 		expect(component.wrapperEl?.getAttribute("data-break-toggle-available")).toBe("false");
-		expect(component.wrapperEl?.getAttribute("aria-disabled")).toBe("true");
+		expect(component.wrapperEl?.getAttribute("aria-disabled")).toBe("false");
 		component.durationTimer?.wrapperEl?.click();
 
 		expect(viewState.getState().includeBreaksInTotal).toBe(true);
-		expect(MockNotice).not.toHaveBeenCalled();
+		expect(viewState.getState().counterView).toBe(TimekeepCounterView.CURRENT_ACTIVITY_PERCENT);
+		expect(MockNotice).toHaveBeenLastCalledWith(
+			"No current Activity is running; day percentage is unavailable."
+		);
+	});
+
+	it("starts in the configured current-Activity percentage view", () => {
+		vi.useFakeTimers();
+		vi.setSystemTime(new Date("2026-08-24T12:00:00"));
+		settingsStore.setState({
+			...defaultSettings,
+			defaultCounterView: TimekeepCounterView.CURRENT_ACTIVITY_PERCENT,
+			totalDailyWorkingHours: 8,
+		});
+		timekeepStore.setState({
+			entries: [
+				{
+					id: 1,
+					name: "Project",
+					startTime: null,
+					endTime: null,
+					subEntries: [
+						{
+							id: 2,
+							name: "Block 1",
+							startTime: moment("2026-08-24T09:00:00"),
+							endTime: moment("2026-08-24T10:00:00"),
+							subEntries: null,
+						},
+						{
+							id: 3,
+							name: "Block 2",
+							startTime: moment("2026-08-24T11:00:00"),
+							endTime: null,
+							subEntries: null,
+						},
+					],
+				},
+			],
+		});
+		component = new TimesheetCounters(container, settingsStore, timekeepStore);
+		component.load();
+
+		expect(
+			component.totalTimer?.wrapperEl?.querySelector(".timekeep-df-timer-label")?.textContent
+		).toBe("Day %");
+		expect(
+			component.totalTimer?.wrapperEl?.querySelector(".timekeep-df-timer-value")?.textContent
+		).toBe("25.0%");
+		expect(
+			component.durationTimer?.wrapperEl?.querySelector(".timekeep-df-timer-label")
+				?.textContent
+		).toBe("Duration");
+		expect(
+			component.durationTimer?.wrapperEl?.querySelector(".timekeep-df-timer-value")
+				?.textContent
+		).toBe("01:00:00");
+		expect(component.wrapperEl?.getAttribute("data-counter-view")).toBe(
+			TimekeepCounterView.CURRENT_ACTIVITY_PERCENT
+		);
 	});
 
 	it("labels the total for the selected calendar range", () => {
