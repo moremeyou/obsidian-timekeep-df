@@ -33,8 +33,16 @@ export class TimesheetEntryPercent extends DomComponent {
 		super(containerEl);
 		this.entry = entry;
 		this.settings = settings;
+		const initialSettings = settings.getState();
 		this.viewState =
-			viewState ?? createStore(createTimekeepViewState(settings.getState().defaultViewMode));
+			viewState ??
+			createStore(
+				createTimekeepViewState(
+					initialSettings.defaultViewMode,
+					undefined,
+					initialSettings.defaultCounterView
+				)
+			);
 	}
 
 	onload(): void {

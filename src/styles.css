@@ -52,6 +52,13 @@
 	width: 100%;
 }
 
+.timekeep-df-empty-row > td {
+	padding: 1.25rem 0.75rem;
+	color: var(--text-muted);
+	text-align: center;
+	font-style: italic;
+}
+
 /* left error indicator line for invalid entries */
 .timekeep-df-row[data-invalid="true"] {
 	border-left: 2px solid var(--color-red);
@@ -187,6 +194,13 @@
 	font-size: var(--font-ui-small);
 }
 
+.timekeep-df-input-title {
+	color: var(--text-muted);
+	font-weight: var(--font-semibold);
+	text-transform: uppercase;
+	letter-spacing: 0.04em;
+}
+
 /* Single-line editing toolbar: primary actions left, time adjustments right. */
 .timekeep-df-editing-footer {
 	display: grid;
@@ -242,6 +256,28 @@
 	box-sizing: border-box;
 }
 
+.timekeep-df-activity-select {
+	width: 100%;
+	min-width: 0;
+	max-width: 100%;
+	background-color: var(--background-primary);
+	border: 1px solid var(--background-modifier-border);
+	border-radius: 0.375rem;
+	box-shadow: none;
+	-webkit-appearance: auto;
+	appearance: auto;
+}
+
+.timekeep-df-activity-select:focus {
+	border-color: color-mix(
+		in srgb,
+		var(--interactive-accent) 72%,
+		var(--background-modifier-border)
+	);
+	box-shadow: 0 0 0 2px color-mix(in srgb, var(--interactive-accent) 18%, transparent);
+	outline: none;
+}
+
 /* date and time editor within the timekeep editing row */
 .timekeep-df-timestamp-editor {
 	display: grid;
@@ -288,6 +324,7 @@
 }
 
 .timekeep-df-editing input.timekeep-df-input,
+.timekeep-df-editing select.timekeep-df-activity-select,
 .timekeep-df-editing input.timekeep-df-date-input,
 .timekeep-df-editing input.timekeep-df-native-time-input {
 	height: var(--timekeep-df-compact-control-height) !important;
@@ -464,6 +501,7 @@
 }
 
 .timekeep-df-row-edit-modal input.timekeep-df-input,
+.timekeep-df-row-edit-modal select.timekeep-df-activity-select,
 .timekeep-df-row-edit-modal input.timekeep-df-date-input,
 .timekeep-df-row-edit-modal input.timekeep-df-native-time-input {
 	width: 100%;
@@ -538,6 +576,7 @@
 	}
 
 	.timekeep-df-row-edit-modal input.timekeep-df-input,
+	.timekeep-df-row-edit-modal select.timekeep-df-activity-select,
 	.timekeep-df-row-edit-modal input.timekeep-df-date-input,
 	.timekeep-df-row-edit-modal input.timekeep-df-native-time-input {
 		height: 36px !important;
@@ -802,10 +841,6 @@
 	border-radius: var(--radius-m);
 	white-space: nowrap;
 	cursor: pointer;
-}
-
-.timekeep-df-timers[data-break-toggle-available="false"] {
-	cursor: default;
 }
 
 .timekeep-df-timers:focus-visible {

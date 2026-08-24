@@ -151,6 +151,43 @@ export function getEntryDuration(
 	return endTime.diff(entry.startTime);
 }
 
+/** Find the leaf Block with the latest start that overlaps a calendar window. */
+export function getMostRecentBlockWithinWindow(
+	entry: TimeEntry,
+	currentTime: Moment,
+	window: TimekeepViewWindow
+): TimeEntry | null {
+	let mostRecent: TimeEntry | null = null;
+	const visit = (candidate: TimeEntry): void => {
+		if (candidate.subEntries !== null) {
+			for (const child of candidate.subEntries) visit(child);
+			return;
+		}
+		if (candidate.startTime === null) return;
+		const endTime = candidate.endTime ?? currentTime;
+		const hasDuration =
+			candidate.endTime === null
+				? !endTime.isBefore(candidate.startTime)
+				: endTime.isAfter(candidate.startTime);
+		const overlaps =
+			candidate.startTime.isBefore(window.end) &&
+			(endTime.isAfter(window.start) ||
+				(candidate.endTime === null && !currentTime.isBefore(window.start))) &&
+			hasDuration;
+		if (!overlaps) return;
+		if (
+			mostRecent === null ||
+			mostRecent.startTime === null ||
+			candidate.startTime.isAfter(mostRecent.startTime)
+		) {
+			mostRecent = candidate;
+		}
+	};
+
+	visit(entry);
+	return mostRecent;
+}
+
 /**
  * Gets the earliest start and latest end across an entry's descendant sessions.
  * Running sessions use the supplied current time as their derived end.

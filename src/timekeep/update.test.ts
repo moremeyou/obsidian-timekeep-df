@@ -6,6 +6,7 @@ import type { TimeEntry } from "./schema";
 import { stripTimekeepRuntimeData, TimeEntryGroup } from "./schema";
 import {
 	updateEntry,
+	updateBlockActivity,
 	removeEntry,
 	removeActivityTimeWithinWindow,
 	removeSubEntry,
@@ -22,6 +23,138 @@ describe("updateEntry", () => {
 
 		const updated = updateEntry(entries, entryToUpdate.id, updatedEntry);
 		expect(updated).toEqual(expectedEntries);
+	});
+});
+
+describe("updateBlockActivity", () => {
+	it("moves an updated Block between grouped Activities and preserves other Blocks", () => {
+		const sourceSibling: TimeEntry = {
+			id: 2,
+			name: "Block 1",
+			startTime: moment("2026-08-11T09:00"),
+			endTime: moment("2026-08-11T10:00"),
+			subEntries: null,
+		};
+		const movedBlock: TimeEntry = {
+			id: 3,
+			name: "Block 2",
+			startTime: moment("2026-08-12T11:00"),
+			endTime: moment("2026-08-12T12:00"),
+			subEntries: null,
+		};
+		const targetBlock: TimeEntry = {
+			id: 5,
+			name: "Block 1",
+			startTime: moment("2026-08-10T13:00"),
+			endTime: moment("2026-08-10T14:00"),
+			subEntries: null,
+		};
+		const entries: TimeEntry[] = [
+			{
+				id: 1,
+				name: "Source",
+				startTime: null,
+				endTime: null,
+				subEntries: [sourceSibling, movedBlock],
+			},
+			{
+				id: 4,
+				name: "Target",
+				startTime: null,
+				endTime: null,
+				collapsed: true,
+				subEntries: [targetBlock],
+			},
+		];
+		const renamedBlock = { ...movedBlock, name: "Moved work" };
+
+		const output = updateBlockActivity(entries, movedBlock.id, 1, 4, renamedBlock);
+
+		expect(output).toHaveLength(2);
+		expect(output[0]).toMatchObject({
+			id: 1,
+			name: "Source",
+			startTime: sourceSibling.startTime,
+			endTime: sourceSibling.endTime,
+			subEntries: null,
+		});
+		expect(output[1].subEntries?.map((entry) => entry.id)).toEqual([5, 3]);
+		expect(output[1].subEntries?.at(-1)).toEqual(renamedBlock);
+	});
+
+	it("converts a single target Activity into a collapsed group", () => {
+		const movedBlock: TimeEntry = {
+			id: 2,
+			name: "Block 1",
+			startTime: moment("2026-08-12T09:00"),
+			endTime: moment("2026-08-12T10:00"),
+			subEntries: null,
+		};
+		const targetActivity: TimeEntry = {
+			id: 3,
+			name: "Target",
+			startTime: moment("2026-08-11T13:00"),
+			endTime: moment("2026-08-11T14:00"),
+			subEntries: null,
+		};
+		const output = updateBlockActivity(
+			[
+				{
+					id: 1,
+					name: "Source",
+					startTime: null,
+					endTime: null,
+					subEntries: [movedBlock],
+				},
+				targetActivity,
+			],
+			movedBlock.id,
+			1,
+			3,
+			movedBlock
+		);
+
+		expect(output).toHaveLength(1);
+		expect(output[0]).toMatchObject({
+			id: targetActivity.id,
+			name: targetActivity.name,
+			startTime: null,
+			endTime: null,
+			collapsed: true,
+		});
+		expect(output[0].subEntries).toHaveLength(2);
+		expect(output[0].subEntries?.[0]).toMatchObject({
+			name: "Block 1",
+			startTime: targetActivity.startTime,
+			endTime: targetActivity.endTime,
+		});
+		expect(output[0].subEntries?.[1]).toEqual(movedBlock);
+	});
+
+	it("updates a Block in place when its Activity does not change", () => {
+		const block: TimeEntry = {
+			id: 2,
+			name: "Block 1",
+			startTime: moment("2026-08-12T09:00"),
+			endTime: moment("2026-08-12T10:00"),
+			subEntries: null,
+		};
+		const entries: TimeEntry[] = [
+			{
+				id: 1,
+				name: "Activity",
+				startTime: null,
+				endTime: null,
+				subEntries: [block],
+			},
+		];
+
+		const output = updateBlockActivity(entries, block.id, 1, 1, {
+			...block,
+			name: "Renamed",
+		});
+
+		expect(output[0].subEntries?.[0].name).toBe("Renamed");
 	});
 });
 

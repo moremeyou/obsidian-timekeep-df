@@ -28,6 +28,7 @@ import { startNewNestedEntry } from "@/timekeep/start";
 import { setEntryCollapsed, updateEntry } from "@/timekeep/update";
 import {
 	createTimekeepViewState,
+	formatBlockNameForView,
 	getTimekeepViewWindow,
 	timekeepViewIncludesCurrent,
 	type TimekeepViewState,
@@ -80,8 +81,16 @@ export class TimesheetRowContent extends ReplaceableComponent {
 		this.app = app;
 		this.timekeep = timekeep;
 		this.settings = settings;
+		const initialSettings = settings.getState();
 		this.viewState =
-			viewState ?? createStore(createTimekeepViewState(settings.getState().defaultViewMode));
+			viewState ??
+			createStore(
+				createTimekeepViewState(
+					initialSettings.defaultViewMode,
+					undefined,
+					initialSettings.defaultCounterView
+				)
+			);
 		this.historicalDraft = historicalDraft ?? createStore<HistoricalActivityDraft | null>(null);
 		this.activityId = activityId ?? entry.id;
 
@@ -97,6 +106,11 @@ export class TimesheetRowContent extends ReplaceableComponent {
 
 	render(wrapperEl: HTMLElement): void {
 		const entry = this.entry;
+		const settings = this.settings.getState();
+		const displayName =
+			this.indent > 0 && settings.appendBlockContext
+				? formatBlockNameForView(entry, this.viewState.getState().mode)
+				: entry.name;
 		const startStopColEl = wrapperEl.createEl("td", {
 			cls: ["timekeep-df-col", "timekeep-df-col--actions"],
 		});
@@ -117,7 +131,7 @@ export class TimesheetRowContent extends ReplaceableComponent {
 
 		const nameEl = nameColEl.createSpan({
 			cls: "timekeep-df-entry-name",
-			title: entry.name,
+			title: displayName,
 		});
 
 		if (entry.subEntries !== null) {
@@ -128,7 +142,7 @@ export class TimesheetRowContent extends ReplaceableComponent {
 			createObsidianIcon(nameEl, "folder", "timekeep-df-folder-icon");
 		}
 
-		const name = new TimesheetEntryName(nameEl, this.app, entry.name);
+		const name = new TimesheetEntryName(nameEl, this.app, displayName);
 		this.addChild(name);
 
 		if (entry.subEntries !== null) {

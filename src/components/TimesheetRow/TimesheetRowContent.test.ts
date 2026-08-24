@@ -109,6 +109,36 @@ describe("TimesheetRowContent", () => {
 		vi.useRealTimers();
 	});
 
+	it.each([
+		[TimekeepViewMode.DAY, "2026-08-23"],
+		[TimekeepViewMode.WEEK, "2026-08-12"],
+		[TimekeepViewMode.MONTH, "2026-07-15"],
+		[TimekeepViewMode.QUARTER, "2026-04-15"],
+		[TimekeepViewMode.YEAR, "2025-08-24"],
+	])("uses a + control for a non-current %s range", (mode, anchorDate) => {
+		vi.useFakeTimers();
+		vi.setSystemTime(new Date("2026-08-24T12:00:00"));
+		const component = new TimesheetRowContent(
+			containerEl,
+			app,
+			timekeep,
+			settings,
+			entry,
+			0,
+			onBeginEditing,
+			createStore({ mode, anchorDate, followCurrent: false })
+		);
+		component.load();
+
+		const button = component.wrapperEl?.querySelector<HTMLButtonElement>(
+			'[data-action="add-block"]'
+		);
+		expect(button?.title).toBe("Add Block");
+		expect(button?.querySelector("svg")?.getAttribute("data-icon")).toBe("plus");
+		component.unload();
+		vi.useRealTimers();
+	});
+
 	it("adds and immediately selects the next historical Block under the owning Activity", () => {
 		vi.useFakeTimers();
 		vi.setSystemTime(new Date("2026-08-12T12:34:56"));
@@ -208,6 +238,69 @@ describe("TimesheetRowContent", () => {
 		const times = component.wrapperEl?.querySelectorAll(".timekeep-df-col--time");
 		expect(times?.item(0).textContent).toBe("09:10");
 		expect(times?.item(1).textContent).toBe("10:11");
+	});
+
+	it.each([
+		[TimekeepViewMode.DAY, "Block 1 (13:45)"],
+		[TimekeepViewMode.WEEK, "Block 1 (Wednesday Afternoon)"],
+		[TimekeepViewMode.MONTH, "Block 1 (W33)"],
+		[TimekeepViewMode.QUARTER, "Block 1 (August)"],
+		[TimekeepViewMode.YEAR, "Block 1 (August)"],
+	])("adds display-only context to Block names in %s view", (mode, expected) => {
+		const block: TimeEntry = {
+			id: 2,
+			name: "Block 1",
+			startTime: moment("2026-08-12T13:45"),
+			endTime: moment("2026-08-12T14:00"),
+			subEntries: null,
+		};
+		timekeep.setState({ entries: [block] });
+		settings.setState({ ...defaultSettings, appendBlockContext: true });
+		const component = new TimesheetRowContent(
+			containerEl,
+			app,
+			timekeep,
+			settings,
+			block,
+			1,
+			onBeginEditing,
+			createStore({ mode, anchorDate: "2026-08-12", followCurrent: false }),
+			undefined,
+			1
+		);
+		component.load();
+
+		expect(component.wrapperEl?.querySelector(".timekeep-df-entry-name")?.textContent).toBe(
+			expected
+		);
+		expect(timekeep.getState().entries[0].name).toBe("Block 1");
+		component.unload();
+	});
+
+	it("keeps Activity names and disabled Block context unchanged", () => {
+		const activity: TimeEntry = {
+			id: 1,
+			name: "Activity",
+			startTime: moment("2026-08-12T13:45"),
+			endTime: moment("2026-08-12T14:00"),
+			subEntries: null,
+		};
+		settings.setState({ ...defaultSettings, appendBlockContext: true });
+		const component = new TimesheetRowContent(
+			containerEl,
+			app,
+			timekeep,
+			settings,
+			activity,
+			0,
+			onBeginEditing
+		);
+		component.load();
+
+		expect(component.wrapperEl?.querySelector(".timekeep-df-entry-name")?.textContent).toBe(
+			"Activity"
+		);
+		component.unload();
 	});
 
 	it("shows a group's earliest descendant start and latest descendant end", () => {

@@ -18,7 +18,7 @@ import {
 } from "./registry";
 
 import { stripTimekeepRuntimeData, TimeEntry, Timekeep } from "@/timekeep/schema";
-import { TimekeepViewMode } from "@/timekeep/view";
+import { TimekeepCounterView, TimekeepViewMode } from "@/timekeep/view";
 
 describe("TimekeepRegistry", () => {
 	it("retains independent view state per tracker for the plugin session", () => {
@@ -36,6 +36,19 @@ describe("TimekeepRegistry", () => {
 		expect(firstAgain).toBe(first);
 		expect(firstAgain.getState().mode).toBe(TimekeepViewMode.WEEK);
 		expect(second.getState().mode).toBe(TimekeepViewMode.DAY);
+	});
+
+	it("uses the configured starting timer-card view for new tracker sessions", () => {
+		const settings = createStore({
+			...defaultSettings,
+			defaultCounterView: TimekeepCounterView.CURRENT_ACTIVITY_PERCENT,
+		});
+		const registry = new TimekeepRegistry(new MockVault().asVault(), settings);
+
+		expect(registry.getViewState("markdown:Projects.md:10").getState()).toMatchObject({
+			counterView: TimekeepCounterView.CURRENT_ACTIVITY_PERCENT,
+			includeBreaksInTotal: true,
+		});
 	});
 
 	it("retains historical drafts across tracker rerenders", () => {

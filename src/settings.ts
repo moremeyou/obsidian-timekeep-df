@@ -1,4 +1,4 @@
-import { TimekeepViewMode } from "@/timekeep/view";
+import { TimekeepCounterView, TimekeepViewMode } from "@/timekeep/view";
 
 export enum PdfExportBehavior {
 	// Don't do anything after exporting
@@ -76,6 +76,8 @@ export interface TimekeepSettings {
 	workingHoursStart: string;
 	workingHoursEnd: string;
 	defaultViewMode: TimekeepViewMode;
+	defaultCounterView: TimekeepCounterView;
+	appendBlockContext: boolean;
 	/**@deprecated use {@link secondaryDurationFormat} instead */
 	showDecimalHours?: boolean;
 	primaryDurationFormat: DurationFormat;
@@ -115,6 +117,8 @@ export const defaultSettings: TimekeepSettings = {
 	workingHoursStart: "09:00",
 	workingHoursEnd: "17:00",
 	defaultViewMode: TimekeepViewMode.DAY,
+	defaultCounterView: TimekeepCounterView.RANGE_TOTAL_WITH_BREAKS,
+	appendBlockContext: false,
 	editableTimestampFormat: "YYYY-MM-DD HH:mm:ss",
 	csvTitle: true,
 	csvDelimiter: ",",
@@ -166,6 +170,12 @@ export function legacySettingsCompatibility(settings: TimekeepSettings): void {
 		!Object.values(TimekeepViewMode).includes(settings.defaultViewMode)
 	) {
 		settings.defaultViewMode = defaultSettings.defaultViewMode;
+	}
+	if (
+		Object.prototype.hasOwnProperty.call(settings, "defaultCounterView") &&
+		!Object.values(TimekeepCounterView).includes(settings.defaultCounterView)
+	) {
+		settings.defaultCounterView = defaultSettings.defaultCounterView;
 	}
 
 	// Timestamp display formats previously included the time. Timekeep DF now

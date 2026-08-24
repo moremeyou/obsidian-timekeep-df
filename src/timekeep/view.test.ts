@@ -6,6 +6,7 @@ import {
 	createTimekeepViewSnapshot,
 	createTimekeepViewState,
 	filterTimekeepViewEntries,
+	formatBlockNameForView,
 	formatTimekeepViewLabel,
 	getTimekeepViewCapacityHours,
 	getTimekeepViewWindow,
@@ -210,6 +211,43 @@ describe("timekeep calendar views", () => {
 				followCurrent: false,
 			})
 		).toBe("Q3 2026");
+	});
+
+	it.each([
+		[TimekeepViewMode.DAY, "Block 1 (13:45)"],
+		[TimekeepViewMode.WEEK, "Block 1 (Wednesday Afternoon)"],
+		[TimekeepViewMode.MONTH, "Block 1 (W33)"],
+		[TimekeepViewMode.QUARTER, "Block 1 (August)"],
+		[TimekeepViewMode.YEAR, "Block 1 (August)"],
+	])("formats display-only Block context for %s", (mode, expected) => {
+		const block = {
+			id: 1,
+			name: "Block 1",
+			startTime: moment("2026-08-12T13:45:00"),
+			endTime: moment("2026-08-12T14:00:00"),
+			subEntries: null,
+		};
+
+		expect(formatBlockNameForView(block, mode)).toBe(expected);
+		expect(block.name).toBe("Block 1");
+	});
+
+	it("uses Morning before noon and Afternoon from noon onward only in Week view", () => {
+		const block = {
+			id: 1,
+			name: "Block 1",
+			startTime: moment("2026-08-12T11:59:00"),
+			endTime: moment("2026-08-12T12:30:00"),
+			subEntries: null,
+		};
+		expect(formatBlockNameForView(block, TimekeepViewMode.WEEK)).toBe(
+			"Block 1 (Wednesday Morning)"
+		);
+		block.startTime = moment("2026-08-12T12:00:00");
+		expect(formatBlockNameForView(block, TimekeepViewMode.WEEK)).toBe(
+			"Block 1 (Wednesday Afternoon)"
+		);
+		expect(formatBlockNameForView(block, TimekeepViewMode.DAY)).toBe("Block 1 (12:00)");
 	});
 
 	it("uses configured weekdays to calculate period capacity", () => {

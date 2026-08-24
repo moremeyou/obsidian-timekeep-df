@@ -12,6 +12,7 @@ import {
 	getEntriesNames,
 	getStartTime,
 	getEntryTimeBounds,
+	getMostRecentBlockWithinWindow,
 	isEntryWithinWindow,
 } from "./queries";
 import { TimeEntry } from "./schema";
@@ -238,6 +239,52 @@ describe("getEntryDuration", () => {
 		expect(isEntryWithinWindow(entry, moment("2026-08-12T12:00:00"), window, false)).toBe(
 			false
 		);
+	});
+});
+
+describe("getMostRecentBlockWithinWindow", () => {
+	it("returns the latest overlapping leaf without considering later out-of-range Blocks", () => {
+		const activity: TimeEntry = {
+			id: 1,
+			name: "Activity",
+			startTime: null,
+			endTime: null,
+			subEntries: [
+				{
+					id: 2,
+					name: "Morning",
+					startTime: moment("2026-08-12T09:00"),
+					endTime: moment("2026-08-12T10:00"),
+					subEntries: null,
+				},
+				{
+					id: 3,
+					name: "Afternoon",
+					startTime: moment("2026-08-12T14:00"),
+					endTime: moment("2026-08-12T15:00"),
+					subEntries: null,
+				},
+				{
+					id: 4,
+					name: "Tomorrow",
+					startTime: moment("2026-08-13T16:00"),
+					endTime: moment("2026-08-13T17:00"),
+					subEntries: null,
+				},
+			],
+		};
+
+		expect(
+			getMostRecentBlockWithinWindow(
+				activity,
+				moment("2026-08-12T18:00"),
+				getTimekeepViewWindow({
+					mode: TimekeepViewMode.DAY,
+					anchorDate: "2026-08-12",
+					followCurrent: false,
+				})
+			)?.id
+		).toBe(3);
 	});
 });
 

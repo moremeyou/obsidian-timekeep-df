@@ -1,6 +1,7 @@
 import moment, { type Moment } from "moment";
 
 import { timekeepId } from "@/timekeep/id";
+import { getEntryById } from "@/timekeep/queries";
 import { TimeEntry, Timekeep } from "@/timekeep/schema";
 import type { TimekeepViewWindow } from "@/timekeep/view";
 
@@ -32,6 +33,63 @@ export function updateEntry(
 
 		return entry;
 	});
+}
+
+function appendBlockToActivity(activity: TimeEntry, block: TimeEntry): TimeEntry {
+	if (activity.subEntries !== null) {
+		return {
+			...activity,
+			subEntries: [...activity.subEntries, block],
+		};
+	}
+
+	const existingBlock =
+		activity.startTime === null
+			? []
+			: [{ ...activity, id: timekeepId.next(), name: "Block 1" }];
+	return {
+		...activity,
+		startTime: null,
+		endTime: null,
+		collapsed: true,
+		subEntries: [...existingBlock, block],
+	};
+}
+
+/**
+ * Update a nested Block and, when requested, move it to another existing
+ * top-level Activity without changing the Block's identity or timestamps.
+ */
+export function updateBlockActivity(
+	entries: TimeEntry[],
+	blockId: number,
+	currentActivityId: number,
+	targetActivityId: number,
+	updatedBlock: TimeEntry
+): TimeEntry[] {
+	const updatedEntries = updateEntry(entries, blockId, updatedBlock);
+	if (currentActivityId === targetActivityId) return updatedEntries;
+
+	const currentActivity = updatedEntries.find((entry) => entry.id === currentActivityId);
+	const targetActivity = updatedEntries.find((entry) => entry.id === targetActivityId);
+	if (
+		currentActivity === undefined ||
+		currentActivity.subEntries === null ||
+		targetActivity === undefined ||
+		getEntryById(blockId, currentActivity.subEntries) === undefined
+	) {
+		return updatedEntries;
+	}
+
+	const block = getEntryById(blockId, currentActivity.subEntries);
+	if (block === undefined) return updatedEntries;
+
+	const withoutBlock = updatedEntries.flatMap((entry) =>
+		entry.id === currentActivityId ? removeEntry([entry], block) : [entry]
+	);
+	return withoutBlock.map((entry) =>
+		entry.id === targetActivityId ? appendBlockToActivity(entry, block) : entry
+	);
 }
 
 /**

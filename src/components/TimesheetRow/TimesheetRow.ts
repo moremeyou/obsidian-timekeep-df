@@ -1,5 +1,6 @@
 import type { App } from "obsidian";
 
+import moment from "moment";
 import { Platform } from "obsidian";
 
 import type { TimekeepSettings } from "@/settings";
@@ -15,8 +16,13 @@ import { ContentComponent } from "@/components/ContentComponent";
 import { TimesheetRowEditModal } from "@/modals/TimesheetRowEditModal";
 
 import type { HistoricalActivityDraft } from "@/timekeep/draft";
+import { getMostRecentBlockWithinWindow } from "@/timekeep/queries";
 import type { TimeEntry, Timekeep } from "@/timekeep/schema";
-import { createTimekeepViewState, type TimekeepViewState } from "@/timekeep/view";
+import {
+	createTimekeepViewState,
+	getTimekeepViewWindow,
+	type TimekeepViewState,
+} from "@/timekeep/view";
 
 export interface TimesheetRowPresentation {
 	activityId?: number;
@@ -66,8 +72,16 @@ export class TimesheetRow extends ContentComponent<
 		this.app = app;
 		this.timekeep = timekeep;
 		this.settings = settings;
+		const initialSettings = settings.getState();
 		this.viewState =
-			viewState ?? createStore(createTimekeepViewState(settings.getState().defaultViewMode));
+			viewState ??
+			createStore(
+				createTimekeepViewState(
+					initialSettings.defaultViewMode,
+					undefined,
+					initialSettings.defaultCounterView
+				)
+			);
 		this.historicalDraft = historicalDraft ?? createStore<HistoricalActivityDraft | null>(null);
 		this.resolvedHistoricalDraft = resolvedHistoricalDraft;
 
@@ -87,6 +101,23 @@ export class TimesheetRow extends ContentComponent<
 
 	onViewEditing() {
 		const historicalDraft = this.resolvedHistoricalDraft;
+		const activityId =
+			this.presentation.activityId ?? (this.indent === 0 ? this.entry.id : null);
+		const viewState = this.viewState.getState();
+		const storedActivity =
+			this.indent === 0
+				? this.timekeep.getState().entries.find((entry) => entry.id === this.entry.id)
+				: undefined;
+		const rangeBlock =
+			storedActivity !== undefined && storedActivity.subEntries !== null
+				? getMostRecentBlockWithinWindow(
+						storedActivity,
+						moment(),
+						getTimekeepViewWindow(viewState)
+					)
+				: null;
+		const editorEntry = rangeBlock ?? this.entry;
+		const isActivityEditor = this.indent === 0 && rangeBlock === null;
 		if (Platform.isMobile) {
 			const storedDraft = this.historicalDraft.getState();
 			if (
@@ -99,12 +130,13 @@ export class TimesheetRow extends ContentComponent<
 				this.app,
 				this.timekeep,
 				this.settings,
-				this.entry,
+				editorEntry,
 				historicalDraft,
-				this.indent === 0 ? "Edit Activity" : "Edit Block",
+				isActivityEditor ? "Edit Activity" : "Edit Block",
 				this.onFinishEditing.bind(this),
 				this.viewState,
-				this.indent === 0
+				isActivityEditor,
+				activityId
 			);
 			modal.open();
 			if (historicalDraft) {
@@ -118,12 +150,13 @@ export class TimesheetRow extends ContentComponent<
 				this.app,
 				this.timekeep,
 				this.settings,
-				this.entry,
+				editorEntry,
 				this.onFinishEditing.bind(this),
-				historicalDraft?.entryId === this.entry.id ? historicalDraft : null,
+				historicalDraft?.entryId === editorEntry.id ? historicalDraft : null,
 				"row",
 				this.viewState,
-				this.indent === 0
+				isActivityEditor,
+				activityId
 			)
 		);
 		this.applyPresentation();

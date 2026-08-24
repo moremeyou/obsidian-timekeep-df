@@ -15,6 +15,7 @@ import { TimesheetRowContentEditing } from "./TimesheetRowContentEditing";
 
 import type { HistoricalActivityDraft } from "@/timekeep/draft";
 import type { TimeEntry, Timekeep } from "@/timekeep/schema";
+import { TimekeepViewMode } from "@/timekeep/view";
 
 describe("TimesheetRowContainer", () => {
 	let containerEl: HTMLElement;
@@ -98,6 +99,65 @@ describe("TimesheetRowContainer", () => {
 		expect(modal?.close).toHaveBeenCalledOnce();
 	});
 
+	it("moves a Block to another Activity from the mobile and tablet modal", () => {
+		MockPlatform.isMobile = true;
+		const block: TimeEntry = {
+			id: 2,
+			name: "Block 1",
+			startTime: moment("2026-08-19T09:00"),
+			endTime: moment("2026-08-19T10:00"),
+			subEntries: null,
+		};
+		const targetBlock: TimeEntry = {
+			id: 4,
+			name: "Block 1",
+			startTime: moment("2026-08-18T13:00"),
+			endTime: moment("2026-08-18T14:00"),
+			subEntries: null,
+		};
+		timekeep.setState({
+			entries: [
+				{
+					id: 1,
+					name: "Source",
+					startTime: null,
+					endTime: null,
+					subEntries: [block],
+				},
+				{
+					id: 3,
+					name: "Target",
+					startTime: null,
+					endTime: null,
+					subEntries: [targetBlock],
+				},
+			],
+		});
+		component = new TimesheetRow(containerEl, app, timekeep, settings, block, 1, {
+			activityId: 1,
+		});
+		component.load();
+		(component.getContent() as TimesheetRowContent).onBeginEditing();
+		const modal = Array.from(MockModal.instances).find((instance) =>
+			instance.modalEl.classList.contains("timekeep-df-row-edit-modal")
+		);
+		const form = modal?.contentEl.querySelector<HTMLFormElement>("form.timekeep-df-editing");
+		const activitySelect = form?.querySelector<HTMLSelectElement>('select[name="activity"]');
+
+		expect(Array.from(activitySelect?.options ?? []).map((option) => option.text)).toEqual([
+			"Source",
+			"Target",
+		]);
+		expect(activitySelect?.value).toBe("1");
+		activitySelect!.value = "3";
+		form!.dispatchEvent(new SubmitEvent("submit", { bubbles: true, cancelable: true }));
+
+		const [target] = timekeep.getState().entries;
+		expect(target.id).toBe(3);
+		expect(target.subEntries?.map((child) => child.id)).toEqual([4, 2]);
+		expect(modal?.close).toHaveBeenCalledOnce();
+	});
+
 	it("saves from the phone footer and closes the modal", () => {
 		MockPlatform.isMobile = true;
 		MockPlatform.isPhone = true;
@@ -152,6 +212,167 @@ describe("TimesheetRowContainer", () => {
 
 		modal?.close();
 		expect(historicalDraft.getState()).toBeNull();
+	});
+
+	it("edits the most recently started Block in the selected Day from an Activity row", () => {
+		vi.useFakeTimers();
+		vi.setSystemTime(new Date("2026-08-24T18:00:00"));
+		const morning: TimeEntry = {
+			id: 2,
+			name: "Morning",
+			startTime: moment("2026-08-23T09:00"),
+			endTime: moment("2026-08-23T10:00"),
+			subEntries: null,
+		};
+		const afternoon: TimeEntry = {
+			id: 3,
+			name: "Afternoon",
+			startTime: moment("2026-08-23T14:00"),
+			endTime: moment("2026-08-23T15:00"),
+			subEntries: null,
+		};
+		const laterDay: TimeEntry = {
+			id: 4,
+			name: "Later day",
+			startTime: moment("2026-08-24T16:00"),
+			endTime: moment("2026-08-24T17:00"),
+			subEntries: null,
+		};
+		const activity: TimeEntry = {
+			id: 1,
+			name: "Activity",
+			startTime: null,
+			endTime: null,
+			subEntries: [morning, laterDay, afternoon],
+		};
+		timekeep.setState({ entries: [activity] });
+		component = new TimesheetRow(
+			containerEl,
+			app,
+			timekeep,
+			settings,
+			activity,
+			0,
+			{ activityId: activity.id },
+			createStore({
+				mode: TimekeepViewMode.DAY,
+				anchorDate: "2026-08-23",
+				followCurrent: false,
+			})
+		);
+		component.load();
+
+		(component.getContent() as TimesheetRowContent).onBeginEditing();
+
+		const editor = component.getContent() as TimesheetRowContentEditing;
+		expect(editor.entry.id).toBe(afternoon.id);
+		expect(editor.wrapperEl?.querySelector<HTMLInputElement>('input[name="name"]')?.value).toBe(
+			"Afternoon"
+		);
+		expect(
+			editor.wrapperEl?.querySelector<HTMLSelectElement>('select[name="activity"]')?.value
+		).toBe(String(activity.id));
+		vi.useRealTimers();
+	});
+
+	it("edits the most recently started Block in a longer selected range", () => {
+		const earlierBlock: TimeEntry = {
+			id: 2,
+			name: "Monday Block",
+			startTime: moment("2026-08-24T09:00"),
+			endTime: moment("2026-08-24T10:00"),
+			subEntries: null,
+		};
+		const latestBlock: TimeEntry = {
+			id: 3,
+			name: "Sunday Block",
+			startTime: moment("2026-08-30T14:00"),
+			endTime: moment("2026-08-30T15:00"),
+			subEntries: null,
+		};
+		const laterOutOfRangeBlock: TimeEntry = {
+			id: 4,
+			name: "Later Block",
+			startTime: moment("2026-08-31T16:00"),
+			endTime: moment("2026-08-31T17:00"),
+			subEntries: null,
+		};
+		const activity: TimeEntry = {
+			id: 1,
+			name: "Activity",
+			startTime: null,
+			endTime: null,
+			subEntries: [earlierBlock, laterOutOfRangeBlock, latestBlock],
+		};
+		timekeep.setState({ entries: [activity] });
+		component = new TimesheetRow(
+			containerEl,
+			app,
+			timekeep,
+			settings,
+			activity,
+			0,
+			{ activityId: activity.id },
+			createStore({
+				mode: TimekeepViewMode.WEEK,
+				anchorDate: "2026-08-24",
+				followCurrent: false,
+			})
+		);
+		component.load();
+
+		(component.getContent() as TimesheetRowContent).onBeginEditing();
+
+		const editor = component.getContent() as TimesheetRowContentEditing;
+		expect(editor.entry.id).toBe(latestBlock.id);
+		expect(editor.wrapperEl?.querySelector<HTMLInputElement>('input[name="name"]')?.value).toBe(
+			"Sunday Block"
+		);
+		expect(editor.wrapperEl?.querySelector('select[name="activity"]')).not.toBeNull();
+	});
+
+	it("opens the latest Day Block in the mobile Activity-row modal", () => {
+		MockPlatform.isMobile = true;
+		const block: TimeEntry = {
+			id: 2,
+			name: "Latest Block",
+			startTime: moment("2026-08-23T14:00"),
+			endTime: moment("2026-08-23T15:00"),
+			subEntries: null,
+		};
+		const activity: TimeEntry = {
+			id: 1,
+			name: "Activity",
+			startTime: null,
+			endTime: null,
+			subEntries: [block],
+		};
+		timekeep.setState({ entries: [activity] });
+		component = new TimesheetRow(
+			containerEl,
+			app,
+			timekeep,
+			settings,
+			activity,
+			0,
+			{ activityId: activity.id },
+			createStore({
+				mode: TimekeepViewMode.DAY,
+				anchorDate: "2026-08-23",
+				followCurrent: false,
+			})
+		);
+		component.load();
+		(component.getContent() as TimesheetRowContent).onBeginEditing();
+		const modal = Array.from(MockModal.instances).find((instance) =>
+			instance.modalEl.classList.contains("timekeep-df-row-edit-modal")
+		);
+
+		expect(modal?.titleEl.textContent).toBe("Edit Block");
+		expect(modal?.contentEl.querySelector<HTMLInputElement>('input[name="name"]')?.value).toBe(
+			"Latest Block"
+		);
+		expect(modal?.contentEl.querySelector('select[name="activity"]')).not.toBeNull();
 	});
 
 	it("should load without error", () => {
