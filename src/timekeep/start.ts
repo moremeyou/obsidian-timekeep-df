@@ -1,5 +1,7 @@
 import type { Moment } from "moment";
 
+import { normalizeActivityName } from "@/utils/name";
+
 import { withEntry, createEntry, withSubEntry } from "./create";
 import { getEntryById } from "./queries";
 import { updateEntry, stopRunningEntries } from "./update";
@@ -36,15 +38,19 @@ export function startActivity(
 	currentTime: Moment,
 	entries: TimeEntry[]
 ): TimeEntry[] {
-	const normalizedName = name.trim().toLocaleLowerCase();
+	const activityName = normalizeActivityName(name);
+	const normalizedName = activityName.toLocaleLowerCase();
 	const existingActivity =
 		normalizedName.length > 0
-			? entries.find((entry) => entry.name.trim().toLocaleLowerCase() === normalizedName)
+			? entries.find(
+					(entry) =>
+						normalizeActivityName(entry.name).toLocaleLowerCase() === normalizedName
+				)
 			: undefined;
 
 	return existingActivity
 		? startNewNestedEntry(currentTime, existingActivity.id, entries)
-		: startNewEntry(name, currentTime, entries);
+		: startNewEntry(activityName, currentTime, entries);
 }
 
 /**

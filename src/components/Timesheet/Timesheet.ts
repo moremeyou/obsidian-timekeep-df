@@ -1,8 +1,9 @@
-import { App } from "obsidian";
+import { App, Platform } from "obsidian";
 
 import { CustomOutputFormat } from "@/output";
 import { TimekeepSettings } from "@/settings";
 import { createStore, Store } from "@/store";
+import { TIMEKEEP_RESPONSIVE_HOST_CLASS } from "@/utils/responsive";
 
 import { ReplaceableComponent } from "../ReplaceableComponent";
 
@@ -23,6 +24,8 @@ import { TimekeepAutocomplete } from "@/service/autocomplete";
  * View component for the timesheet app as a whole
  */
 export class Timesheet extends ReplaceableComponent {
+	/** Query host used only for narrow desktop layouts. */
+	static readonly RESPONSIVE_HOST_CLASS = TIMEKEEP_RESPONSIVE_HOST_CLASS;
 	/** Access to the app instance */
 	app: App;
 	/** Access to the timekeep */
@@ -66,6 +69,17 @@ export class Timesheet extends ReplaceableComponent {
 				)
 			);
 		this.historicalDraft = historicalDraft ?? createStore<HistoricalActivityDraft | null>(null);
+	}
+
+	onload(): void {
+		if (!Platform.isMobile) {
+			this.containerEl.addClass(Timesheet.RESPONSIVE_HOST_CLASS);
+			this.register(() => {
+				this.containerEl.removeClass(Timesheet.RESPONSIVE_HOST_CLASS);
+			});
+		}
+
+		super.onload();
 	}
 
 	createContainer(): HTMLElement {

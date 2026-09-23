@@ -8,7 +8,7 @@ describe("startActivity", () => {
 	it("reuses a matching top-level Activity and starts a new date-specific Block", () => {
 		const previousStart = moment("2026-08-11T09:00:00");
 		const currentTime = moment("2026-08-12T10:00:00");
-		const output = startActivity("  PROJECT MANAGEMENT  ", currentTime, [
+		const output = startActivity("  PROJECT   MANAGEMENT  ", currentTime, [
 			{
 				id: 10,
 				name: "Project Management",
@@ -28,7 +28,7 @@ describe("startActivity", () => {
 	});
 
 	it("creates a new top-level Activity when no local name matches", () => {
-		const output = startActivity("New Activity", moment("2026-08-12T10:00:00"), []);
+		const output = startActivity("  New   Activity  ", moment("2026-08-12T10:00:00"), []);
 
 		expect(output).toHaveLength(1);
 		expect(output[0]).toMatchObject({

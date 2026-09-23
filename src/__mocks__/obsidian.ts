@@ -462,7 +462,10 @@ export class MockModal implements CloseableComponent {
 
 		this.containerEl = createMockContainer();
 		this.modalEl = this.containerEl.createDiv();
-		this.titleEl = this.modalEl.createSpan();
+		const closeButton = this.modalEl.createEl("button", { cls: "modal-close-button" });
+		closeButton.createEl("svg", { cls: "svg-icon" });
+		const headerEl = this.modalEl.createDiv({ cls: "modal-header" });
+		this.titleEl = headerEl.createSpan({ cls: "modal-title" });
 		this.contentEl = this.modalEl.createDiv({ cls: "mock-modal-content" });
 
 		this.open = vi.fn(() => {

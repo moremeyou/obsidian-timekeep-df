@@ -57,6 +57,12 @@ describe("withEntry", () => {
 		expect(stripEntriesRuntimeData(output2)).toEqual(stripEntriesRuntimeData(expected));
 	});
 
+	it("normalizes whitespace before storing a new Activity name", () => {
+		const output = withEntry([], "  Project   Management  ", moment());
+
+		expect(output[0].name).toBe("Project Management");
+	});
+
 	it("should maintain existing entries when adding to a list", async () => {
 		const { input, currentTime, expected } =
 			await import("./__fixtures__/manipulating/adding_entry/addEntryToList");

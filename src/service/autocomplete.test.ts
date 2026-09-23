@@ -67,6 +67,72 @@ describe("TimekeepAutocomplete", () => {
 			expect(autocomplete.names.getState()).toEqual(["Test"]);
 		});
 
+		it("trims and deduplicates visually identical names across trackers", () => {
+			const vault = new MockVault();
+			const august = vault.addFile("Time Tracking/08-2026.timekeep-df", "");
+			const september = vault.addFile("Time Tracking/09-2026.timekeep-df", "");
+			const settings = createStore({ ...defaultSettings });
+			const registry = new TimekeepRegistry(vault.asVault(), settings);
+			registry.entries.setState([
+				{
+					type: TimekeepEntryItemType.FILE,
+					file: august,
+					timekeep: {
+						entries: [
+							{
+								id: 1,
+								name: "Production",
+								startTime: null,
+								endTime: null,
+								subEntries: [],
+							},
+							{
+								id: 2,
+								name: "Production ",
+								startTime: null,
+								endTime: null,
+								subEntries: [],
+							},
+							{
+								id: 4,
+								name: "Studio   Work",
+								startTime: null,
+								endTime: null,
+								subEntries: [],
+							},
+						],
+					},
+				},
+				{
+					type: TimekeepEntryItemType.FILE,
+					file: september,
+					timekeep: {
+						entries: [
+							{
+								id: 3,
+								name: "production",
+								startTime: null,
+								endTime: null,
+								subEntries: [],
+							},
+							{
+								id: 5,
+								name: "studio work",
+								startTime: null,
+								endTime: null,
+								subEntries: [],
+							},
+						],
+					},
+				},
+			]);
+
+			const autocomplete = new TimekeepAutocomplete(registry, settings);
+			autocomplete.load();
+
+			expect(autocomplete.names.getState()).toEqual(["Production", "Studio Work"]);
+		});
+
 		it("empty vault should have no names", async () => {
 			const vault = new MockVault();
 			const settings = createStore({ ...defaultSettings });

@@ -6,7 +6,7 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 
 import type { CustomOutputFormat } from "@/output";
 
-import { createMockContainer, MockVault } from "@/__mocks__/obsidian";
+import { createMockContainer, MockModal, MockPlatform, MockVault } from "@/__mocks__/obsidian";
 import { defaultSettings, type TimekeepSettings } from "@/settings";
 import { createStore, type Store } from "@/store";
 
@@ -30,6 +30,7 @@ describe("Timesheet", () => {
 	let component: Timesheet;
 
 	beforeEach(() => {
+		MockPlatform.isMobile = false;
 		app = {} as App;
 		timekeep = createStore(defaultTimekeep());
 		vault = new MockVault();
@@ -51,6 +52,22 @@ describe("Timesheet", () => {
 
 	it("should load without error", () => {
 		expect(() => component.load()).not.toThrow();
+	});
+
+	it("uses its owning container as a responsive query host on desktop", () => {
+		component.load();
+
+		expect(containerEl.classList.contains(Timesheet.RESPONSIVE_HOST_CLASS)).toBe(true);
+
+		component.unload();
+		expect(containerEl.classList.contains(Timesheet.RESPONSIVE_HOST_CLASS)).toBe(false);
+	});
+
+	it("leaves the existing mobile layout outside the desktop query system", () => {
+		MockPlatform.isMobile = true;
+		component.load();
+
+		expect(containerEl.classList.contains(Timesheet.RESPONSIVE_HOST_CLASS)).toBe(false);
 	});
 
 	it("puts calendar controls above the current-work focus panel and table", () => {
@@ -130,9 +147,13 @@ describe("Timesheet", () => {
 
 		addForm!.dispatchEvent(new SubmitEvent("submit", { bubbles: true, cancelable: true }));
 
-		expect(component.wrapperEl?.querySelector("form.timekeep-df-editing")).not.toBeNull();
+		const modal = Array.from(MockModal.instances).find((instance) =>
+			instance.modalEl.classList.contains("timekeep-df-row-edit-modal")
+		);
+		expect(modal).toBeDefined();
+		expect(component.wrapperEl?.querySelector("form.timekeep-df-editing")).toBeNull();
 		expect(
-			component.wrapperEl?.querySelector<HTMLInputElement>(
+			modal?.contentEl.querySelector<HTMLInputElement>(
 				'form.timekeep-df-editing input[name="name"]'
 			)?.value
 		).toBe("Historical Activity");
