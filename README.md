@@ -94,6 +94,16 @@ This plugin provides a simple and easy way to track time spent on various tasks.
 - Dragging previews locally and saves on release. There is no Cancel or Undo control. Interrupted gestures, data/settings/range changes, and unloading the view discard incomplete previews.
 - Running Blocks retain a live end and allow only start resizing. Blocks crossing a selected range boundary show continuation markers; only actual endpoints in that range can be resized. The untouched timestamp and offscreen history remain intact.
 
+These previews use fictional activities and dates, with no data from a real vault. They show the timeline styling in an isolated demo.
+
+**Day view with a selected Block and one-hour precision strip**
+
+![Sample-data Day timeline showing a selected Block and resize controls](images/timeline-day-sample.png)
+
+**Week view with an adaptive scale and a Saturday Block**
+
+![Sample-data Week timeline showing activity bars across the week](images/timeline-week-sample.png)
+
 ### Responsive controls and exports
 
 - Button backgrounds, borders, corner radii, icon sizes, and vertical alignment are explicitly normalized across desktop and touch devices.
