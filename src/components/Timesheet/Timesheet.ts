@@ -12,6 +12,7 @@ import { TimesheetExportActions } from "@/components/TimesheetExportActions";
 import { TimesheetRunningEntry } from "@/components/TimesheetRunningEntry";
 import { TimesheetStartForm } from "@/components/TimesheetStartForm";
 import { TimesheetTable } from "@/components/TimesheetTable";
+import { TimesheetTimeline } from "@/components/TimesheetTimeline/TimesheetTimeline";
 import { TimesheetViewControls } from "@/components/TimesheetViewControls";
 
 import type { HistoricalActivityDraft } from "@/timekeep/draft";
@@ -19,6 +20,8 @@ import { Timekeep } from "@/timekeep/schema";
 import { createTimekeepViewState, type TimekeepViewState } from "@/timekeep/view";
 
 import { TimekeepAutocomplete } from "@/service/autocomplete";
+
+let nextActivityTabsId = 0;
 
 /**
  * View component for the timesheet app as a whole
@@ -109,6 +112,13 @@ export class Timesheet extends ReplaceableComponent {
 		this.addChild(runningEntry);
 		this.addChild(counters);
 
+		const tabs = !Platform.isPhone
+			? wrapperEl.createDiv({
+					cls: "timekeep-df-activity-tabs",
+					attr: { role: "tablist", "aria-label": "Activity view" },
+				})
+			: null;
+
 		const table = new TimesheetTable(
 			wrapperEl,
 			this.app,
@@ -118,6 +128,7 @@ export class Timesheet extends ReplaceableComponent {
 			this.historicalDraft
 		);
 		this.addChild(table);
+		if (tabs) this.setupActivityTabs(wrapperEl, tabs, table);
 
 		const utilityGridEl = wrapperEl.createDiv({
 			cls: ["timekeep-df-utility-grid", "timekeep-df-utility-card"],
@@ -163,5 +174,68 @@ export class Timesheet extends ReplaceableComponent {
 
 		this.addChild(startForm);
 		this.addChild(exportActions);
+	}
+
+	private setupActivityTabs(
+		wrapper: HTMLElement,
+		tabs: HTMLElement,
+		table: TimesheetTable
+	): void {
+		const id = `timekeep-df-activity-view-${nextActivityTabsId++}`;
+		const normalPanel = table.wrapperEl!;
+		const timelinePanel = wrapper.createDiv({ cls: "timekeep-df-timeline-panel" });
+		const panels = [normalPanel, timelinePanel];
+		const modes = ["normal", "timeline"] as const;
+		const buttons = modes.map((mode, index) => {
+			const button = tabs.createEl("button", {
+				text: mode === "normal" ? "Normal" : "Timeline",
+				attr: {
+					type: "button",
+					role: "tab",
+					id: `${id}-${mode}-tab`,
+					"aria-controls": `${id}-${mode}-panel`,
+				},
+			});
+			panels[index].id = `${id}-${mode}-panel`;
+			panels[index].setAttribute("role", "tabpanel");
+			panels[index].setAttribute("aria-labelledby", button.id);
+			this.registerDomEvent(button, "click", () => {
+				this.viewState.setState((state) => ({ ...state, activityView: mode }));
+			});
+			this.registerDomEvent(button, "keydown", (event) => {
+				if (!["ArrowLeft", "ArrowRight", "Home", "End"].includes(event.key)) return;
+				event.preventDefault();
+				const next = event.key === "Home" ? 0 : event.key === "End" ? 1 : 1 - index;
+				buttons[next].click();
+				buttons[next].focus();
+			});
+			return button;
+		});
+		let timeline: TimesheetTimeline | null = null;
+		const update = () => {
+			const showTimeline = this.viewState.getState().activityView === "timeline";
+			panels.forEach((panel, index) => {
+				panel.hidden = (index === 1) !== showTimeline;
+			});
+			buttons.forEach((button, index) => {
+				const selected = (index === 1) === showTimeline;
+				button.setAttribute("aria-selected", String(selected));
+				button.tabIndex = selected ? 0 : -1;
+			});
+			if (showTimeline && !timeline) {
+				timeline = new TimesheetTimeline(
+					timelinePanel,
+					this.timekeep,
+					this.viewState,
+					this.settings
+				);
+				this.addChild(timeline);
+			} else if (!showTimeline && timeline) {
+				this.removeChild(timeline);
+				timeline = null;
+			}
+		};
+		this.register(this.viewState.subscribe(update));
+		update();
 	}
 }

@@ -19,6 +19,8 @@ export enum TimekeepCounterView {
 }
 
 export type TimekeepViewState = {
+	/** Session-only desktop/tablet activity presentation. */
+	activityView?: "normal" | "timeline";
 	mode: TimekeepViewMode;
 	anchorDate: string;
 	followCurrent: boolean;

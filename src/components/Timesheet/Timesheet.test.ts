@@ -31,6 +31,7 @@ describe("Timesheet", () => {
 
 	beforeEach(() => {
 		MockPlatform.isMobile = false;
+		MockPlatform.isPhone = false;
 		app = {} as App;
 		timekeep = createStore(defaultTimekeep());
 		vault = new MockVault();
@@ -130,33 +131,92 @@ describe("Timesheet", () => {
 		expect(addButton?.disabled).toBe(false);
 	});
 
-	it("opens a historical Activity editor on the first Add click", () => {
-		vi.useFakeTimers();
-		vi.setSystemTime(new Date("2026-08-12T12:00:00"));
-		component.load();
+	it.each(["normal", "timeline"] as const)(
+		"opens a historical Activity editor on the first Add click in %s view",
+		(activityView) => {
+			vi.useFakeTimers();
+			vi.setSystemTime(new Date("2026-08-12T12:00:00"));
+			component.load();
+			component.viewState.setState({
+				mode: TimekeepViewMode.DAY,
+				anchorDate: "2026-08-11",
+				activityView,
+				followCurrent: false,
+			});
+			const addForm = component.wrapperEl?.querySelector<HTMLFormElement>(
+				".timekeep-df-utility-cell--add form"
+			);
+			addForm!.querySelector<HTMLInputElement>(".timekeep-df-name")!.value =
+				"Historical Activity";
+
+			addForm!.dispatchEvent(new SubmitEvent("submit", { bubbles: true, cancelable: true }));
+
+			const modal = Array.from(MockModal.instances).find((instance) =>
+				instance.modalEl.classList.contains("timekeep-df-row-edit-modal")
+			);
+			expect(modal).toBeDefined();
+			expect(component.wrapperEl?.querySelector("form.timekeep-df-editing")).toBeNull();
+			expect(
+				modal?.contentEl.querySelector<HTMLInputElement>(
+					'form.timekeep-df-editing input[name="name"]'
+				)?.value
+			).toBe("Historical Activity");
+			vi.useRealTimers();
+		}
+	);
+
+	it.each([false, true])(
+		"places Normal and Timeline tabs directly above the table on mobile-platform=%s (desktop/tablet)",
+		(isMobile) => {
+			MockPlatform.isMobile = isMobile;
+			component.load();
+			const tabs = containerEl.querySelector('[role="tablist"]')!;
+			expect(Array.from(tabs.children).map((tab) => tab.textContent)).toEqual([
+				"Normal",
+				"Timeline",
+			]);
+			expect(tabs.nextElementSibling?.classList.contains("timekeep-df-table-wrapper")).toBe(
+				true
+			);
+			const initialRange = component.viewState.getState();
+			(tabs.children[1] as HTMLButtonElement).click();
+			expect(component.viewState.getState()).toMatchObject(initialRange);
+			expect(
+				containerEl.querySelector<HTMLElement>(".timekeep-df-table-wrapper")!.hidden
+			).toBe(true);
+			expect(containerEl.querySelector(".timekeep-df-timeline")).not.toBeNull();
+			(tabs.children[0] as HTMLButtonElement).click();
+			expect(
+				containerEl.querySelector<HTMLElement>(".timekeep-df-table-wrapper")!.hidden
+			).toBe(false);
+			expect(containerEl.querySelector(".timekeep-df-timeline")).toBeNull();
+			component.unload();
+		}
+	);
+
+	it("keeps phones on the normal table even with a retained timeline preference", () => {
+		MockPlatform.isPhone = true;
+		MockPlatform.isMobile = true;
 		component.viewState.setState({
-			mode: TimekeepViewMode.DAY,
-			anchorDate: "2026-08-11",
-			followCurrent: false,
+			...component.viewState.getState(),
+			activityView: "timeline",
 		});
-		const addForm = component.wrapperEl?.querySelector<HTMLFormElement>(
-			".timekeep-df-utility-cell--add form"
+		component.load();
+		expect(containerEl.querySelector('[role="tablist"]')).toBeNull();
+		expect(containerEl.querySelector(".timekeep-df-timeline")).toBeNull();
+		expect(containerEl.querySelector<HTMLElement>(".timekeep-df-table-wrapper")!.hidden).toBe(
+			false
 		);
-		addForm!.querySelector<HTMLInputElement>(".timekeep-df-name")!.value =
-			"Historical Activity";
+		component.unload();
+		MockPlatform.isPhone = false;
+	});
 
-		addForm!.dispatchEvent(new SubmitEvent("submit", { bubbles: true, cancelable: true }));
-
-		const modal = Array.from(MockModal.instances).find((instance) =>
-			instance.modalEl.classList.contains("timekeep-df-row-edit-modal")
-		);
-		expect(modal).toBeDefined();
-		expect(component.wrapperEl?.querySelector("form.timekeep-df-editing")).toBeNull();
-		expect(
-			modal?.contentEl.querySelector<HTMLInputElement>(
-				'form.timekeep-df-editing input[name="name"]'
-			)?.value
-		).toBe("Historical Activity");
-		vi.useRealTimers();
+	it("supports arrow-key tab selection without resetting the range", () => {
+		component.load();
+		const tabs = containerEl.querySelectorAll<HTMLButtonElement>('[role="tab"]');
+		tabs[0].dispatchEvent(new KeyboardEvent("keydown", { key: "ArrowRight", bubbles: true }));
+		expect(tabs[1].getAttribute("aria-selected")).toBe("true");
+		expect(tabs[0].tabIndex).toBe(-1);
+		component.unload();
 	});
 });

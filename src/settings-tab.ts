@@ -225,7 +225,9 @@ export class TimekeepSettingsTab extends PluginSettingTab {
 
 		new Setting(this.containerEl)
 			.setName("Working hours start")
-			.setDesc("Start of the optional automatic-Break work window, in local time.")
+			.setDesc(
+				"Baseline start of the timeline workday and optional automatic-Break work window, in local time. The timeline expands to recorded hours."
+			)
 			.addText((t) => {
 				t.inputEl.type = "time";
 				t.inputEl.step = "60";
@@ -243,7 +245,7 @@ export class TimekeepSettingsTab extends PluginSettingTab {
 		new Setting(this.containerEl)
 			.setName("Working hours end")
 			.setDesc(
-				"End of the optional automatic-Break work window. An earlier time represents an overnight window."
+				"Baseline end of the timeline workday and optional automatic-Break work window. The timeline expands to recorded hours; an earlier end time represents an overnight window."
 			)
 			.addText((t) => {
 				t.inputEl.type = "time";

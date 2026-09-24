@@ -80,8 +80,19 @@ This plugin provides a simple and easy way to track time spent on various tasks.
 - Editors initialize in local time and save at minute precision, zeroing seconds and milliseconds without dropping the stored date.
 - **-5 Min** and **+5 Min** adjustments sit alongside Save, Cancel, and Delete. Invalid or empty date/time input does not replace a valid stored timestamp.
 - Every Block editor includes an **Activity** dropdown. Choosing another existing Activity moves the complete Block—name, start, and end—without changing or discarding any other historical Blocks.
-- Desktop editing remains inline. Tablet and mobile use compact screen-aware modals so controls are not sized from the horizontally scrolling table.
+- Row editing uses a modal on desktop, tablet, and phone, so controls are not sized from the horizontally scrolling table.
 - Save and Delete use clear Lucide icons, delete confirmation has a compact responsive layout, and redundant close controls have been removed.
+
+### Desktop and tablet timeline
+
+- **Normal** and **Timeline** tabs sit directly above the table on desktop and tablet. Phones keep the normal table with no timeline tabs. The selected tab is remembered per tracker for the current app session.
+- The timeline uses the same Day, Week, Month, Quarter, or Year range as the table. Each Activity has a row with separate bars for its recorded Blocks, including Breaks; table collapse state does not hide these bars.
+- The horizontal scale uses **Working hours start/end** in settings, independently of automatic breaks. Day starts with that workday and expands to include earlier starts or later finishes. Longer ranges place each recorded day alongside scheduled workdays, including weekends and other days off when they contain Blocks. Untracked nights and days off are omitted. **Days per week** counts from Monday, matching the capacity calculation. Overnight workdays extend into the next morning. Invalid or equal start/end settings fall back to 09:00–17:00.
+- The scale grows when recorded Blocks fall outside the configured hours, so their bars and handles stay visible. The block picker and precision view remain available for short sessions and endpoints outside the selected calendar range. Stored timestamps and durations are unchanged.
+- Select a bar, or use the block selector for short sessions in broad ranges, to show resize handles and a one-hour precision strip. **Start** / **End** focus the strip; **Earlier** / **Later** move it by 30 minutes. Drag a handle, use its left/right arrow keys, or use **−1 min** / **+1 min**.
+- Resizing rounds only the edited endpoint to minutes and snaps near neighbouring Blocks within this tracker. Blocks may meet at the same minute, but resizing cannot cross a neighbour or increase an existing overlap. Neighbouring Blocks are never moved. Second-level boundaries round away from overlap.
+- Dragging previews locally and saves on release. There is no Cancel or Undo control. Interrupted gestures, data/settings/range changes, and unloading the view discard incomplete previews.
+- Running Blocks retain a live end and allow only start resizing. Blocks crossing a selected range boundary show continuation markers; only actual endpoints in that range can be resized. The untouched timestamp and offscreen history remain intact.
 
 ### Responsive controls and exports
 
