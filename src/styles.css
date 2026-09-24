@@ -1,6 +1,5 @@
 /* Main container around the timekeep codeblock content */
 .timekeep-df-container {
-	--timekeep-df-running-row-color: var(--color-base-30);
 	--timekeep-df-compact-control-height: 2rem;
 	--timekeep-df-compact-control-font-size: var(--font-ui-small);
 
@@ -26,12 +25,20 @@
 	min-width: 0;
 	overflow-x: auto;
 	overscroll-behavior-inline: contain;
+	margin: 0.75rem 0 1rem;
+	border: 1px solid var(--background-modifier-border);
+	border-radius: 8px;
+	background: var(--background-primary);
 }
 
 /* <table/> for the timekeep table */
 .timekeep-df-table {
 	width: 100%;
 	min-width: 40rem;
+	margin: 0;
+	border: 0;
+	border-collapse: separate;
+	border-spacing: 0;
 }
 
 .timekeep-df-table--fixed-size {
@@ -41,22 +48,22 @@
 
 /* <thead/> for the timekeep table */
 .timekeep-df-table-head {
-	background-color: var(--color-base-30);
+	background-color: var(--background-primary);
 	position: sticky;
-	top: -1px;
+	top: 0;
 	z-index: 1;
 }
 
 /* <tr/> row within the timekeep table */
 .timekeep-df-row {
 	width: 100%;
+	--timekeep-df-row-surface: var(--background-primary);
 }
 
 .timekeep-df-empty-row > td {
-	padding: 1.25rem 0.75rem;
+	padding: 1.75rem 0.75rem;
 	color: var(--text-muted);
 	text-align: center;
-	font-style: italic;
 }
 
 /* left error indicator line for invalid entries */
@@ -64,32 +71,27 @@
 	border-left: 2px solid var(--color-red);
 }
 
-/* alternating row highlight color */
-.timekeep-df-row:nth-child(even) {
-	background-color: var(--color-base-20);
+/* Give each Activity a quiet lane like the timeline, including expanded Blocks. */
+.timekeep-df-row[data-group-tone="even"] {
+	--timekeep-df-row-surface: color-mix(
+		in srgb,
+		var(--background-secondary) 32%,
+		var(--background-primary)
+	);
 }
 
-/* alternating row highlight hover color */
-.timekeep-df-row:nth-child(even):hover {
-	background-color: var(--color-base-20);
+.timekeep-df-row:hover,
+.timekeep-df-row:focus-within {
+	--timekeep-df-row-surface: var(--background-secondary);
 }
 
-/* row running color */
 .timekeep-df-row[data-running="true"],
-.timekeep-df-row:nth-child(even)[data-running="true"],
-.timekeep-df-row:nth-child(odd)[data-running="true"] {
-	background-color: var(--timekeep-df-running-row-color);
-}
-
-/* expanded groups use the parent row's base tone across every descendant row */
-.timekeep-df-row[data-group-tone="odd"]:not(:hover),
-.timekeep-df-row[data-group-tone="odd"]:not(:hover) > td {
-	background-color: var(--table-row-odd-background, transparent) !important;
-}
-
-.timekeep-df-row[data-group-tone="even"]:not(:hover),
-.timekeep-df-row[data-group-tone="even"]:not(:hover) > td {
-	background-color: var(--table-row-even-background, var(--color-base-20)) !important;
+.timekeep-df-row[data-running-within="true"] {
+	--timekeep-df-row-surface: color-mix(
+		in srgb,
+		var(--interactive-accent) 12%,
+		var(--background-primary)
+	);
 }
 
 /* visually enclose the complete expanded parent/child row area */
@@ -2069,6 +2071,93 @@ button.timekeep-df-start.timekeep-df-icon-button {
 .timekeep-df-timeline [hidden] {
 	display: none !important;
 }
+/* The Normal table shares the timeline's framed, separated Activity lanes. */
+.timekeep-df-container .timekeep-df-table thead th {
+	padding-block: 0.65rem !important;
+	background: var(--background-primary);
+	border-bottom: 1px solid var(--background-modifier-border);
+	color: var(--text-muted);
+	font-size: 0.72em;
+	font-weight: var(--font-semibold);
+	letter-spacing: 0.04em;
+	text-transform: uppercase;
+}
+
+.timekeep-df-container .timekeep-df-table .timekeep-df-row > td {
+	padding-block: 0.4rem !important;
+	padding-inline-end: 0.65rem !important;
+	background: var(--timekeep-df-row-surface) !important;
+	border-bottom: 1px solid var(--background-modifier-border);
+	transition: background-color 120ms ease;
+}
+
+.timekeep-df-container .timekeep-df-table tbody > tr:last-child > td {
+	border-bottom: 0;
+}
+
+.timekeep-df-table .timekeep-df-row[data-depth="0"] > td:first-child {
+	box-shadow: inset 3px 0 0 var(--interactive-accent);
+}
+
+.timekeep-df-table .timekeep-df-row[data-invalid="true"] > td:first-child {
+	box-shadow: inset 3px 0 0 var(--color-red);
+}
+
+.timekeep-df-table .timekeep-df-row[data-depth="0"] .timekeep-df-entry-name {
+	font-weight: var(--font-semibold);
+}
+
+.timekeep-df-table .timekeep-df-row[data-depth="0"] .timekeep-df-col--duration .timekeep-df-time {
+	display: inline-block;
+	padding: 0.18rem 0.4rem;
+	border-radius: 4px;
+	background: color-mix(in srgb, var(--interactive-accent) 16%, transparent);
+	color: var(--text-accent);
+	font-weight: var(--font-semibold);
+}
+
+.timekeep-df-table .timekeep-df-col--percent,
+.timekeep-df-table .timekeep-df-col--time {
+	color: var(--text-muted);
+}
+
+.timekeep-df-table :is(.timekeep-df-head--duration, .timekeep-df-head--percent),
+.timekeep-df-table :is(.timekeep-df-col--duration, .timekeep-df-col--percent) {
+	text-align: right;
+}
+
+.timekeep-df-table :is(.timekeep-df-head--time, .timekeep-df-col--time) {
+	text-align: center;
+}
+
+.timekeep-df-table
+	.timekeep-df-row
+	.timekeep-df-col--actions:first-child
+	button.timekeep-df-icon-button {
+	background-color: color-mix(
+		in srgb,
+		var(--interactive-accent) 14%,
+		var(--interactive-normal)
+	) !important;
+	border-color: color-mix(
+		in srgb,
+		var(--interactive-accent) 28%,
+		var(--background-modifier-border)
+	) !important;
+	color: var(--text-accent);
+}
+
+.timekeep-df-table
+	.timekeep-df-row
+	.timekeep-df-col--actions:first-child
+	button.timekeep-df-icon-button:hover {
+	background-color: color-mix(
+		in srgb,
+		var(--interactive-accent) 24%,
+		var(--interactive-normal)
+	) !important;
+}
+
 .timekeep-df-timeline {
 	--timekeep-df-timeline-handle-size: 22px;
 	padding: 0.75rem 0;
