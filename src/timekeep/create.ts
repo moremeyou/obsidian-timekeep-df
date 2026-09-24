@@ -1,5 +1,6 @@
 import type { Moment } from "moment";
 
+import { normalizeActivityName } from "@/utils/name";
 import { isEmptyString } from "@/utils/text";
 
 import { timekeepId } from "@/timekeep/id";
@@ -63,6 +64,8 @@ export function withUnstartedEntry(entries: TimeEntry[], name: string): TimeEntr
  * @returns The new entry name
  */
 function getEntryName(name: string, entries: TimeEntry[]) {
+	name = normalizeActivityName(name);
+
 	// Assign a name automatically if not provided
 	if (isEmptyString(name)) {
 		name = `Activity ${entries.length + 1}`;

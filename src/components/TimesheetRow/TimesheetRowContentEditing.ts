@@ -125,6 +125,7 @@ export class TimesheetRowContentEditing extends ReplaceableComponent {
 		if (contentEl instanceof HTMLTableCellElement) contentEl.colSpan = 7;
 
 		const formEl = contentEl.createEl("form", { cls: "timekeep-df-editing" });
+		formEl.setAttribute("data-editor-kind", this.isActivity ? "activity" : "block");
 		this.registerDomEvent(formEl, "submit", this.onSubmit.bind(this));
 
 		if (!this.isActivity && this.entry.subEntries === null && this.activityId !== null) {
@@ -172,9 +173,12 @@ export class TimesheetRowContentEditing extends ReplaceableComponent {
 		const adjustmentActionsEl = footerEl.createDiv({
 			cls: "timekeep-df-editing-adjustments",
 		});
-		adjustmentActionsEl.hidden =
+		const canAdjustDuration = !(
 			this.entry.subEntries !== null ||
-			(this.entry.startTime === null && this.historicalDraft === null);
+			(this.entry.startTime === null && this.historicalDraft === null)
+		);
+		formEl.setAttribute("data-can-adjust-duration", String(canAdjustDuration));
+		adjustmentActionsEl.hidden = !canAdjustDuration;
 
 		const subtractButton = adjustmentActionsEl.createEl("button", {
 			cls: "timekeep-df-action",
@@ -182,7 +186,7 @@ export class TimesheetRowContentEditing extends ReplaceableComponent {
 		});
 		subtractButton.type = "button";
 		createObsidianIcon(subtractButton, "rotate-ccw-clock", "timekeep-df-text-button-icon");
-		subtractButton.appendText("-5 Min");
+		subtractButton.createSpan({ cls: "timekeep-df-action-label", text: "-5 Min" });
 		this.registerDomEvent(subtractButton, "click", () => this.adjustDuration(-5));
 
 		const addButton = adjustmentActionsEl.createEl("button", {
@@ -190,18 +194,20 @@ export class TimesheetRowContentEditing extends ReplaceableComponent {
 			attr: { "data-action": "add-five-minutes" },
 		});
 		addButton.type = "button";
-		addButton.appendText("+5 Min");
+		addButton.createSpan({ cls: "timekeep-df-action-label", text: "+5 Min" });
 		this.registerDomEvent(addButton, "click", () => this.adjustDuration(5));
 
 		const saveButton = actionsEl.createEl("button", {
 			cls: "mod-cta timekeep-df-action",
 			attr: {
 				"data-action": "save",
+				"aria-label": "Save",
+				title: "Save",
 			},
 		});
 		saveButton.type = "submit";
 		createObsidianIcon(saveButton, "save", "timekeep-df-text-button-icon");
-		saveButton.appendText("Save");
+		saveButton.createSpan({ cls: "timekeep-df-action-label", text: "Save" });
 
 		const cancelButton = actionsEl.createEl("button", {
 			cls: "timekeep-df-action",
@@ -211,30 +217,40 @@ export class TimesheetRowContentEditing extends ReplaceableComponent {
 		});
 		cancelButton.type = "button";
 		this.registerDomEvent(cancelButton, "click", this.onCancel.bind(this));
-		cancelButton.appendText("Cancel");
+		cancelButton.createSpan({ cls: "timekeep-df-action-label", text: "Cancel" });
 
 		const destructiveActionsEl = footerEl.createDiv({
 			cls: "timekeep-df-editing-destructive",
 		});
+		const deleteLabel = this.isActivity ? "Delete in range" : "Delete";
 		const deleteButton = destructiveActionsEl.createEl("button", {
 			cls: "timekeep-df-action",
 			attr: {
 				"data-action": "delete",
+				"aria-label": deleteLabel,
+				title: deleteLabel,
 			},
 		});
 		deleteButton.type = "button";
 		createObsidianIcon(deleteButton, "trash-2", "timekeep-df-text-button-icon");
-		deleteButton.appendText(this.isActivity ? "Delete in range" : "Delete");
+		deleteButton.createSpan({ cls: "timekeep-df-action-label", text: deleteLabel });
 
 		this.registerDomEvent(deleteButton, "click", this.onConfirmDelete.bind(this));
-		if (this.isActivity) {
+		if (this.isActivity && this.entry.subEntries !== null) {
 			const deleteAllButton = destructiveActionsEl.createEl("button", {
 				cls: "timekeep-df-action",
-				attr: { "data-action": "delete-all-history" },
+				attr: {
+					"data-action": "delete-all-history",
+					"aria-label": "Delete all history",
+					title: "Delete all history",
+				},
 			});
 			deleteAllButton.type = "button";
 			createObsidianIcon(deleteAllButton, "trash-2", "timekeep-df-text-button-icon");
-			deleteAllButton.appendText("Delete all history");
+			deleteAllButton.createSpan({
+				cls: "timekeep-df-action-label",
+				text: "Delete all history",
+			});
 			this.registerDomEvent(
 				deleteAllButton,
 				"click",

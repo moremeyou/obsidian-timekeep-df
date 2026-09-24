@@ -14,8 +14,8 @@ describe("prepareHistoricalActivityDraft", () => {
 		const initialTime = moment("2026-08-11T14:37:42");
 		const first = prepareHistoricalActivityDraft(
 			[],
-			"project management",
-			["Project Management"],
+			"  project   management  ",
+			[" Project  Management "],
 			initialTime
 		);
 		const second = prepareHistoricalActivityDraft(

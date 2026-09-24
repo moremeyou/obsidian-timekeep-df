@@ -11,7 +11,6 @@ import { createStore, type Store } from "@/store";
 
 import { TimesheetRow } from "./TimesheetRow";
 import { TimesheetRowContent } from "./TimesheetRowContent";
-import { TimesheetRowContentEditing } from "./TimesheetRowContentEditing";
 
 import type { HistoricalActivityDraft } from "@/timekeep/draft";
 import type { TimeEntry, Timekeep } from "@/timekeep/schema";
@@ -68,6 +67,38 @@ describe("TimesheetRowContainer", () => {
 		expect(modal?.close).toHaveBeenCalledOnce();
 	});
 
+	it("opens the tablet-style row editor modal on desktop at any tracker width", () => {
+		vi.spyOn(containerEl, "getBoundingClientRect").mockReturnValue({
+			width: 1200,
+		} as DOMRect);
+		component.load();
+
+		(component.getContent() as TimesheetRowContent).onBeginEditing();
+
+		expect(component.getContent()).toBeInstanceOf(TimesheetRowContent);
+		const modal = Array.from(MockModal.instances).find((instance) =>
+			instance.modalEl.classList.contains("timekeep-df-row-edit-modal")
+		);
+		expect(modal).toBeDefined();
+		expect(modal?.modalEl.classList.contains("timekeep-df-compact-modal")).toBe(true);
+		expect(modal?.modalEl.classList.contains("timekeep-df-phone-modal")).toBe(false);
+		expect(modal?.titleEl.textContent).toBe("Edit Activity");
+		const form = modal?.contentEl.querySelector<HTMLFormElement>("form.timekeep-df-editing");
+		expect(form).not.toBeNull();
+		expect(form?.dataset.editorKind).toBe("activity");
+		expect(form?.dataset.canAdjustDuration).toBe("true");
+		expect(form?.querySelector<HTMLElement>(".timekeep-df-editing-adjustments")?.hidden).toBe(
+			false
+		);
+		expect(form?.querySelector('[data-action="subtract-five-minutes"]')).not.toBeNull();
+		expect(form?.querySelector('[data-action="add-five-minutes"]')).not.toBeNull();
+		expect(form?.querySelector('[data-action="delete"]')?.textContent).toContain(
+			"Delete in range"
+		);
+		expect(form?.querySelector('[data-action="delete-all-history"]')).toBeNull();
+		expect(containerEl.querySelector("form.timekeep-df-editing")).toBeNull();
+	});
+
 	it("uses the native phone modal header outside the scrolling table", () => {
 		MockPlatform.isMobile = true;
 		MockPlatform.isPhone = true;
@@ -79,7 +110,48 @@ describe("TimesheetRowContainer", () => {
 
 		expect(modal?.modalEl.classList.contains("timekeep-df-phone-modal")).toBe(true);
 		expect(modal?.contentEl.querySelector(".timekeep-df-edit-mobile-header")).toBeNull();
-		expect(modal?.contentEl.querySelector('[data-action="save"]')).not.toBeNull();
+		const form = modal?.contentEl.querySelector<HTMLFormElement>("form.timekeep-df-editing");
+		const saveButton = modal?.modalEl.querySelector<HTMLButtonElement>('[data-action="save"]');
+		const header = modal?.modalEl.querySelector<HTMLElement>(".timekeep-df-edit-modal-header");
+		expect(saveButton?.getAttribute("aria-label")).toBe("Save");
+		expect(saveButton?.getAttribute("form")).toBe(form?.id);
+		expect(saveButton?.classList.contains("timekeep-df-phone-header-button")).toBe(true);
+		expect(
+			saveButton?.parentElement?.classList.contains("timekeep-df-phone-header-actions")
+		).toBe(true);
+		expect(saveButton?.querySelector(".timekeep-df-action-label")?.textContent).toBe("Save");
+		expect(
+			Array.from(saveButton?.childNodes ?? []).some(
+				(node) => node.nodeType === Node.TEXT_NODE
+			)
+		).toBe(false);
+		expect(saveButton?.closest(".timekeep-df-editing-footer")).toBeNull();
+		const closeButton = modal?.modalEl.querySelector<HTMLElement>(".modal-close-button");
+		expect(closeButton?.classList.contains("timekeep-df-phone-header-button")).toBe(true);
+		expect(saveButton?.closest(".timekeep-df-editing-actions")?.parentElement).toBe(
+			closeButton?.parentElement
+		);
+		expect(
+			closeButton?.parentElement?.classList.contains("timekeep-df-phone-modal-chrome")
+		).toBe(true);
+		expect(header?.contains(modal?.titleEl ?? null)).toBe(true);
+		expect(
+			closeButton?.previousElementSibling?.classList.contains("timekeep-df-editing-actions")
+		).toBe(true);
+		expect(
+			modal?.contentEl.querySelector('[data-action="delete"]')?.getAttribute("aria-label")
+		).toBe("Delete in range");
+		expect(
+			modal?.contentEl.querySelector('[data-action="delete"] .timekeep-df-action-label')
+				?.textContent
+		).toBe("Delete in range");
+		expect(modal?.contentEl.querySelector('[data-action="delete-all-history"]')).toBeNull();
+		expect(
+			modal?.contentEl.querySelector('[data-action="subtract-five-minutes"]')?.textContent
+		).toContain("-5 Min");
+		expect(
+			modal?.contentEl.querySelector('[data-action="add-five-minutes"]')?.textContent
+		).toContain("+5 Min");
 		expect(modal?.contentEl.querySelector("tr")).toBeNull();
 	});
 
@@ -169,7 +241,7 @@ describe("TimesheetRowContainer", () => {
 		modal!.contentEl.querySelector<HTMLInputElement>('input[name="name"]')!.value =
 			"Phone update";
 
-		modal!.contentEl.querySelector<HTMLButtonElement>('[data-action="save"]')!.click();
+		modal!.modalEl.querySelector<HTMLButtonElement>('[data-action="save"]')!.click();
 
 		expect(timekeep.getState().entries[0].name).toBe("Phone update");
 		expect(modal?.close).toHaveBeenCalledOnce();
@@ -264,13 +336,15 @@ describe("TimesheetRowContainer", () => {
 
 		(component.getContent() as TimesheetRowContent).onBeginEditing();
 
-		const editor = component.getContent() as TimesheetRowContentEditing;
-		expect(editor.entry.id).toBe(afternoon.id);
-		expect(editor.wrapperEl?.querySelector<HTMLInputElement>('input[name="name"]')?.value).toBe(
+		const modal = Array.from(MockModal.instances).find((instance) =>
+			instance.modalEl.classList.contains("timekeep-df-row-edit-modal")
+		);
+		expect(modal?.titleEl.textContent).toBe("Edit Block");
+		expect(modal?.contentEl.querySelector<HTMLInputElement>('input[name="name"]')?.value).toBe(
 			"Afternoon"
 		);
 		expect(
-			editor.wrapperEl?.querySelector<HTMLSelectElement>('select[name="activity"]')?.value
+			modal?.contentEl.querySelector<HTMLSelectElement>('select[name="activity"]')?.value
 		).toBe(String(activity.id));
 		vi.useRealTimers();
 	});
@@ -323,12 +397,14 @@ describe("TimesheetRowContainer", () => {
 
 		(component.getContent() as TimesheetRowContent).onBeginEditing();
 
-		const editor = component.getContent() as TimesheetRowContentEditing;
-		expect(editor.entry.id).toBe(latestBlock.id);
-		expect(editor.wrapperEl?.querySelector<HTMLInputElement>('input[name="name"]')?.value).toBe(
+		const modal = Array.from(MockModal.instances).find((instance) =>
+			instance.modalEl.classList.contains("timekeep-df-row-edit-modal")
+		);
+		expect(modal?.titleEl.textContent).toBe("Edit Block");
+		expect(modal?.contentEl.querySelector<HTMLInputElement>('input[name="name"]')?.value).toBe(
 			"Sunday Block"
 		);
-		expect(editor.wrapperEl?.querySelector('select[name="activity"]')).not.toBeNull();
+		expect(modal?.contentEl.querySelector('select[name="activity"]')).not.toBeNull();
 	});
 
 	it("opens the latest Day Block in the mobile Activity-row modal", () => {
@@ -380,7 +456,7 @@ describe("TimesheetRowContainer", () => {
 	});
 
 	it("should be able to switch to the editing view", () => {
-		const onViewEditing = vi.spyOn(component, "onViewContent");
+		const onViewEditing = vi.spyOn(component, "onViewEditing");
 
 		component.load();
 
@@ -397,16 +473,20 @@ describe("TimesheetRowContainer", () => {
 
 		const content = component.getContent() as TimesheetRowContent;
 		expect(content).toBeInstanceOf(TimesheetRowContent);
+		onViewContent.mockClear();
 		content.onBeginEditing();
 		expect(onViewEditing).toHaveBeenCalled();
 
-		const editingContent = component.getContent() as TimesheetRowContentEditing;
-		expect(editingContent).toBeInstanceOf(TimesheetRowContentEditing);
-		editingContent.onFinishEditing();
+		expect(component.getContent()).toBe(content);
+		const modal = Array.from(MockModal.instances).find((instance) =>
+			instance.modalEl.classList.contains("timekeep-df-row-edit-modal")
+		);
+		modal?.close();
 		expect(onViewContent).toHaveBeenCalled();
+		expect(component.getContent()).toBeInstanceOf(TimesheetRowContent);
 	});
 
-	it("returns a horizontally scrolled table to the left edge when editing starts", () => {
+	it("leaves the table and its scroll position untouched while the desktop modal is open", () => {
 		const tableWrapperEl = containerEl.createDiv({ cls: "timekeep-df-table-wrapper" });
 		const bodyEl = tableWrapperEl.createEl("table").createEl("tbody");
 		component = new TimesheetRow(bodyEl, app, timekeep, settings, entry, 0);
@@ -415,7 +495,13 @@ describe("TimesheetRowContainer", () => {
 
 		(component.getContent() as TimesheetRowContent).onBeginEditing();
 
-		expect(tableWrapperEl.scrollLeft).toBe(0);
-		expect(component.getContent()).toBeInstanceOf(TimesheetRowContentEditing);
+		expect(tableWrapperEl.scrollLeft).toBe(240);
+		expect(component.getContent()).toBeInstanceOf(TimesheetRowContent);
+		expect(bodyEl.querySelector("form.timekeep-df-editing")).toBeNull();
+		expect(
+			Array.from(MockModal.instances).some((instance) =>
+				instance.modalEl.classList.contains("timekeep-df-row-edit-modal")
+			)
+		).toBe(true);
 	});
 });

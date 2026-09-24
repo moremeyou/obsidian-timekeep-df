@@ -1,5 +1,7 @@
 import moment, { type Moment } from "moment";
 
+import { normalizeActivityName } from "@/utils/name";
+
 import { createUnstartedEntry } from "@/timekeep/create";
 import { timekeepId } from "@/timekeep/id";
 import type { TimeEntry } from "@/timekeep/schema";
@@ -78,18 +80,17 @@ function prepareBlockDraft(
 }
 
 function normalizedName(name: string): string {
-	return name.trim().toLocaleLowerCase();
+	return normalizeActivityName(name).toLocaleLowerCase();
 }
 
 function canonicalActivityName(name: string, registryNames: string[]): string {
-	const trimmedName = name.trim();
-	if (trimmedName.length === 0) return trimmedName;
+	const cleanName = normalizeActivityName(name);
+	if (cleanName.length === 0) return cleanName;
 
-	return (
-		registryNames.find(
-			(registryName) => normalizedName(registryName) === normalizedName(trimmedName)
-		) ?? trimmedName
+	const registryName = registryNames.find(
+		(registryName) => normalizedName(registryName) === normalizedName(cleanName)
 	);
+	return registryName ? normalizeActivityName(registryName) : cleanName;
 }
 
 function nextActivityName(entries: TimeEntry[]): string {

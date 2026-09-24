@@ -1,6 +1,17 @@
 import { expect, it, describe } from "vitest";
 
-import { NameSegmentType, parseNameSegments } from "./name";
+import { NameSegmentType, normalizeActivityName, parseNameSegments } from "./name";
+
+describe("normalizeActivityName", () => {
+	it("trims outer whitespace and collapses internal whitespace", () => {
+		expect(normalizeActivityName("  Project   Management  ")).toBe("Project Management");
+		expect(normalizeActivityName("Project\t\tManagement")).toBe("Project Management");
+	});
+
+	it("returns an empty name when the input is only whitespace", () => {
+		expect(normalizeActivityName(" \t  ")).toBe("");
+	});
+});
 
 describe("parseNameSegments", () => {
 	it("should parse plain text without modification", () => {

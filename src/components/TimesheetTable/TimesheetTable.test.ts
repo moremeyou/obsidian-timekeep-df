@@ -4,7 +4,7 @@ import moment from "moment";
 import { type App } from "obsidian";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
-import { createMockContainer } from "@/__mocks__/obsidian";
+import { createMockContainer, MockModal } from "@/__mocks__/obsidian";
 import { defaultSettings, type TimekeepSettings } from "@/settings";
 import { createStore, type Store } from "@/store";
 import { assert } from "@/utils/assert";
@@ -182,19 +182,22 @@ describe("TimesheetTable", () => {
 		);
 
 		component.load();
-		expect(component.wrapperEl?.querySelector("form.timekeep-df-editing")).not.toBeNull();
+		const modal = Array.from(MockModal.instances).find((instance) =>
+			instance.modalEl.classList.contains("timekeep-df-row-edit-modal")
+		);
+		expect(modal).toBeDefined();
+		expect(component.wrapperEl?.querySelector("form.timekeep-df-editing")).toBeNull();
 		expect(
-			component.wrapperEl?.querySelector<HTMLInputElement>(
-				'input[name="timekeep-df-start-date"]'
-			)?.value
+			modal?.contentEl.querySelector<HTMLInputElement>('input[name="timekeep-df-start-date"]')
+				?.value
 		).toBe("2026-08-11");
 		expect(
-			component.wrapperEl?.querySelector<HTMLInputElement>(
+			modal?.contentEl.querySelector<HTMLInputElement>(
 				'input[name="timekeep-df-start-native-time"]'
 			)?.value
 		).toBe("14:25");
 
-		component.wrapperEl?.querySelector<HTMLButtonElement>('[data-action="cancel"]')?.click();
+		modal?.contentEl.querySelector<HTMLButtonElement>('[data-action="cancel"]')?.click();
 		expect(historicalDraft.getState()).toBeNull();
 		expect(component.wrapperEl?.querySelectorAll("tbody > tr.timekeep-df-row")).toHaveLength(0);
 		expect(component.wrapperEl?.querySelector(".timekeep-df-empty-row")?.textContent).toBe(
@@ -245,10 +248,14 @@ describe("TimesheetTable", () => {
 		);
 
 		component.load();
-		expect(component.wrapperEl?.querySelector("form.timekeep-df-editing")).not.toBeNull();
-		expect(component.wrapperEl?.querySelectorAll("tbody > tr")).toHaveLength(2);
+		const modal = Array.from(MockModal.instances).find((instance) =>
+			instance.modalEl.classList.contains("timekeep-df-row-edit-modal")
+		);
+		expect(modal).toBeDefined();
+		expect(component.wrapperEl?.querySelector("form.timekeep-df-editing")).toBeNull();
+		expect(component.wrapperEl?.querySelectorAll("tbody > tr")).toHaveLength(1);
 		expect(
-			component.wrapperEl?.querySelector<HTMLInputElement>('form input[name="name"]')?.value
+			modal?.contentEl.querySelector<HTMLInputElement>('form input[name="name"]')?.value
 		).toBe("Block 2");
 	});
 
@@ -292,9 +299,13 @@ describe("TimesheetTable", () => {
 			?.querySelector<HTMLButtonElement>('tbody > tr [data-action="add-block"]')
 			?.click();
 
-		expect(component.wrapperEl?.querySelector("form.timekeep-df-editing")).not.toBeNull();
+		const modal = Array.from(MockModal.instances).find((instance) =>
+			instance.modalEl.classList.contains("timekeep-df-row-edit-modal")
+		);
+		expect(modal).toBeDefined();
+		expect(component.wrapperEl?.querySelector("form.timekeep-df-editing")).toBeNull();
 		expect(
-			component.wrapperEl?.querySelector<HTMLInputElement>('form input[name="name"]')?.value
+			modal?.contentEl.querySelector<HTMLInputElement>('form input[name="name"]')?.value
 		).toBe("Block 2");
 		expect(timekeep.getState().entries[0].subEntries).toHaveLength(2);
 		expect(historicalDraft.getState()?.entryId).toBe(

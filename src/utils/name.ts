@@ -16,6 +16,11 @@ export type NameSegment =
 	| ({ type: NameSegmentType.Text } & NameSegmentText)
 	| ({ type: NameSegmentType.Link } & NameSegmentLink);
 
+/** Clean user-entered Activity names before matching or persistence. */
+export function normalizeActivityName(name: string): string {
+	return name.trim().replace(/\s+/g, " ");
+}
+
 // Matches wikilinks [[link]] and markdown links [text](url)
 const LINK_REGEX = /\[\[([^\]]+)\]\]|\[([^\]]+)\]\(([^)]+)\)/g;
 

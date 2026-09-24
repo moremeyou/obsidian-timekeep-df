@@ -2,6 +2,7 @@ import { Component } from "obsidian";
 
 import { TimekeepSettings } from "@/settings";
 import { createStore, Store, Unsubscribe } from "@/store";
+import { normalizeActivityName } from "@/utils/name";
 import { isNumberText } from "@/utils/number";
 
 import { TimekeepEntryItemType, TimekeepRegistry } from "./registry";
@@ -87,10 +88,16 @@ export class TimekeepAutocomplete extends Component {
 			}
 		}
 
-		const names = Array.from(namesSet)
-			//
-			.filter((name) => !TimekeepAutocomplete.isIgnoredName(name));
+		const canonicalNames = new Map<string, string>();
+		for (const storedName of namesSet) {
+			const displayName = normalizeActivityName(storedName);
+			if (TimekeepAutocomplete.isIgnoredName(displayName)) continue;
 
+			const identity = displayName.toLocaleLowerCase();
+			if (!canonicalNames.has(identity)) canonicalNames.set(identity, displayName);
+		}
+
+		const names = Array.from(canonicalNames.values());
 		names.sort();
 
 		this.names.setState(names);
