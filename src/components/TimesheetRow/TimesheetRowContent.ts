@@ -106,6 +106,7 @@ export class TimesheetRowContent extends ReplaceableComponent {
 
 	render(wrapperEl: HTMLElement): void {
 		const entry = this.entry;
+		wrapperEl.setAttribute("data-depth", String(this.indent));
 		const settings = this.settings.getState();
 		const displayName =
 			this.indent > 0 && settings.appendBlockContext
