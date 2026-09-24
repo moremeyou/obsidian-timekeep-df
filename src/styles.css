@@ -94,28 +94,6 @@
 	);
 }
 
-/* visually enclose the complete expanded parent/child row area */
-.timekeep-df-row[data-group-position] > * {
-	box-shadow: none;
-	border-radius: 0;
-}
-
-.timekeep-df-row[data-group-position] > :first-child {
-	border-left: 1px solid var(--background-modifier-border-hover);
-}
-
-.timekeep-df-row[data-group-position] > :last-child {
-	border-right: 1px solid var(--background-modifier-border-hover);
-}
-
-.timekeep-df-row[data-group-position="start"] > * {
-	border-top: 1px solid var(--background-modifier-border-hover);
-}
-
-.timekeep-df-row[data-group-position="end"] > * {
-	border-bottom: 1px solid var(--background-modifier-border-hover);
-}
-
 /* calendar view navigation above each tracker */
 .timekeep-df-view-controls {
 	display: grid;
@@ -2071,10 +2049,19 @@ button.timekeep-df-start.timekeep-df-icon-button {
 .timekeep-df-timeline [hidden] {
 	display: none !important;
 }
-/* The Normal table shares the timeline's framed, separated Activity lanes. */
+
+/* The tabs provide the Normal table's top edge; retain the frame on phones. */
+.timekeep-df-activity-tabs + .timekeep-df-table-wrapper {
+	margin-top: 0;
+	border-top: 0;
+	border-radius: 0 0 8px 8px;
+}
+
+/* Use only horizontal dividers, like the timeline's Activity rows. */
 .timekeep-df-container .timekeep-df-table thead th {
 	padding-block: 0.65rem !important;
 	background: var(--background-primary);
+	border: 0;
 	border-bottom: 1px solid var(--background-modifier-border);
 	color: var(--text-muted);
 	font-size: 0.72em;
@@ -2087,11 +2074,40 @@ button.timekeep-df-start.timekeep-df-icon-button {
 	padding-block: 0.4rem !important;
 	padding-inline-end: 0.65rem !important;
 	background: var(--timekeep-df-row-surface) !important;
+	border: 0;
 	border-bottom: 1px solid var(--background-modifier-border);
 	transition: background-color 120ms ease;
 }
 
-.timekeep-df-container .timekeep-df-table tbody > tr:last-child > td {
+/* Keep expanded Activity and Block rows inside one outline, without internal rules. */
+.timekeep-df-container .timekeep-df-table .timekeep-df-row[data-group-position] > td {
+	box-shadow: none;
+	border-bottom: 0;
+	border-radius: 0;
+}
+
+.timekeep-df-container .timekeep-df-table .timekeep-df-row[data-group-position] > td:first-child {
+	border-left: 1px solid var(--background-modifier-border-hover);
+}
+
+.timekeep-df-container .timekeep-df-table .timekeep-df-row[data-group-position] > td:last-child {
+	border-right: 1px solid var(--background-modifier-border-hover);
+}
+
+.timekeep-df-container .timekeep-df-table .timekeep-df-row[data-group-position="start"] > td {
+	border-top: 1px solid var(--background-modifier-border-hover);
+}
+
+.timekeep-df-container .timekeep-df-table .timekeep-df-row[data-group-position="end"] > td {
+	border-bottom: 1px solid var(--background-modifier-border-hover);
+}
+
+.timekeep-df-container
+	.timekeep-df-table
+	tbody
+	> tr:last-child:not([data-group-position="end"])
+	> td,
+.timekeep-df-container .timekeep-df-table .timekeep-df-empty-row > td {
 	border-bottom: 0;
 }
 
